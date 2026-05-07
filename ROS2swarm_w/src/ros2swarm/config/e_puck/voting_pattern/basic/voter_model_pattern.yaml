@@ -1,0 +1,21 @@
+/**:
+  ros__parameters:
+    # ===== 选民模型配置 (Voter Model Pattern) =====
+    # 经典选民模型：机器人通过与邻居交互来更新自己的观点
+    # 每次交互随机选择一个邻居，采用其观点
+    # 最终系统会达到共识（所有机器人持相同观点）
+    # 
+    # 机器人: E-puck v2
+    
+    # ===== 初始观点设置 =====
+    voter_model_choose_start_value_at_random: true  # 是否随机初始化观点
+    voter_model_initial_value: 0  # 固定初始值 (仅当随机初始化为 false 时使用)
+    
+    # ===== 观点值范围 =====
+    # 观点值在 [min_opinion, max_opinion) 范围内随机选择
+    voter_model_min_opinion: 0  # 观点最小值 (包含)
+    voter_model_max_opinion: 5  # 观点最大值 (不包含)，实际范围 [0,5)
+    
+    # ===== 更新周期 (单位: 秒) =====
+    # 机器人尝试更新观点的时间间隔
+    voter_model_timer_period: 2.0

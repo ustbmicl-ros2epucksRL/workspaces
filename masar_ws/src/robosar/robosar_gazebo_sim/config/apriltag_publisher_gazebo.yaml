@@ -1,0 +1,7 @@
+# ROS Parameters
+agent_names: ["agent1", "agent2"]
+base_frame_name: "base_link"
+tag_amount: 20
+tag_name: "tag_"
+topic_name_prefix: "/robosar_agent_bringup_node/"
+topic_name_suffix: "/feedback/apriltag"

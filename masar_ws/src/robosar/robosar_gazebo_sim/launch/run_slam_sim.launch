@@ -1,0 +1,61 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Find xacro -->
+  <arg name="model" value="$(find robosar_gazebo_sim)/urdf/khepera4_lrf.xacro"/>
+  <!-- load our urdf model (string) into global parameter called "robot_description"-->
+  <!-- xacro parses xacro files and returns a urdf file -->
+  <param name="khepera4_lrf_urdf"
+         command="$(find xacro)/xacro $(arg model)" />
+
+  <!-- Run simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robosar_gazebo_sim)/world/simple_world.world"/>
+    <arg name="debug" value="false" />
+    <arg name="gui" value="true" />
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="headless" value="false"/>
+  </include>
+
+  <!-- Run RVIZ -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robosar_gazebo_sim)/config/run_slam_sim.rviz" />
+
+  <!-- Run tag location estimator -->
+  <!-- <node pkg="robosar_gazebo_sim" type="tag_location_estimator" name="tag_location_estimator" /> -->
+
+  <!-- Run AprilTag msg publisher -->
+  <node pkg="robosar_gazebo_sim" type="apriltag_publisher_gazebo" name="apriltag_publisher_gazebo" >
+    <rosparam command="load" file="$(find robosar_gazebo_sim)/config/apriltag_publisher_gazebo.yaml" />
+  </node>
+
+  <!-- Pick agent for mapping and teleop -->
+  <arg name="agentN" value="agent1" />
+  <!-- Spawn robot(s) -->
+  <group ns="robosar_agent_bringup_node">
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 0 -y 0 -z 0 -Y 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg agentN)" />
+    </include>
+  </group>
+  <group ns="robosar_agent_bringup_node">
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <!-- <arg name="init_position" value="-x -2 -y 0 -z 0 -Y 1.57" /> -->
+      <arg name="init_position" value="-x 0 -y 0.5 -z 0 -Y 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="agent2" />
+    </include>
+  </group>
+  <!-- Run teleop for agent -->
+  <node name="teleop_twist_keyboard_$(arg agentN)" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
+        <remap from="cmd_vel" to="/robosar_agent_bringup_node/$(arg agentN)/cmd_vel"/>
+  </node>
+  <!-- Run SLAM Toolbox for mapping -->
+  <node pkg="slam_toolbox" type="sync_slam_toolbox_node" name="slam_toolbox" output="screen">
+      <rosparam command="load" file="$(find slam_toolbox)/config/robosar_mapping.yaml" />
+      <param name="max_laser_range" type="double" value="4.0" />
+  </node>
+
+</launch>
+
+

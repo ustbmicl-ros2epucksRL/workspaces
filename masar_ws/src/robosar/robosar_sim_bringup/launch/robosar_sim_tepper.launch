@@ -1,0 +1,53 @@
+<launch>
+  <param name="/use_sim_time" value="true"/>
+  
+  <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
+  <node name="map_server" pkg="map_server" type="map_server" args="/root/catkin_ws2/src/robosar/robosar_sim_bringup/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
+    <remap from="/map" to="/sim_map"/>
+  </node>
+  
+  <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen" />
+  
+  <!--使用stage_ros仿真-->
+  <!--group ns="robosar_agent_bringup_node">
+    <node pkg="stage_ros_add_pose_and_crash" type="stageros" name="stageros" args="$(find robosar_sim_bringup)/worlds/stage_config/worlds/tepper.world" output="screen" respawn="false" >
+      <param name="base_watchdog_timeout" value="0.2"/>
+    </node>
+  </group-->
+  
+  <!--使用gazebo仿真-->
+  <!-- Find xacro -->
+  <arg name="model" value="$(find robosar_gazebo_sim)/urdf/khepera4_lrf.xacro"/>
+  <!-- load our urdf model (string) into global parameter called "robot_description"-->
+  <!-- xacro parses xacro files and returns a urdf file -->
+  <param name="khepera4_lrf_urdf"
+         command="$(find xacro)/xacro $(arg model)" />
+
+  <!-- Run simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robosar_gazebo_sim)/world/tepper.world"/>
+    <arg name="debug" value="false" />
+    <arg name="gui" value="true" />
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="headless" value="false"/>
+  </include>
+
+  <!-- Spawn robot(s) -->
+  <group ns="robosar_agent_bringup_node">
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robots.launch" />
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 map agent_0/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 0 1 map agent_1/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link3_broadcaster" args="0 0 0 0 0 0 1 map agent_2/odom" />
+  
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link4_broadcaster" args="0 0 0 0 0 0 1 map agent_3/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link5_broadcaster" args="0 0 0 0 0 0 1 map agent_4/odom" />
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
+  </node>
+</launch>

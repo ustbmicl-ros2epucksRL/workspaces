@@ -1,0 +1,68 @@
+<launch>
+  <master auto="start"/>
+  <param name="/use_sim_time" value="true"/>
+
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find robosar_sim_bringup)/worlds/stage_config/maps/willow_full.yaml" respawn="false" />
+  
+  <node pkg="stage_ros_add_pose_and_crash" type="stageros" name="stageros" args="$(find robosar_sim_bringup)/worlds/vicon_map/robosar.world" respawn="false" >
+    <param name="base_watchdog_timeout" value="0.2"/>
+  </node>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 map agent_0/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 0 1 map agent_1/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link3_broadcaster" args="0 0 0 0 0 0 1 map agent_2/odom" />
+  
+  <group ns="agent_0">
+   <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+      <remap from="map" to="/map" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/move_base_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/dwa_local_planner_params.yaml" command="load" />
+
+      <param name="global_costmap/robot_base_frame" value="agent_0/base_link"/>
+      <param name="local_costmap/global_frame" value="agent_0/odom"/>
+      <param name="local_costmap/robot_base_frame" value="agent_0/base_link"/>
+    </node> 
+  </group>
+
+  <group ns="agent_1">
+   <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+      <remap from="map" to="/map" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/move_base_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/dwa_local_planner_params.yaml" command="load" />
+
+      <param name="global_costmap/robot_base_frame" value="agent_1/base_link"/>
+      <param name="local_costmap/global_frame" value="agent_1/odom"/>
+      <param name="local_costmap/robot_base_frame" value="agent_1/base_link"/>
+    </node> 
+  </group>
+
+  <group ns="agent_2">
+    <node pkg="move_base" type="move_base" respawn="false" name="move_base_node" output="screen">
+      <remap from="map" to="/map" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/move_base_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="global_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/costmap_common_params.yaml" command="load" ns="local_costmap" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/local_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/global_costmap_params.yaml" command="load" />
+      <rosparam file="$(find robosar_sim_bringup)/move_base_config/dwa_local_planner_params.yaml" command="load" />
+
+      <param name="global_costmap/robot_base_frame" value="agent_2/base_link"/>
+      <param name="local_costmap/global_frame" value="agent_2/odom"/>
+      <param name="local_costmap/robot_base_frame" value="agent_2/base_link"/>
+    </node> 
+  </group>
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
+    <remap from="/agent_1/move_base_simple/goal" to="/agent_0/move_base_simple/goal" />
+  </node>
+</launch>

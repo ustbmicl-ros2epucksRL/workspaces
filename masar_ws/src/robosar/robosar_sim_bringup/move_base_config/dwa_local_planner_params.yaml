@@ -1,0 +1,42 @@
+DWAPlannerROS:
+  max_trans_vel: 0.12           # 最大平移速度，单位 m/s
+  min_trans_vel: 0.02           # 最小平移速度，单位 m/s
+  max_vel_x: 0.12               # x 方向最大线速度，单位 m/s
+  min_vel_x: 0.0                # x 方向最小线速度，单位 m/s
+  max_vel_y: 0.0                # 差速底盘无横向速度
+  min_vel_y: 0.0                # 差速底盘无横向速度
+  max_rot_vel: 1.2              # 最大角速度，单位 rad/s
+  min_rot_vel: 0.2              # 最小角速度，单位 rad/s
+  acc_lim_x: 0.4                # 最大线加速度，单位 m/s^2
+  acc_lim_y: 0.0                # 差速底盘无横向加速度
+  acc_lim_theta: 1.2            # 最大角加速度，单位 rad/s^2
+  acc_lim_trans: 0.4            # 最大平移加速度，单位 m/s^2
+
+  prune_plan: false             # 是否裁掉已走过的全局路径点
+
+  xy_goal_tolerance: 0.25       # 目标点位置容差，单位米
+  yaw_goal_tolerance: 0.1       # 目标点朝向容差，单位弧度
+  trans_stopped_vel: 0.02       # 判定线速度已停止的阈值，单位 m/s
+  rot_stopped_vel: 0.1          # 判定角速度已停止的阈值，单位 rad/s
+  sim_time: 3.0                 # 每条候选轨迹向前仿真的时长，单位秒
+  sim_granularity: 0.1          # 平移仿真步长，单位米
+  angular_sim_granularity: 0.1  # 旋转仿真步长，单位弧度
+  path_distance_bias: 34.0      # 越大越偏向贴近全局路径
+  goal_distance_bias: 24.0      # 越大越偏向快速接近目标
+  occdist_scale: 0.05           # 障碍物代价权重
+  twirling_scale: 0.0           # 原地打转惩罚权重
+  stop_time_buffer: 0.5         # 预留停车安全时间，单位秒
+  oscillation_reset_dist: 0.05  # 移动该距离后清除振荡状态，单位米
+  oscillation_reset_angle: 0.2  # 转动该角度后清除振荡状态，单位弧度
+  forward_point_distance: 0.3   # 轨迹评分时前向参考点距离，单位米
+  scaling_speed: 0.12           # 障碍物膨胀开始生效的速度阈值，单位 m/s
+  max_scaling_factor: 0.2       # 速度相关膨胀的最大缩放因子
+  vx_samples: 20                # 线速度采样数
+  vy_samples: 0                 # 横向速度采样数，差速底盘保持 0
+  vth_samples: 40               # 角速度采样数
+
+  use_dwa: true                 # 使用动态窗口法
+  restore_defaults: true        # 启动时恢复默认内部参数
+
+GlobalPlanner:
+  allow_unknown: false          # 是否允许全局路径穿过未知区域

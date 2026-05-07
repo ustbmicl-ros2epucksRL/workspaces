@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<launch>
+    <!-- Call agent bringup node -->
+    <node name="robosar_agent_bringup_node" pkg="robosar_agent_bringup" type="robosar_agent_bringup_node" output="screen"/>
+</launch>

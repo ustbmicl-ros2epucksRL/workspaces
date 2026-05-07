@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<robot xmlns:xacro="http://www.ros.org/wiki/xacro" name="khepera4_lrf">
+<xacro:macro name="khepera_body">
+
+  <link name="base_link">
+    <visual>
+      <origin xyz="0 0 0.0315" rpy="0 0 -1.570796"/>
+      <geometry>
+        <cylinder radius="0.069" length="0.053"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.0315" rpy="0 0 -1.570796"/>
+      <geometry>
+        <cylinder radius="0.069" length="0.053"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <mass value="0.6"/>
+      <inertia ixx="${1/12*0.6*(3*0.0704*0.0704+0.0577*0.0577)}" ixy="0" ixz="0" iyy="${1/12*0.6*(3*0.0704*0.0704+0.0577*0.0577)}" iyz="0" izz="${1/2*0.6*0.0704*0.0704}"/>
+    </inertial>
+  </link>
+
+  <link name="ring_link">
+    <visual>
+      <origin xyz="0 0 0.01" rpy="0 0 -1.570796"/>
+      <geometry>
+        <cylinder radius="0.07" length="0.011"/>
+      </geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.01" rpy="0 0 -1.570796"/>
+      <geometry>
+        <cylinder radius="0.07" length="0.011"/>
+      </geometry>
+    </collision>
+  </link>
+
+  <joint name="base_to_ring" type="fixed">
+    <parent link="base_link"/>
+    <child link="ring_link"/>
+    <origin xyz="0 0 0" rpy="0 0 0"/>
+  </joint>
+
+  <gazebo reference="base_link">
+    <material>Gazebo/White</material>
+  </gazebo>
+
+  <gazebo reference="ring_link">
+    <material>Gazebo/Blue</material>
+  </gazebo>
+
+</xacro:macro>
+</robot>
+

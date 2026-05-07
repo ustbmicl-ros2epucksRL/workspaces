@@ -1,0 +1,32 @@
+/**:
+  ros__parameters:
+    # ===== 磁力计模式配置 (Magnetometer Pattern) =====
+    # 使用磁力计导航，使机器人朝向指定的磁北角度
+    # 可用于实现定向运动或编队控制
+    # 
+    # 机器人: E-puck v2
+    
+    # ===== 目标方向 (单位: 度) =====
+    # 相对于磁北的目标朝向角度
+    magnetometer_target_direction_x: 80.0
+    
+    # ===== 前向吸引力系数 =====
+    # 0.0 表示纯旋转对准，不考虑前进偏好
+    magnetometer_front_attraction: 0.0
+    
+    # ===== 到达目标方向后的行为 =====
+    # true: 到达目标方向后停止
+    # false: 持续调整以保持方向
+    magnetometer_stop_when_target_direction_reached: true
+    
+    # ===== 方向容差 (单位: 度) =====
+    # 当与目标方向的偏差小于此值时，认为已到达目标方向
+    magnetometer_allowed_delta_in_target_direction: 20.0
+    
+    # ===== 旋转速度 (单位: rad/s) =====
+    # 用于调整方向时的角速度
+    magnetometer_rotational_velocity: 0.5
+    
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)

@@ -1,0 +1,13 @@
+<package>
+  <description brief="RViz Add Agent Tool">
+
+     Publish message to add agent
+
+  </description>
+  <author>Rachel Zheng</author>
+  <depend package="rviz"/>
+  <depend package="std_msgs"/>
+  <export>
+      <rviz plugin="${prefix}/plugin_description.xml"/>
+  </export>
+</package>

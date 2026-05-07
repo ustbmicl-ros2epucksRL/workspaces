@@ -1,0 +1,37 @@
+/**:
+  ros__parameters:
+    # ===== 鼠类搜索模式配置 (Rat Search Pattern) =====
+    # 模拟老鼠沿墙壁搜索的行为，用于迷宫探索
+    # 机器人沿右侧墙壁行进，同时检测特定颜色目标
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    
+    # ===== 传感器范围 (单位: 米) =====
+    # 基于 RpLidarA2 激光雷达参数
+    rat_search_max_range: 12.0  # 最大检测距离 (激光雷达最大范围)
+    
+    # ===== 控制周期 (单位: 秒) =====
+    rat_search_timer_period: 0.1  # 每 100ms 更新一次
+    
+    # ===== 目标颜色检测 (RGB 值 0-255) =====
+    # 设为 256 表示禁用该颜色通道的检测
+    rat_search_color_red: 230.0    # 红色阈值
+    rat_search_color_green: 256.0  # 绿色阈值 (禁用)
+    rat_search_color_blue: 256.0   # 蓝色阈值 (禁用)
+    
+    # ===== 墙壁跟随参数 (单位: 米) =====
+    # 基于激光雷达范围调整
+    rat_search_right_distance: 0.3   # 与右侧墙壁保持的目标距离
+    rat_search_left_distance: 1.0    # 左侧墙壁检测距离
+    rat_search_distance_buffer: 0.1  # 距离缓冲区 (10cm)
+    
+    # ===== 墙壁检测角度参数 (单位: 度) =====
+    rat_search_wall_right_degree: 270  # 右侧墙壁检测角度
+    rat_search_wall_degree: 100        # 前方墙壁检测角度范围
+    rat_search_wall_batch_size: 5      # 墙壁检测批处理大小 (激光雷达光束数)
+    
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)

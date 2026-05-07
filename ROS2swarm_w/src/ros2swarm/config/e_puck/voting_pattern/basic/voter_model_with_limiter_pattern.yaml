@@ -1,0 +1,27 @@
+/**:
+  ros__parameters:
+    # ===== 带限制器的选民模型配置 (Voter Model with Limiter Pattern) =====
+    # 扩展选民模型：仅与距离较近的邻居进行观点交换
+    # 使用 WiFi 信号强度 (dBm) 来判断邻居距离
+    # 
+    # 机器人: E-puck v2
+    
+    # ===== 邻居限制 =====
+    voter_model_with_limiter_number_of_near_robots: 3  # 考虑的最近邻居数量
+    
+    # ===== 初始观点设置 =====
+    voter_model_with_limiter_choose_start_value_at_random: true  # 是否随机初始化观点
+    voter_model_with_limiter_initial_value: 0  # 固定初始值
+    
+    # ===== 观点值范围 =====
+    voter_model_with_limiter_min_opinion: 0  # 观点最小值 (包含)
+    voter_model_with_limiter_max_opinion: 2  # 观点最大值 (不包含)，二元选择 [0,2)
+    
+    # ===== 更新周期 (单位: 秒) =====
+    voter_model_with_limiter_timer_period: 5.0
+    
+    # ===== 距离判断参数 =====
+    # 使用 WiFi 信号强度判断邻居距离
+    # dBm 值越大（越接近0）表示越近，越小（负数越大）表示越远
+    voter_model_with_limiter_required_dBm_to_be_near: -50  # 认为是"近邻"的最小信号强度 (dBm)
+    voter_model_with_limiter_wifi_interface_name: ad0     # WiFi 接口名称

@@ -1,0 +1,8 @@
+<library path="lib/librobosar_gui">
+  <class type="robosar_gui::AddAgentTool"
+         base_class_type="rviz::Tool">
+    <description>
+      A simple tool to add an agent.
+    </description>
+  </class>
+</library>

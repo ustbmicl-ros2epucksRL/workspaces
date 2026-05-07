@@ -1,0 +1,62 @@
+/**:
+  ros__parameters:
+    # ===== 聚集模式配置 (Aggregation Pattern) =====
+    # 基于概率停留时间的群体聚集算法
+    # 机器人探索环境，发现同伴后加入群体，停留一段时间后离开
+    # 停留时间与群体大小成指数关系: stay_time = 2^n × time_scale + base_stay_time
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    #   - 直径: ~0.074m
+    
+    # ===== 检测范围 (单位: 米) =====
+    # 基于本地修改版 RpLidarA2 激光雷达参数
+    aggregation_max_range: 2.0   # 同伴检测的最大距离
+    aggregation_min_range: 0.08  # 同伴检测的最小距离 (略大于激光雷达盲区0.06m)
+    
+    # ===== 前向吸引力系数 =====
+    # 用于向群体移动或离开群体时的方向计算
+    aggregation_front_attraction: 0.5
+    
+    # ===== 停留时间参数 =====
+    # 停留时间 = 2^(检测到的机器人数量) × time_scale + base_stay_time
+    aggregation_time_scale: 30.0       # 时间缩放因子，影响停留时间随群体大小增长的速率
+    aggregation_base_stay_time: 20.0   # 基础停留时间 (回调周期数)，最小停留时间
+    
+    # ===== 群体距离阈值 (单位: 米) =====
+    # 当与最近机器人的距离小于此值时，认为已进入群体
+    # 设置略大于 E-puck 直径
+    aggregation_group_distance: 0.15
+    
+    # ===== 物体识别参数 =====
+    # 'MEAN': 多个光束探测距离取平均值
+    # 'NEAREST': 选择最近距离
+    aggregation_object_reduction: 'MEAN'
+    
+    # ===== 群体参考选择策略 =====
+    # 'MEAN': 以所有检测到机器人的重心为参考
+    # 'NEAREST': 以最近的机器人为参考
+    # 'FARTHEST': 以最远的机器人为参考
+    aggregation_group_reference_selection: 'MEAN'
+    
+    # ===== 物体区分阈值 (单位: 米) =====
+    # 相邻光束检测距离差超过此值时，视为不同物体
+    aggregation_object_threshold: 0.15
+    
+    # ===== 机器人识别的宽度范围 (单位: 光束数量) =====
+    # 用于区分机器人和障碍物
+    # E-puck 直径约 0.074m:
+    #   - 0.5m 处约占 8° ≈ 8 束
+    #   - 1.0m 处约占 4° ≈ 4 束
+    aggregation_object_min_width: 2   # 最小宽度
+    aggregation_object_max_width: 15  # 最大宽度 (近距离情况)
+    
+    # ===== 群体增长时的行为 =====
+    # true: 如果群体在等待期间变大，重置计时器继续等待
+    # false: 群体变大不影响离开决定
+    aggregation_stay_in_growing_groups: true
+    
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 1.0      # 最大角速度 (rad/s)

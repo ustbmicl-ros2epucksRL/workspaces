@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Set name(s) -->
+  <arg name="robot0_name" value="agent_0"/>
+  <arg name="robot1_name" value="agent_1"/>
+  <arg name="robot2_name" value="agent_2"/>
+  <arg name="robot3_name" value="agent_3"/>
+  <arg name="robot4_name" value="agent_4"/>
+  <!-- Spawn robot(s) -->
+  <!--group ns="robosar_agent_bringup_node"-->
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 3.400 -y 14.910 -z 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg robot0_name)" />
+    </include>
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 3.600 -y 15.300 -z 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg robot1_name)" />
+    </include>
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 4.050 -y 15.150 -z 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg robot2_name)" />
+    </include>
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 4.000 -y 14.710 -z 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg robot3_name)" />
+    </include>
+    <include file="$(find robosar_gazebo_sim)/launch/spawn_robot.launch" >
+      <arg name="init_position" value="-x 3.600 -y 14.570 -z 0" />
+      <arg name="robot_description"  value="/khepera4_lrf_urdf" />
+      <arg name="robot_name"  value="$(arg robot4_name)" />
+    </include>
+  <!--/group-->
+
+</launch>
+
+

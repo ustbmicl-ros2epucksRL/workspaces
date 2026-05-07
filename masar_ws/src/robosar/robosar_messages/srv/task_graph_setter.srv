@@ -1,0 +1,4 @@
+#goal definition
+int32[] finished_task_ids
+---
+#result definition

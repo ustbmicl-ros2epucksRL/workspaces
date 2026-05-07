@@ -1,0 +1,42 @@
+/**:
+  ros__parameters:
+    # ===== 简约集群模式配置 (Minimalist Flocking Pattern) =====
+    # 基于区域划分的简化集群算法
+    # 根据传感器检测到的机器人位置，决定向左转、向右转或直行
+    # 
+    # 传感器: RpLidarA2 激光雷达(本地修改版)
+    #   - 角度范围: 360° (0 ~ 2π rad)
+    #   - 分辨率: 400 束
+    #   - 最小范围: 0.06m, 最大范围: 12.0m
+    # 机器人: E-puck v2
+    
+    # ===== 运动速度 (基于 E-puck v2 安全参数) =====
+    minimalist_flocking_translational_velocity: 0.1  # 直线运动时的线速度 (m/s)
+    minimalist_flocking_rotational_left_velocity: 0.6   # 左转时的角速度 (rad/s)，正值
+    minimalist_flocking_rotational_right_velocity: -0.6 # 右转时的角速度 (rad/s)，负值
+    
+    # ===== 控制周期 (单位: 秒) =====
+    # 0 表示使用传感器数据到达时触发，而非定时触发
+    minimalist_flocking_drive_timer_period: 0
+    
+    # ===== 区域阈值 (单位: 米) =====
+    # 用于判断检测到的机器人在哪个方向区域
+    # 基于激光雷达范围调整
+    minimalist_flocking_zone1_threshold: 0.8  # 区域1的距离阈值
+    minimalist_flocking_zone2_threshold: 0.8  # 区域2的距离阈值
+    minimalist_flocking_zone3_threshold: 1.2  # 区域3的距离阈值
+    minimalist_flocking_zone4_threshold: 1.5  # 区域4的距离阈值
+    
+    # ===== 机器人检测阈值 (单位: 光束数量) =====
+    minimalist_flocking_zone2_robot_threshold: 5  # 区域2中识别为机器人的最小光束数
+    minimalist_flocking_robot_threshold: 3        # 其他区域识别为机器人的最小光束数
+    
+    # ===== 区域边界 (单位: 弧度) =====
+    # 定义四个区域的角度边界
+    # 激光雷达 360° 范围，划分为前、左、右、后等区域
+    minimalist_flocking_zone_borders: [0.5, 1.8, 4.5, 5.8]
+    
+    # ===== 传感器范围 (单位: 米) =====
+    # 基于本地修改版 RpLidarA2 激光雷达参数
+    max_range: 2.0   # 最大检测距离 (在激光雷达范围内使用)
+    min_range: 0.08  # 最小检测距离 (略大于激光雷达盲区0.06m)

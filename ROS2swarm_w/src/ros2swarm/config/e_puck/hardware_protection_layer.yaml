@@ -1,0 +1,45 @@
+/**:
+  ros__parameters:
+    # ===== E-puck v2 + RpLidarA2 硬件保护层配置 =====
+    # 用于防止机器人与障碍物碰撞的安全保护机制
+    # 
+    # 硬件参数参考:
+    # - E-puck v2: 电机最大角速度 7.536 rad/s, 轮径 0.02m, 轮距 0.052m
+    # - RpLidarA2 (本地修改版): 最小范围 0.06m, 最大范围 12.0m, 400束
+    
+    # ===== 避障检测范围 (单位: 米) =====
+    # 基于本地修改版 RpLidarA2 激光雷达参数
+    # 本地修改将 minRange 从 0.2m 减小到 0.06m，大大减小盲区
+    hardware_protection_layer_max_range: 0.25  # 避障检测最大距离 (近距离警戒)
+    hardware_protection_layer_min_range: 0.06  # 避障检测最小距离 (激光雷达盲区)
+    
+    # ===== 前向吸引力系数 =====
+    # 用于势场法计算避障方向时的前进偏好
+    # - 正值: 倾向于保持前进，绕障碍物行驶
+    # - 负值: 倾向于后退躲避
+    # - 值越大，前进意愿越强
+    hardware_protection_layer_front_attraction: 2.0
+    
+    # ===== 障碍物检测阈值 (单位: 光束数量) =====
+    # 当有效范围内探测到障碍物的光束数量 >= 此阈值时，触发避障
+    # RpLidarA2 有 400 束（比 RobotisLds01 的 360 束多），设置适当阈值过滤噪声
+    hardware_protection_layer_threshold: 3
+    
+    # ===== 速度限制 (基于 E-puck v2 物理参数) =====
+    # E-puck v2 参数:
+    #   - 轮子半径 r = 0.02m
+    #   - 轮距 L = 0.052m
+    #   - 电机最大角速度 ω_motor = 7.536 rad/s
+    #   - 最大轮速 v_wheel_max = r × ω_motor = 0.1507 m/s
+    # 
+    # 差速驱动运动学约束:
+    #   左轮速度: v_l = v - ω × L/2
+    #   右轮速度: v_r = v + ω × L/2
+    #   约束: |v_l|, |v_r| <= v_wheel_max
+    # 
+    # 保守设置 (确保两轮都不超限):
+    #   当 v = max_translational_velocity, ω = max_rotational_velocity 时
+    #   需满足: v + ω × L/2 <= v_wheel_max
+    #   即: 0.12 + 1.0 × 0.026 = 0.146 < 0.1507 ✓
+    max_translational_velocity: 0.12  # 最大平移速度 (m/s)
+    max_rotational_velocity: 1.0      # 最大旋转速度 (rad/s)

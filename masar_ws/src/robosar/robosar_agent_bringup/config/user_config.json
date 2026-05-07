@@ -1,0 +1,63 @@
+{
+    "config_selection": "config1",
+    "server_ip_address": "192.168.176.213",
+    "path_to_khepera_code": "/root/catkin_ws2/src/robosar/robosar_khepera_code/template",
+    "path_to_perception_code": "/root/catkin_ws2/src/robosar/robosar_khepera_perception/template_perception",
+    "simulation" : true,
+    "update_status_dur" : 10,
+    "config1": {
+            "agent_0": {
+                "ip_address" : "192.168.176.109",
+                "feedback_port" : 2109,
+                "control_port" : 2000,
+                "feedback_freq_hz" : 10,
+                "control_timeout_ms": 1000,
+                "deadman_timer_s": 5.0,
+                "freq_calculation_duration": 5,
+                "camera_enabled": false
+            },
+            "agent_1": {
+              "ip_address" : "192.168.176.110",
+              "feedback_port" : 2110,
+              "control_port" : 2001,
+              "feedback_freq_hz" : 10,
+              "control_timeout_ms": 1000,
+              "deadman_timer_s": 5.0,
+              "freq_calculation_duration": 5,
+              "camera_enabled": false
+            },
+            "agent_2": {
+              "ip_address" : "192.168.176.111",
+              "feedback_port" : 2111,
+              "control_port" : 2002,
+              "feedback_freq_hz" : 10,
+              "control_timeout_ms": 1000,
+              "deadman_timer_s": 5.0,
+              "freq_calculation_duration": 5,
+              "camera_enabled": false
+            },
+            "agent_3": {
+              "ip_address" : "192.168.176.112",
+              "feedback_port" : 2112,
+              "control_port" : 2003,
+              "feedback_freq_hz" : 10,
+              "control_timeout_ms": 1000,
+              "deadman_timer_s": 5.0,
+              "freq_calculation_duration": 5,
+              "camera_enabled": false
+            },
+            "agent_4": {
+              "ip_address" : "192.168.176.113",
+              "feedback_port" : 2113,
+              "control_port" : 2004,
+              "feedback_freq_hz" : 10,
+              "control_timeout_ms": 1000,
+              "deadman_timer_s": 5.0,
+              "freq_calculation_duration": 5,
+              "camera_enabled": false
+            }
+            
+
+    }
+    
+}

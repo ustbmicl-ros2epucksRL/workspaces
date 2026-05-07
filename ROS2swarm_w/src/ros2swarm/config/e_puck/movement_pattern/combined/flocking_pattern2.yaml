@@ -1,0 +1,45 @@
+/**:
+  ros__parameters:
+    # ===== 组合集群模式2配置 (Combined Flocking Pattern 2) =====
+    # 包含分散、两级吸引和磁力计导航的高级集群模式
+    # 通过多级吸引实现更精细的距离控制
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    
+    # ===== 全局速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)
+    
+    # ===== 分散节点参数 =====
+    # 近距离排斥，防止碰撞
+    dispersion_max_range: 0.8   # 分散检测的最大距离 (m)，较小值用于近距离排斥
+    dispersion_min_range: 0.08  # 分散检测的最小距离 (m)，略大于激光雷达盲区0.06m
+    dispersion_front_attraction: 1.0  # 前向吸引力系数
+    dispersion_threshold: 3     # 触发分散的光束阈值
+    dispersion_stop_if_alone: True    # 独处时停止，等待同伴出现
+    
+    # ===== 吸引节点参数 (远距离吸引) =====
+    # 远距离时向同伴靠近
+    attraction_max_range: 2.5   # 吸引检测的最大距离 (m)
+    attraction_min_range: 1.5   # 吸引检测的最小距离 (m)，只对远处同伴有效
+    attraction_front_attraction: 1.0  # 前向吸引力系数
+    attraction_threshold: 3     # 触发吸引的光束阈值
+    attraction_stop_if_alone: True    # 独处时停止
+    
+    # ===== 吸引节点2参数 (中距离吸引) =====
+    # 中等距离时的吸引行为
+    attraction2_max_range: 1.5  # 吸引检测的最大距离 (m)
+    attraction2_min_range: 0.08  # 吸引检测的最小距离 (m)，略大于激光雷达盲区0.06m
+    attraction2_front_attraction: 1.0  # 前向吸引力系数
+    attraction2_threshold: 3    # 触发吸引的光束阈值
+    attraction2_stop_if_alone: False  # 独处时继续运动搜索同伴
+    
+    # ===== 磁力计节点参数 =====
+    # 定向移动控制
+    magnetometer_target_direction_x: 140.0  # 目标方向 (度)
+    magnetometer_front_attraction: 0.0      # 前向吸引力
+    magnetometer_stop_when_target_direction_reached: true  # 到达后停止
+    magnetometer_allowed_delta_in_target_direction: 12.0   # 方向容差 (度)
+    magnetometer_rotational_velocity: 0.5   # 旋转速度 (rad/s)

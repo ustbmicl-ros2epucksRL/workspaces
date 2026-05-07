@@ -1,0 +1,37 @@
+/**:
+  ros__parameters:
+    # ===== 讨论式分散模式配置 (Discussed Dispersion Pattern) =====
+    # 结合多数规则投票和分散行为的高级分散算法
+    # 机器人通过"讨论"达成共识，确定分散距离
+    # 总距离 = base_distance + (观点值 × opinion_multiply)
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    
+    # ===== 全局速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)
+    
+    # ===== 讨论式分散主节点参数 =====
+    discussed_dispersion_timer_period: 0.25  # 更新周期 (秒)
+    discussed_dispersion_discussion_time: 20.0  # 纯讨论阶段时长 (秒)，此期间机器人不移动
+    discussed_dispersion_discussion_base_distance: 0.5  # 基础分散距离 (m)
+    discussed_dispersion_discussion_opinion_multiply: 0.3  # 观点到距离的映射系数 (m/观点值)
+    
+    # ===== 分散节点参数 =====
+    # 基于本地修改版 RpLidarA2 激光雷达参数
+    dispersion_max_range: 2.5   # 分散检测的最大距离 (m)
+    dispersion_min_range: 0.08  # 分散检测的最小距离 (m)，略大于激光雷达盲区0.06m
+    dispersion_front_attraction: 0.1  # 前向吸引力系数，较小值避免过度前进
+    dispersion_threshold: 2     # 阈值，光束数量达到此值触发分散
+    dispersion_linear_if_alone: 0.0   # 独处时的线速度 (停止)
+    dispersion_angular_if_alone: 0.0  # 独处时的角速度 (停止)
+    dispersion_allow_dynamic_max_range_setting: True  # 允许动态调整最大范围
+    
+    # ===== 多数规则投票参数 =====
+    majority_rule_choose_start_value_at_random: true  # 随机初始化观点值
+    majority_rule_initial_value: 0     # 固定初始值 (仅当随机初始化为 false 时使用)
+    majority_rule_min_opinion: 1       # 观点值最小值
+    majority_rule_max_opinion: 3       # 观点值最大值 (不包含)，范围 [1,3)
+    majority_rule_timer_period: 2.0    # 投票更新周期 (秒)

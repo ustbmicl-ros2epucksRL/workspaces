@@ -1,0 +1,9 @@
+#goal definition
+---
+#result definition
+uint8 FRONTIER=1
+uint8 COVERAGE=2
+int32[] task_ids
+geometry_msgs/Point[] points
+int32[] task_types
+float32[] info_gains

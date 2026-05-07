@@ -1,0 +1,37 @@
+/**:
+  ros__parameters:
+    # ===== 组合集群模式配置 (Combined Flocking Pattern) =====
+    # 结合分散、吸引和磁力计导航实现复杂的集群行为
+    # 机器人在保持分散的同时向共同方向移动，形成有序编队
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    
+    # ===== 全局速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)
+    
+    # ===== 分散节点参数 =====
+    # 使机器人保持一定距离，避免过于拥挤
+    dispersion_max_range: 1.5   # 分散检测的最大距离 (m)
+    dispersion_min_range: 0.08  # 分散检测的最小距离 (m)，略大于激光雷达盲区0.06m
+    dispersion_front_attraction: 1.0  # 前向吸引力系数，正值保持前进趋势
+    dispersion_threshold: 3     # 触发分散的光束阈值
+    dispersion_stop_if_alone: False  # 独处时是否停止，false 表示继续运动
+    
+    # ===== 吸引节点参数 =====
+    # 使机器人向检测到的同伴靠近
+    attraction_max_range: 2.5   # 吸引检测的最大距离 (m)
+    attraction_min_range: 0.08  # 吸引检测的最小距离 (m)，略大于激光雷达盲区0.06m
+    attraction_front_attraction: 1.0  # 前向吸引力系数
+    attraction_threshold: 3     # 触发吸引的光束阈值
+    attraction_stop_if_alone: False   # 独处时是否停止
+    
+    # ===== 磁力计节点参数 =====
+    # 使用磁力计实现定向移动
+    magnetometer_target_direction_x: 140.0  # 目标方向 (度，相对于磁北)
+    magnetometer_front_attraction: 0.0      # 前向吸引力，0 表示纯旋转对准
+    magnetometer_stop_when_target_direction_reached: true  # 到达目标方向后停止
+    magnetometer_allowed_delta_in_target_direction: 12.0   # 方向容差 (度)
+    magnetometer_rotational_velocity: 0.5   # 旋转速度 (rad/s)

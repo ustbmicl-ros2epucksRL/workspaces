@@ -1,0 +1,8 @@
+/**:
+  ros__parameters:
+    max_range: 3.5 #传感器的最大测量范围
+    min_range: 0.12 #传感器的最小测量范围
+    object_reduction: 'MEAN' # MEAN, NEAREST MEAN表示取所有检测到的对象的平均值，而NEAREST表示只考虑最近的对象
+    object_threshold: 0.2 #一个阈值，用于确定对象是否被认为是有效的.一个概率值，用于过滤掉那些不太可能是真实对象的检测
+    object_min_width: 2 #被识别对象的最小宽度
+    object_max_width: 8 #被识别对象的最大宽度

@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- Find xacro -->
+  <arg name="model" value="$(find robosar_gazebo_sim)/urdf/khepera4_lrf.xacro"/>
+  <!-- load our urdf model (string) into global parameter called "robot_description"-->
+  <!-- xacro parses xacro files and returns a urdf file -->
+  <param name="khepera4_lrf_urdf"
+         command="$(find xacro)/xacro $(arg model)" />
+
+  <!-- Run simulator -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find robosar_gazebo_sim)/world/simple_world.world"/>
+    <arg name="debug" value="false" />
+    <arg name="gui" value="true" />
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="headless" value="false"/>
+  </include>
+
+  <!-- Spawn robot(s) -->
+  <include file="$(find robosar_gazebo_sim)/launch/spawn_robots.launch" />
+
+  <!-- Run RVIZ -->
+  <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robosar_gazebo_sim)/config/run_simulation.rviz" />
+
+  <!-- Run teleop for agent1 -->
+  <node name="teleop_twist_keyboard_agent1" pkg="teleop_twist_keyboard" type="teleop_twist_keyboard.py" output="screen">
+        <remap from="cmd_vel" to="/robosar_agent_bringup_node/agent1/cmd_vel"/>
+  </node>
+
+  <!-- Spoof map to agent transforms -->
+  <node pkg="tf" type="static_transform_publisher" name="map_to_agent1_odom_spoof" args="0 0 0 0 0 0 1 map agent1/odom 10" />
+  <node pkg="tf" type="static_transform_publisher" name="map_to_agent2_odom_spoof" args="0 0 0 0 0 0 1 map agent2/odom 10" />
+
+  <!-- Run tag location estimator -->
+  <node pkg="robosar_gazebo_sim" type="tag_location_estimator" name="tag_location_estimator" />
+
+</launch>
+
+

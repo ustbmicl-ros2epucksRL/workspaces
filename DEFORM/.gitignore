@@ -1,0 +1,8 @@
+build/
+build_trash/
+devel/
+install/
+log/
+.idea/
+temp_code/
+*.swp

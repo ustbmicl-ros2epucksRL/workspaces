@@ -1,0 +1,21 @@
+/**:
+  ros__parameters:
+    # ===== 多数规则模式配置 (Majority Rule Pattern) =====
+    # 多数规则投票：机器人采用其邻居中最常见的观点
+    # 与选民模型不同，这里是取多数而非随机采样单个邻居
+    # 这种方式收敛更快，但对初始分布更敏感
+    # 
+    # 机器人: E-puck v2
+    
+    # ===== 初始观点设置 =====
+    majority_rule_choose_start_value_at_random: true  # 是否在 [min, max) 范围内随机初始化观点
+    majority_rule_initial_value: 0  # 固定初始值 (仅当随机初始化为 false 时使用)
+    
+    # ===== 观点值范围 =====
+    # 观点值在 [min_opinion, max_opinion) 范围内
+    majority_rule_min_opinion: 0  # 观点最小值 (包含)
+    majority_rule_max_opinion: 9  # 观点最大值 (不包含)，实际范围 [0,9)
+    
+    # ===== 更新周期 (单位: 秒) =====
+    # 机器人统计邻居观点并更新自己观点的时间间隔
+    majority_rule_timer_period: 5.0

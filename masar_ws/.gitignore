@@ -1,0 +1,9 @@
+# Catkin workspace build outputs
+/build/
+/devel/
+/install/
+/log/
+
+# Common local Python cache artifacts
+__pycache__/
+*.py[cod]

@@ -1,0 +1,22 @@
+<launch>
+  <master auto="start"/>
+  <param name="/use_sim_time" value="true"/>
+
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find robosar_sim_bringup)/worlds/stage_config/maps/willow_full.yaml" respawn="false" />
+  
+  <group ns="robosar_agent_bringup_node">
+    <node pkg="stage_ros_add_pose_and_crash" type="stageros" name="stageros" args="$(find robosar_sim_bringup)/worlds/vicon_map/robosar.world" respawn="false" >
+      <param name="base_watchdog_timeout" value="0.2"/>
+    </node>
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 map agent_0/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 0 1 map agent_1/odom" />
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="link3_broadcaster" args="0 0 0 0 0 0 1 map agent_2/odom" />
+  
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
+  </node>
+</launch>

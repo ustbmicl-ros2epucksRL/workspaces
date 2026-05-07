@@ -1,0 +1,85 @@
+#VRML_SIM R2023b utf8
+
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackground.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/floors/protos/RectangleArena.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/factory/containers/protos/WoodenBox.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/gctronic/e-puck/protos/E-puck.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/gctronic/e-puck/protos/Pi-puck.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/robots/robotis/turtlebot/protos/TurtleBot3Burger.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/robotis/protos/RobotisLds01.proto"
+#IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/slamtec/protos/RpLidarA2.proto"
+IMPORTABLE EXTERNPROTO "../assets/RpLidarA2/RpLidarA2.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/hokuyo/protos/HokuyoUrg04lx.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/hokuyo/protos/HokuyoUrg04lxug01.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/devices/hokuyo/protos/HokuyoUtm30lx.proto"
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/R2023b/projects/objects/solids/protos/SolidBox.proto"
+
+WorldInfo {
+  info [
+    "Environment with two vertical walls"
+  ]
+  title "Obstacle Navigation Environment"
+  basicTimeStep 20
+}
+Viewpoint {
+  orientation -0.3259129066293485 0.6045847308938715 0.7268136490617071 1.2809214799066853
+  position -0.6554786770823011 -0.9985859086887117 1.3412109473782257
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+  floorSize 3.5 3.5
+  wallHeight 0.4
+}
+
+# ===== 左侧墙（底部与环境相接） =====
+# 从下边界 (y = -1.75) 向上延伸，高度 2.3m（约为环境高度的 2/3）
+# 位置：x = -0.5（左侧区域），中心 y = -0.6
+# 墙的范围：y = [-1.75, 0.55]
+DEF wall_left Solid {
+  translation -0.6 -0.6 0.15
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.85 0.85 0.9
+        roughness 0.6
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 2.3 0.3
+      }
+    }
+  ]
+  name "wall_left"
+  boundingObject Box {
+    size 0.05 2.3 0.3
+  }
+}
+
+# ===== 右侧墙（顶部与环境边界相接） =====
+# 从上边界 (y = 1.75) 向下延伸，高度 2.3m（约为环境高度的 2/3）
+# 位置：x = 0.5（右侧区域），中心 y = 0.6
+# 墙的范围：y = [-0.55, 1.75]
+DEF wall_right Solid {
+  translation 0.6 0.6 0.15
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.85 0.85 0.9
+        roughness 0.6
+        metalness 0
+      }
+      geometry Box {
+        size 0.05 2.3 0.3
+      }
+    }
+  ]
+  name "wall_right"
+  boundingObject Box {
+    size 0.05 2.3 0.3
+  }
+}
+

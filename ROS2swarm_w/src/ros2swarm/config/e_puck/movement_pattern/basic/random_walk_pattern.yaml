@@ -1,0 +1,23 @@
+/**:
+  ros__parameters:
+    # ===== 随机游走模式配置 (Random Walk Pattern) =====
+    # 机器人交替进行直线运动和随机转向
+    # 直线运动时间在 [lin_interval_min, lin_interval_max] 范围内随机
+    # 转向持续时间在 [0, rot_interval] 范围内随机
+    # 
+    # 机器人: E-puck v2
+    #   - 电机最大角速度: 7.536 rad/s
+    #   - 轮径: 0.02m, 轮距: 0.052m
+    
+    # ===== 控制周期 (单位: 秒) =====
+    # 发布速度命令到 cmd_vel 话题的时间间隔
+    random_walk_timer_period: 0.25
+    
+    # ===== 运动速度 (基于 E-puck v2 安全参数) =====
+    random_walk_linear: 0.1   # 直线运动时的线速度 (m/s)
+    random_walk_angular: 0.8  # 转向时的角速度 (rad/s)
+    
+    # ===== 时间间隔参数 =====
+    random_walk_rot_interval: 2.0      # 转向最大持续时间 (s)，实际时间在 [0, 2.0] 内随机
+    random_walk_lin_interval_min: 10.0 # 直线运动最小时间 (s)
+    random_walk_lin_interval_max: 15.0 # 直线运动最大时间 (s)

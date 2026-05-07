@@ -1,0 +1,38 @@
+/**:
+  ros__parameters:
+    # ===== 运输模式配置 (Transport Pattern) =====
+    # 使用 NEAT 神经网络控制机器人协作搬运物体
+    # 
+    # TurtleBot3 Burger 物理参数:
+    #   - 轮径 r = 0.033m, 轮距 L = 0.16m
+    #   - 官方最大线速度: 0.22 m/s, 最大角速度: 2.84 rad/s
+    # 差速驱动约束 (最坏情况):
+    #   右轮速度 = (v + L/2 × ω) / r
+    #   当 v=0.15, ω=0.8 时: (0.15 + 0.08×0.8)/0.033 = 6.48 rad/s ✓
+    
+    # ===== 硬件保护层 =====
+    # 运输任务需要接触包裹进行推动，跳过避障调整直接发布到 cmd_vel
+    bypass_protection: true
+    
+    # ===== NEAT 神经网络配置 =====
+    # 基因包文件名（在checkpoints/transport/目录下查找）
+    # 可指定文件名如: 'transport_genome_package_gen264.pkl'
+    # 留空则使用默认: 'transport_genome_package_gen264.pkl'
+    genome_file: 'transport_genome_package_gen264.pkl'
+    
+    # ===== 速度限制 =====
+    max_linear_velocity: 0.15    # 最大线速度 (m/s)
+    max_angular_velocity: 0.8    # 最大角速度 (rad/s) - 保守设置避免电机超限
+    
+    # ===== 控制周期 (单位: 秒) =====
+    timer_period: 0.1
+    
+    # ===== Webots 仿真对象名称 =====
+    box_def_name: 'transport_box'   # 待搬运包裹的 DEF 名称
+    target_def_name: 'target_zone'  # 目标区域的 DEF 名称
+    
+    # ===== 任务完成判断配置 =====
+    # 判断包裹是否在目标上的距离阈值（米）
+    # 计算方式：包裹中心到目标中心的距离 < goal_threshold 则认为完成任务
+    goal_threshold: 0.15  # 任务完成判断阈值 (m)
+

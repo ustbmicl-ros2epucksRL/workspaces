@@ -1,0 +1,14 @@
+/**:
+  ros__parameters:
+    # ===== 线条避障模式配置 (Line Avoidance Pattern) =====
+    # 使用地面传感器检测并避开地面上的线条标记
+    # 通常用于限制机器人活动区域的边界检测
+    # 
+    # 机器人: E-puck v2
+    
+    # ===== 计时器最大计数 =====
+    # 用于控制避障行为的持续时间
+    line_avoidance_max_timer_count: 100000
+    
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_rotational_velocity: 0.8  # 最大角速度 (rad/s)

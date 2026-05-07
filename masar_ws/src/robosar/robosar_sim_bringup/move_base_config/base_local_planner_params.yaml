@@ -1,0 +1,32 @@
+# TrajectoryPlannerROS 参数，使用 e-puck2 的真实运动学上限
+TrajectoryPlannerROS:
+  acc_lim_th: 1.2                # 最大角加速度，单位 rad/s^2
+  acc_lim_x: 0.4                 # 最大前向加速度，单位 m/s^2
+  acc_lim_y: 0.0                 # 差速底盘无侧向加速度
+
+  max_vel_x: 0.12                # 最大前进线速度，单位 m/s
+  min_vel_x: 0.02                # 最小前进线速度，避免低速粘滞
+  max_rotational_vel: 1.2        # 最大旋转角速度，单位 rad/s
+  min_in_place_rotational_vel: 0.2  # 原地转向时的最小角速度
+
+  escape_vel: -0.02              # 脱困时允许的最小后退速度，单位 m/s
+
+  holonomic_robot: false         # e-puck2 为差速底盘
+  y_vels: [0.0]                  # 差速底盘不采样横向速度
+
+  xy_goal_tolerance: 0.1         # 目标点位置容差，单位米
+  yaw_goal_tolerance: 0.05       # 目标点朝向容差，单位弧度
+
+  sim_time: 3.2                  # 轨迹向前仿真的时间长度，单位秒
+  sim_granularity: 0.025         # 轨迹离散步长，单位米
+  vx_samples: 6                  # 线速度采样数量
+  vtheta_samples: 20             # 角速度采样数量
+
+  goal_distance_bias: 0.8        # 越大越偏向接近目标
+  path_distance_bias: 0.6        # 越大越偏向贴近全局路径
+  occdist_scale: 0.01            # 障碍物代价权重
+  heading_lookahead: 0.325       # 朝向评价的前瞻距离，单位米
+
+  dwa: true                      # 使用 DWA 而非纯 Trajectory Rollout
+  oscillation_reset_dist: 0.05   # 走出该距离后清除振荡状态，单位米
+  prune_plan: true               # 机器人走过的路径点将从局部规划中裁掉

@@ -1,0 +1,100 @@
+#VRML_SIM R2025a utf8
+# license: Copyright Cyberbotics Ltd. Licensed for use only with Webots.
+# license url: https://cyberbotics.com/webots_assets_license
+# documentation url: https://webots.cloud/run?url=https://github.com/cyberbotics/webots/blob/released/projects/devices/slamtec/protos/RpLidarA2.proto
+# keywords: sensor/lidar
+# Model of the RpLidar A2 rotational lidar developed by Slamtec.
+
+
+#EXTERNPROTO "webots://projects/appearances/protos/MattePaint.proto"
+# 本地修改版：
+# - 调整了碰撞半径以防止与E-puck机器人碰撞
+# - 将 minRange 从 0.2m 调整为 0.06m，减小盲区
+
+PROTO RpLidarA2 [
+  field SFVec3f    translation   0 0 0.031
+  field SFRotation rotation      0 0 1 0
+  field SFString   name          "RPlidar A2"
+]
+{
+  Lidar {
+    translation IS translation
+    rotation IS rotation
+    name IS name
+    children [
+      # 底座
+      Pose {
+        translation 0.000000 0.000000 -0.031000
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.05 0.05 0.05
+              roughness 0.8
+              metalness 0.1
+            }
+            geometry Mesh {
+              url "meshes/rplidar_bottom.obj"
+            }
+          }
+        ]
+      }
+      # 中部圆柱
+      Pose {
+        translation 0.000000 0.000000 -0.012000
+        children [
+          Shape {
+            appearance PBRAppearance {
+              baseColor 0.15 0.15 0.15
+              roughness 0.6
+              metalness 0.2
+            }
+            geometry Cylinder {
+              height 0.005
+              radius 0.031    #原0.037
+            }
+          }
+        ]
+      }
+    ]
+    # 碰撞边界 - 调整位置使其与可视化模型对齐
+    boundingObject Pose {
+      translation 0.000000 0.000000 -0.021000
+      children [
+        Cylinder {
+          height 0.04
+          radius 0.032      #原0.038
+        }
+      ]
+    }
+    physics Physics {
+      density -1
+      mass 0.2
+    }
+    fieldOfView 6.283184
+    horizontalResolution 400
+    numberOfLayers 1
+    near 0.05
+    defaultFrequency 12
+    minRange 0.060000
+    maxRange 12.000000
+    noise 0.000833
+    resolution 0.010000
+    type "rotating"
+    rotatingHead Solid {
+      translation 0.000000 0.000000 -0.0314
+      children [
+        # 旋转头部
+        Shape {
+          appearance PBRAppearance {
+            baseColor 0.1 0.1 0.1
+            roughness 0.7
+            metalness 0.1
+          }
+          geometry Mesh {
+            url "meshes/rplidar_top.obj"
+          }
+        }
+      ]
+    }
+  }
+}

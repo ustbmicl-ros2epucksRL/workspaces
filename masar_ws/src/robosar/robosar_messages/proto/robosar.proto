@@ -1,0 +1,108 @@
+syntax = "proto2";
+
+package robosar_fms;
+
+option cc_enable_arenas = true;
+
+message Accelerometer {
+
+    required double acc_x = 1;
+    required double acc_y = 2;
+    required double acc_z = 3;
+}
+
+message Ultrasonic {
+    required uint32 sensor_a = 1;
+    required uint32 sensor_b = 2;
+    required uint32 sensor_c = 3;
+    required uint32 sensor_d = 4;
+    required uint32 sensor_e = 5;
+}
+
+message Infrared {
+    required uint32 sensor_a = 1;
+    required uint32 sensor_b = 2;
+    required uint32 sensor_c = 3;
+    required uint32 sensor_d = 4;
+    required uint32 sensor_e = 5;
+    required uint32 sensor_f = 6;
+    required uint32 sensor_g = 7;
+    required uint32 sensor_h = 8;
+    required uint32 sensor_i = 9;
+    required uint32 sensor_j = 10;
+    required uint32 sensor_k = 11;
+    required uint32 sensor_l = 12;
+}
+
+message Gyroscope {
+
+    required double gyro_x = 1;
+    required double gyro_y = 2;
+    required double gyro_z = 3;
+}
+
+message Encoder_count {
+    required uint64 left = 1;
+    required uint64 right = 2;
+}
+
+message Encoder_speed {
+    required uint64 left = 1;
+    required uint64 right = 2;
+}
+
+message LaserScanner {
+    repeated uint64 values = 1 [packed = true];
+}
+
+message AgentStatus {
+    required uint64 battery_level = 1;
+}
+
+message AprilTagRot {
+    required double r11 = 1;
+    required double r12 = 2;
+    required double r13 = 3;
+    required double r21 = 4;
+    required double r22 = 5;
+    required double r23 = 6;
+    required double r31 = 7;
+    required double r32 = 8;
+    required double r33 = 9;
+}
+
+message AprilTagTrans {
+    required double x = 1;
+    required double y = 2;
+    required double z = 3;
+}
+
+message AprilTagPose {
+    required AprilTagRot R = 1;
+    required AprilTagTrans t = 2;
+}
+
+message AprilTagDetection {
+    required uint32 tag_id = 1;
+    required AprilTagPose pose = 2;
+}
+
+message AllDetections {
+    repeated AprilTagDetection tag_detections = 1;
+}
+
+
+message SensorData {
+    required uint64 timestamp_ns = 1;
+    required uint32 seq_id = 2;
+    required Accelerometer accel_data = 3;
+    required Gyroscope gyro_data = 4;
+    required Encoder_count count_data = 5;
+    required Encoder_speed speed_data = 6;
+    required Infrared ir_data = 7;
+    required Ultrasonic us_data = 8;
+    required LaserScanner lrf_data = 9;
+    required AgentStatus agent_status_data = 10;
+    required AllDetections april_detections = 11;
+}
+

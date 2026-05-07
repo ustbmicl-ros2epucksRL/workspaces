@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_name"/>
+  <arg name="robot_description"/>
+  <arg name="init_position"/>
+  <!-- Spawn our robot using urdf_spawner node; /robot_description param should contain URDF of robot -->
+  <group ns="$(arg robot_name)">
+    <param name="tf_prefix" value="$(arg robot_name)" />
+    <!-- TF from base_link to camera -->
+    <node pkg="tf" type="static_transform_publisher" name="base_to_camera_static_publisher" args="0.06 0 0.0275 -0.5 0.5 -0.5 0.5 $(arg robot_name)/base_link $(arg robot_name)/camera 10" />
+    <!-- TF from base_link to laser -->
+    <node pkg="tf" type="static_transform_publisher" name="base_to_laser_static_publisher"
+      args="0 0 0.1355 0 0 0 1 $(arg robot_name)/base_link $(arg robot_name)/base_laser_link 10"/>
+    <!-- Run AprilTagRos -->
+    <include file="$(find robosar_gazebo_sim)/launch/apriltag_ros.launch">
+      <arg name="robot_name"  value="$(arg robot_name)" />
+    </include>
+    <!-- Spawn model of robot using URDF -->
+    <node name="urdf_spawner"
+          pkg="gazebo_ros"
+          type="spawn_model"
+          respawn="false"
+          output="screen"
+          args="$(arg init_position)
+                -urdf
+                -model $(arg robot_name)
+                -param $(arg robot_description)"/>
+  </group>
+
+</launch>
+
+

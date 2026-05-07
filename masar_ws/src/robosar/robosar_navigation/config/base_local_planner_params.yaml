@@ -1,0 +1,15 @@
+controller_frequency: 1.0  # 局部规划器控制循环频率，单位 Hz
+
+TrajectoryPlannerROS:
+  max_vel_x: 0.12          # 最大前进线速度，匹配 e-puck2 上限
+  min_vel_x: 0.02          # 最小前进线速度，避免低速时完全停滞
+  max_vel_theta: 1.2       # 最大角速度，匹配 e-puck2 上限
+  min_in_place_vel_theta: 0.2  # 原地转向时的最小角速度，保证能稳定起转
+
+  acc_lim_theta: 1.2       # 角加速度上限，避免角速度变化过猛
+  acc_lim_x: 0.4           # 线加速度上限，减小急加速导致的里程计偏差
+  acc_lim_y: 0.0           # 差速机器人无侧向速度
+
+  holonomic_robot: false   # e-puck2 为差速底盘，不是全向机器人
+  xy_goal_tolerance: 0.20  # 到达目标点允许的平面位置误差，单位米
+  yaw_goal_tolerance: 0.5  # 到达目标点允许的朝向误差，单位弧度

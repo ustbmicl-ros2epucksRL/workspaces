@@ -1,0 +1,7 @@
+nav_msgs/OccupancyGrid map
+float64 threshold
+int64 iterations
+---
+int64 num_pts
+int64 dims
+int64[] waypoints

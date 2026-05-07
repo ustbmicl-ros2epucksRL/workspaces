@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # ===== 吸引模式2配置 (Attraction Pattern 2) =====
+    # 与 attraction_pattern 类似，但参数略有不同
+    # 可用于组合模式中实现不同强度的吸引行为
+    # 
+    # 传感器: RpLidarA2 激光雷达 (本地修改版)
+    #   - 最小范围: 0.06m, 最大范围: 12.0m, 400束
+    # 机器人: E-puck v2
+    
+    # ===== 检测范围 (单位: 米) =====
+    # 基于本地修改版 RpLidarA2 激光雷达参数
+    attraction2_max_range: 2.0   # 吸引行为的最大检测距离
+    attraction2_min_range: 0.08  # 吸引行为的最小检测距离 (略大于激光雷达盲区0.06m)
+    
+    # ===== 前向吸引力系数 =====
+    # 正值表示在吸引的同时保持前进趋势
+    attraction2_front_attraction: 1.0
+    
+    # ===== 物体检测阈值 (单位: 光束数量) =====
+    attraction2_threshold: 3
+    
+    # ===== 独处时的行为 (当范围内没有检测到其他机器人时) =====
+    attraction2_linear_if_alone: 0.0  # 独处时的线速度 (m/s)
+    attraction2_angular_if_alone: 0.2 # 独处时的角速度 (rad/s)
+    
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_translational_velocity: 0.12  # 最大线速度 (m/s)
+    max_rotational_velocity: 0.8      # 最大角速度 (rad/s)

@@ -1,0 +1,33 @@
+/**:
+  ros__parameters:
+    # ===== 环绕集群模式配置 (Round Flocking Pattern) =====
+    # 使用 NEAT 神经网络控制机器人围绕目标点进行集群运动
+    # 
+    # TurtleBot3 Burger 物理参数:
+    #   - 轮径 r = 0.033m, 轮距 L = 0.16m
+    #   - 官方最大线速度: 0.22 m/s, 最大角速度: 2.84 rad/s
+    # 差速驱动约束 (最坏情况):
+    #   右轮速度 = (v + L/2 × ω) / r
+    #   当 v=0.15, ω=0.8 时: (0.15 + 0.08×0.8)/0.033 = 6.48 rad/s ✓
+    
+    # ===== NEAT 神经网络配置 =====
+    # 基因包文件名（在checkpoints/roundflocking/目录下查找）
+    # 可指定文件名如: 'flocking_genome_package_gen99.pkl'
+    # 留空则使用默认: 'flocking_genome_package_gen99.pkl'
+    genome_file: 'flocking_genome_package_gen99.pkl'
+    
+    # ===== 速度限制 =====
+    max_linear_velocity: 0.15    # 最大线速度 (m/s)
+    max_angular_velocity: 0.8    # 最大角速度 (rad/s) - 保守设置避免电机超限
+    
+    # ===== 控制周期 (单位: 秒) =====
+    timer_period: 0.1
+    
+    # ===== Webots 仿真目标配置 =====
+    target_def_name: 'flocking_target'  # 环绕目标的 DEF 名称 (圆柱体)
+    
+    # ===== 激光雷达配置 =====
+    # 基于 RobotisLds01 激光雷达 (360 束)
+    n_lidar_rays: 12   # 采样区间数 (将360°分为12个区间，每个30°)
+    max_range: 3.5     # 使用的最大探测范围 (m)
+
