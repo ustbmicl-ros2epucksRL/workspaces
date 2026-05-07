@@ -11,6 +11,10 @@ GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
 
 pids=()
 SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
+# Gazebo task-generator geofence is [2,19,0,18] in the original static-map frame.
+# Webots + bridge + SLAM currently shift that frame into the negative quadrant, so
+# use the translated bounds here while keeping Gazebo's shared launch defaults intact.
+WEBOTS_TASK_GEOFENCE="${WEBOTS_TASK_GEOFENCE:-[-11.1,5.9,-15.8,2.2]}"
 
 source_ros_env() {
   [ -f "/opt/ros/noetic/setup.bash" ] && . /opt/ros/noetic/setup.bash
@@ -96,7 +100,7 @@ sleep 1
 start "roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch"     # 1 启动机器人 agent
 start "roslaunch robosar_sim_bringup robosar_sim_w.launch"               # 2 启动 Webots 侧仿真服务节点
 start "roslaunch slam_toolbox robosar_mapping_sim_w.launch slam_node_type:=${SLAM_NODE_TYPE}"  # 3 启动 SLAM/mapping
-start "roslaunch robosar_task_generator task_generator.launch"                 # 4 任务生成器
+start "roslaunch robosar_task_generator task_generator.launch geofence:='${WEBOTS_TASK_GEOFENCE}'"  # 4 Webots 侧任务生成器参数覆盖
 start "roslaunch robosar_navigation mission_executive.launch"                  # 5 导航/任务执行
 start "rosrun robosar_controller robosar_traffic_controller_node"              # 6 控制器
 start "rosrun robosar_task_allocator mission_commander.py -s=true -t='high'"   # 7 任务分配/调度器
