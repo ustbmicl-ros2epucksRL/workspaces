@@ -14,7 +14,7 @@ SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
 # Gazebo task-generator geofence is [2,19,0,18] in the original static-map frame.
 # Webots + bridge + SLAM currently shift that frame into the negative quadrant, so
 # use the translated bounds here while keeping Gazebo's shared launch defaults intact.
-WEBOTS_TASK_GEOFENCE="${WEBOTS_TASK_GEOFENCE:-[-11.1,5.9,-15.8,2.2]}"
+WEBOTS_TASK_GEOFENCE="${WEBOTS_TASK_GEOFENCE:-[-20.0,20.0,-20.0,20.0]}"
 
 source_ros_env() {
   [ -f "/opt/ros/noetic/setup.bash" ] && . /opt/ros/noetic/setup.bash
