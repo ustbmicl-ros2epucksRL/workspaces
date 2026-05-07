@@ -8,6 +8,8 @@ WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR}"
 WORKSPACE_SETUP="$WORKSPACE_DIR/devel/setup.bash"
 LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
 GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
+SCENE_CONFIG_PATH="$WORKSPACE_DIR/src/robosar/robosar_sim_bringup/config/sim_scenes.json"
+SHARED_SCENE_STATE_FILE="${ROBOSAR_SCENE_STATE_FILE:-$(cd "$WORKSPACE_DIR/.." && pwd)/.robosar_scene_state.json}"
 
 pids=()
 SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
@@ -32,6 +34,69 @@ source_ros_env() {
 }
 
 source_ros_env
+
+resolve_scene_context() {
+  local scene_lines
+  mapfile -t scene_lines < <(
+    SCENE_CONFIG_PATH="$SCENE_CONFIG_PATH" \
+    SHARED_SCENE_STATE_FILE="$SHARED_SCENE_STATE_FILE" \
+    ROBOSAR_SIM_SCENE="${ROBOSAR_SIM_SCENE:-}" \
+    ROBOSAR_SIM_MAP_YAML="${ROBOSAR_SIM_MAP_YAML:-}" \
+    python3 - <<'PY'
+import json
+import os
+
+config_path = os.environ["SCENE_CONFIG_PATH"]
+state_path = os.environ["SHARED_SCENE_STATE_FILE"]
+override_scene = os.environ.get("ROBOSAR_SIM_SCENE", "").strip()
+override_map = os.environ.get("ROBOSAR_SIM_MAP_YAML", "").strip()
+
+with open(config_path, "r", encoding="utf-8") as f:
+    config = json.load(f)
+
+scenes = config["scenes"]
+default_scene = config.get("default_scene", next(iter(scenes)))
+
+scene_name = default_scene
+map_yaml = scenes[default_scene].get("map_yaml", "")
+source = "default"
+
+if override_scene or override_map:
+    candidate_scene = override_scene or default_scene
+    if candidate_scene in scenes:
+        scene_name = candidate_scene
+        map_yaml = override_map or scenes[scene_name].get("map_yaml", "")
+        source = "override"
+elif os.path.isfile(state_path):
+    with open(state_path, "r", encoding="utf-8") as f:
+        state = json.load(f)
+    candidate_scene = state.get("map_name", "").strip()
+    candidate_map = state.get("map_yaml", "").strip()
+    if candidate_scene in scenes:
+        scene_name = candidate_scene
+        map_yaml = candidate_map or scenes[scene_name].get("map_yaml", "")
+        source = "shared_state"
+
+if not os.path.isfile(map_yaml):
+    scene_name = default_scene
+    map_yaml = scenes[default_scene].get("map_yaml", "")
+    source = "default"
+
+print(scene_name)
+print(map_yaml)
+print(source)
+PY
+  )
+
+  ROBOSAR_SIM_SCENE_NAME="${scene_lines[0]}"
+  ROBOSAR_SIM_MAP_PATH="${scene_lines[1]}"
+  ROBOSAR_SIM_SCENE_SOURCE="${scene_lines[2]}"
+}
+
+resolve_scene_context
+
+echo "[scene] name=${ROBOSAR_SIM_SCENE_NAME} source=${ROBOSAR_SIM_SCENE_SOURCE}"
+echo "[scene] map=${ROBOSAR_SIM_MAP_PATH}"
 
 start() {
   local cmd="$1"
@@ -98,7 +163,7 @@ sleep 1
 
 # —— 逐条启动（按需改命令）——
 start "roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch"     # 1 启动机器人 agent
-start "roslaunch robosar_sim_bringup robosar_sim_w.launch"               # 2 启动 Webots 侧仿真服务节点
+start "roslaunch robosar_sim_bringup robosar_sim_w.launch sim_scene:=${ROBOSAR_SIM_SCENE_NAME} sim_map_yaml:=${ROBOSAR_SIM_MAP_PATH}"               # 2 启动仿真服务节点
 start "roslaunch slam_toolbox robosar_mapping_sim_w.launch slam_node_type:=${SLAM_NODE_TYPE}"  # 3 启动 SLAM/mapping
 start "roslaunch robosar_task_generator task_generator.launch geofence:='${WEBOTS_TASK_GEOFENCE}'"  # 4 Webots 侧任务生成器参数覆盖
 start "roslaunch robosar_navigation mission_executive.launch"                  # 5 导航/任务执行

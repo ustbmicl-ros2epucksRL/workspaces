@@ -483,6 +483,23 @@ Visualization Manager:
         agent_2: true
         agent_3: true
         agent_4: true
+        ground_truth_victims: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /robosar_sim/fire_markers
+      Name: fire_sources
+      Namespaces:
+        fire_sources: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /robosar_sim/transport_markers
+      Name: transport_objects
+      Namespaces:
+        transport_objects: true
       Queue Size: 100
       Value: true
     - Class: rviz/Marker

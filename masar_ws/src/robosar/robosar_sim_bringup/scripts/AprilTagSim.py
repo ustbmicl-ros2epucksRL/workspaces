@@ -8,7 +8,9 @@ AprilTag detections plus visualization markers. It is not an odometry source.
 """
 
 import actionlib
+import json
 import numpy as np
+import os
 import rospy
 import tf
 from geometry_msgs.msg import Point, PointStamped
@@ -27,14 +29,51 @@ class AprilTagSim:
 
     def __init__(self):
         rospy.init_node("generate_april_tags_node")
-        self.num_april_tags = 12
         self.listener = tf.TransformListener()
         self.distance_threshold = 1.5
         self.rate = rospy.Rate(0.5)
         self.detected_april_tags = []
+        self.scene_name = rospy.get_param("~sim_scene", "tepper")
+        self.scene_config_path = rospy.get_param("~scene_config_path", "")
+        scene_assets = self.load_scene_assets()
+        self.april_tag_poses = scene_assets["victims"]
+        self.fire_source_poses = scene_assets["fire_sources"]
+        self.transport_object_poses = scene_assets["transport_objects"]
+        self.num_april_tags = len(self.april_tag_poses)
         self.victim_pub = rospy.Publisher(
             "/slam_toolbox/victim_markers", Marker, queue_size=10)
+        self.fire_pub = rospy.Publisher(
+            "/robosar_sim/fire_markers", Marker, queue_size=10)
+        self.transport_pub = rospy.Publisher(
+            "/robosar_sim/transport_markers", Marker, queue_size=10)
         self.apriltag_feedback_pub = {}
+
+        rospy.loginfo(
+            "AprilTagSim scene=%s victims=%d fires=%d transport=%d",
+            self.scene_name,
+            len(self.april_tag_poses),
+            len(self.fire_source_poses),
+            len(self.transport_object_poses),
+        )
+
+    def load_scene_assets(self):
+        if not self.scene_config_path or not os.path.isfile(self.scene_config_path):
+            raise RuntimeError(
+                "scene config path is invalid: {}".format(self.scene_config_path)
+            )
+
+        with open(self.scene_config_path, "r", encoding="utf-8") as f:
+            config = json.load(f)
+
+        scenes = config.get("scenes", {})
+        default_scene = config.get("default_scene", "tepper")
+        scene_name = self.scene_name if self.scene_name in scenes else default_scene
+        scene_assets = scenes.get(scene_name)
+        if scene_assets is None:
+            raise RuntimeError("scene '{}' not found in config".format(scene_name))
+
+        self.scene_name = scene_name
+        return scene_assets
 
     def get_map_info(self):
         """
@@ -60,20 +99,15 @@ class AprilTagSim:
 
     def generate_random_poses(self):
         self.map_msg, self.map_data, self.scale, self.origin, _ = self.get_map_info()
-        self.april_tag_poses = [[3,4.6], [3.7,8.75], [5.75,5.13], [6.3,15.5], [7.14,11.4], [8.6,16.6], 
-                [9.8,9.5],[10.9,6.3], [12.1,15.6], [14.2,12.3], [14.7,8.9], [14.8,15.8]]
-        # i = 0
-        # while (i < self.num_april_tags):
-        #     x = np.random.randint(self.origin[0], self.map_msg.info.width)
-        #     y = np.random.randint(self.origin[1], self.map_msg.info.height)
-        #     if self.map_data[y, x] == 0:
-        #         self.april_tag_poses.append([x*self.scale, y*self.scale])
-        #         i += 1
-        print("The random generated poses are: ", self.april_tag_poses)
+        print("Loaded scene '{}' victim poses: {}".format(
+            self.scene_name, self.april_tag_poses
+        ))
 
     def publish_ground_truth_victims(self, tag_id, pose):
         m = Marker()
         m.header.frame_id = "map"
+        m.header.stamp = rospy.Time.now()
+        m.ns = "ground_truth_victims"
         m.pose.position.x = pose[0]
         m.pose.position.y = pose[1]
         m.id = tag_id + 100
@@ -89,6 +123,51 @@ class AprilTagSim:
         m.color.b = 1
         m.color.a = 1
         self.victim_pub.publish(m)
+
+    def publish_static_scene_markers(self):
+        timestamp = rospy.Time.now()
+
+        for marker_id, pose in enumerate(self.fire_source_poses):
+            marker = Marker()
+            marker.header.frame_id = "map"
+            marker.header.stamp = timestamp
+            marker.ns = "fire_sources"
+            marker.id = marker_id
+            marker.type = Marker.CYLINDER
+            marker.action = Marker.ADD
+            marker.pose.position.x = pose[0]
+            marker.pose.position.y = pose[1]
+            marker.pose.position.z = 0.05
+            marker.pose.orientation.w = 1.0
+            marker.scale.x = 0.28
+            marker.scale.y = 0.28
+            marker.scale.z = 0.12
+            marker.color.r = 1.0
+            marker.color.g = 0.25
+            marker.color.b = 0.0
+            marker.color.a = 0.95
+            self.fire_pub.publish(marker)
+
+        for marker_id, pose in enumerate(self.transport_object_poses):
+            marker = Marker()
+            marker.header.frame_id = "map"
+            marker.header.stamp = timestamp
+            marker.ns = "transport_objects"
+            marker.id = marker_id
+            marker.type = Marker.CUBE
+            marker.action = Marker.ADD
+            marker.pose.position.x = pose[0]
+            marker.pose.position.y = pose[1]
+            marker.pose.position.z = 0.08
+            marker.pose.orientation.w = 1.0
+            marker.scale.x = 0.22
+            marker.scale.y = 0.22
+            marker.scale.z = 0.16
+            marker.color.r = 1.0
+            marker.color.g = 0.85
+            marker.color.b = 0.1
+            marker.color.a = 0.95
+            self.transport_pub.publish(marker)
 
     def get_active_agents(self):
         # Get active agents
@@ -230,6 +309,7 @@ class AprilTagSim:
         while not rospy.is_shutdown():
             for tag_id, pose in enumerate(self.april_tag_poses):
                 self.publish_ground_truth_victims(tag_id, pose)
+            self.publish_static_scene_markers()
             self.check_agent_poses()
             self.rate.sleep()
 

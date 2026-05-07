@@ -12,7 +12,6 @@ import random
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
@@ -81,6 +80,9 @@ def _build_launch(context, *args, **kwargs):
     min_distance = float(LaunchConfiguration('min_distance').perform(context))
     z_height = float(LaunchConfiguration('z_height').perform(context))
     static_map = LaunchConfiguration('static_map').perform(context)
+    publish_static_map = _to_bool(
+        LaunchConfiguration('publish_static_map').perform(context)
+    )
     rviz = _to_bool(LaunchConfiguration('rviz').perform(context))
     apply_spawn_offset = _to_bool(
         LaunchConfiguration('apply_spawn_offset').perform(context)
@@ -106,6 +108,7 @@ def _build_launch(context, *args, **kwargs):
     print('  robot type      |', robot_type)
     print('  sensor type     |', sensor_type)
     print('  static map      |', static_map_path or '(none)')
+    print('  publish map     |', publish_static_map)
     print('  area            | X[%.1f, %.1f] Y[%.1f, %.1f]' % (
         x_min, x_max, y_min, y_max))
     print('  apply offset    |', apply_spawn_offset)
@@ -177,7 +180,7 @@ def _build_launch(context, *args, **kwargs):
         )
     )
 
-    if static_map_path and os.path.isfile(static_map_path):
+    if publish_static_map and static_map_path and os.path.isfile(static_map_path):
         actions.append(
             Node(
                 package='nav2_map_server',
@@ -204,6 +207,8 @@ def _build_launch(context, *args, **kwargs):
             )
         )
         print('  [map_server] publishing %s on /sim_map' % static_map_path)
+    elif static_map_path and not publish_static_map:
+        print('  [map_server] disabled on ROS2 side; ROS1 side remains authoritative')
     elif static_map:
         print('  [WARN] static_map file not found: %s' % static_map_path)
 
@@ -236,6 +241,7 @@ def generate_launch_description():
         DeclareLaunchArgument('min_distance', default_value='0.15'),
         DeclareLaunchArgument('z_height', default_value='0.0'),
         DeclareLaunchArgument('static_map', default_value=''),
+        DeclareLaunchArgument('publish_static_map', default_value='false'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('apply_spawn_offset', default_value='true'),
         DeclareLaunchArgument('normalize_scan', default_value='true'),

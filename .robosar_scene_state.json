@@ -1,0 +1,6 @@
+{
+  "map_name": "robosar_apartment_smallv1",
+  "map_yaml": "/root/workspace/ROS2swarm_w/src/launch_webots/maps/robosar_apartment_smallv1.yaml",
+  "source": "start_robosar_webots.sh",
+  "webots_world": "robosar_apartment_smallv1.wbt"
+}

@@ -1,12 +1,17 @@
 <launch>
+  <arg name="sim_map_yaml" default="$(find robosar_sim_bringup)/worlds/gazebo_config/maps/tepper.yaml"/>
+  <arg name="sim_scene" default="tepper"/>
   <param name="/use_sim_time" value="true"/>
   
   <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
-  <node name="map_server" pkg="map_server" type="map_server" args="$(find robosar_sim_bringup)/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
+  <node name="map_server" pkg="map_server" type="map_server" args="$(arg sim_map_yaml)" respawn="false" >
     <remap from="/map" to="/sim_map"/>
   </node>
   
-  <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen" />
+  <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen">
+    <param name="sim_scene" value="$(arg sim_scene)" />
+    <param name="scene_config_path" value="$(find robosar_sim_bringup)/config/sim_scenes.json" />
+  </node>
 
   <!--其中仿真器的启动、机器人模型的加载 在 ros2 容器侧-->
 

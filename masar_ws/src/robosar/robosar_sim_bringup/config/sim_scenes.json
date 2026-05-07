@@ -1,0 +1,47 @@
+{
+  "default_scene": "tepper",
+  "scenes": {
+    "tepper": {
+      "map_yaml": "/root/workspace/masar_ws/src/robosar/robosar_sim_bringup/worlds/gazebo_config/maps/tepper.yaml",
+      "victims": [
+        [10.256, 6.665],
+        [4.656, 4.615],
+        [14.456, 7.815],
+        [0.606, 4.465]
+      ],
+      "fire_sources": [
+        [20.156, 9.165],
+        [9.506, 10.815],
+        [7.356, 6.115],
+        [14.756, 14.665]
+      ],
+      "transport_objects": [
+        [4.006, 15.265],
+        [3.906, 11.265],
+        [12.156, 9.615],
+        [7.906, 14.415]
+      ]
+    },
+    "robosar_apartment_smallv1": {
+      "map_yaml": "/root/workspace/ROS2swarm_w/src/launch_webots/maps/robosar_apartment_smallv1.yaml",
+      "victims": [
+        [-5.291, -6.853],
+        [-1.991, -4.053],
+        [-5.591, -1.703],
+        [-7.041, -11.653]
+      ],
+      "fire_sources": [
+        [-1.891, -9.653],
+        [-8.441, -4.353],
+        [-5.391, -4.253],
+        [-8.641, -1.303]
+      ],
+      "transport_objects": [
+        [-4.441, -10.703],
+        [-2.741, -7.203],
+        [-8.291, -7.553],
+        [-6.441, -9.303]
+      ]
+    }
+  }
+}
