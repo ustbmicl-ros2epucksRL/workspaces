@@ -21,3 +21,7 @@ catkin_make
 source devel/setup.bash
 
 echo "DEFORM 编译完成。"
+
+#vglrun -d /dev/dri/card0 roslaunch plan_manager multi_robots_simulation_deform.launch
+#vglrun -d /dev/dri/card0 roslaunch plan_manager multi_robots_simulation_navigation.launch
+#roslaunch plan_manager multi_run.launch

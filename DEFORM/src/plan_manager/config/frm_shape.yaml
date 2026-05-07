@@ -1,5 +1,5 @@
 
-task_type: 2  #  1 means formation navigation, 2 means formation change,
+task_type: 1  #  1 means formation navigation, 2 means formation change,
 vehicle_number: 12 # It must be the same as plan_manager/tb_num
 initial_shape_positions:
   vehicle_pos_1: {x: 0.0, y: 0.0}
