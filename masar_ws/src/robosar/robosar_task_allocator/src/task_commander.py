@@ -9,6 +9,7 @@ import rospy
 import task_allocator.utils as utils
 from cv_bridge import CvBridge
 from nav_msgs.msg import OccupancyGrid
+from nav_msgs.srv import GetMap
 from std_msgs.msg import Int32
 
 from robosar_messages.msg import *
@@ -57,9 +58,42 @@ class TaskCommander(ABC):
         """
         Gets map message
         """
-        rospy.loginfo("Waiting for map")
-        map_msg = rospy.wait_for_message("/slam_toolbox/map", OccupancyGrid)
-        rospy.loginfo("Map received")
+        slam_map_topic = rospy.get_param("~slam_map_topic", "/slam_toolbox/map")
+        filtered_map_topic = rospy.get_param("~filtered_map_topic", "/map")
+        map_service = rospy.get_param("~slam_map_service", "/slam_toolbox/dynamic_map")
+        map_wait_timeout = rospy.get_param("~map_wait_timeout", 2.0)
+
+        map_msg = None
+        rospy.loginfo("Waiting for map on %s", slam_map_topic)
+        try:
+            map_msg = rospy.wait_for_message(
+                slam_map_topic, OccupancyGrid, timeout=map_wait_timeout
+            )
+            rospy.loginfo("Map received from %s", slam_map_topic)
+        except rospy.ROSException:
+            rospy.logwarn(
+                "No fresh map on %s within %.1fs; falling back to %s",
+                slam_map_topic,
+                map_wait_timeout,
+                map_service,
+            )
+
+        if map_msg is None:
+            try:
+                rospy.wait_for_service(map_service, timeout=map_wait_timeout)
+                get_map = rospy.ServiceProxy(map_service, GetMap)
+                map_msg = get_map().map
+                rospy.loginfo("Map received from %s", map_service)
+            except (rospy.ROSException, rospy.ServiceException) as exc:
+                rospy.logwarn(
+                    "Map service %s unavailable (%s); waiting on %s",
+                    map_service,
+                    exc,
+                    filtered_map_topic,
+                )
+                map_msg = rospy.wait_for_message(filtered_map_topic, OccupancyGrid)
+                rospy.loginfo("Map received from %s", filtered_map_topic)
+
         scale = map_msg.info.resolution
         origin = [map_msg.info.origin.position.x, map_msg.info.origin.position.y]
         rospy.logdebug("map origin: {}".format(origin))

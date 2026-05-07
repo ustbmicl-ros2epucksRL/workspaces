@@ -2,7 +2,7 @@
   <param name="/use_sim_time" value="true"/>
   
   <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
-  <node name="map_server" pkg="map_server" type="map_server" args="/root/catkin_ws2/src/robosar/robosar_sim_bringup/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find robosar_sim_bringup)/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
     <remap from="/map" to="/sim_map"/>
   </node>
   
@@ -10,15 +10,12 @@
 
   <!--其中仿真器的启动、机器人模型的加载 在 ros2 容器侧-->
 
-  <node pkg="tf2_ros" type="static_transform_publisher" name="link1_broadcaster" args="0 0 0 0 0 0 1 map agent_0/odom" />
-
-  <node pkg="tf2_ros" type="static_transform_publisher" name="link2_broadcaster" args="0 0 0 0 0 0 1 map agent_1/odom" />
-
-  <node pkg="tf2_ros" type="static_transform_publisher" name="link3_broadcaster" args="0 0 0 0 0 0 1 map agent_2/odom" />
-  
-  <node pkg="tf2_ros" type="static_transform_publisher" name="link4_broadcaster" args="0 0 0 0 0 0 1 map agent_3/odom" />
-
-  <node pkg="tf2_ros" type="static_transform_publisher" name="link5_broadcaster" args="0 0 0 0 0 0 1 map agent_4/odom" />
+  <!-- 启动初期先用临时 identity map->agent_N/odom 解除控制链的 TF 死锁；
+       一旦 slam_toolbox 发布非零校正，该节点会自动停止对应 TF。 -->
+  <node pkg="robosar_sim_bringup" type="bootstrap_map_tf.py" name="bootstrap_map_tf" output="screen">
+    <rosparam param="odom_frames">[agent_0/odom, agent_1/odom, agent_2/odom, agent_3/odom, agent_4/odom]</rosparam>
+    <param name="publish_hz" value="10.0" />
+  </node>
 
   <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
   </node>

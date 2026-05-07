@@ -67,14 +67,17 @@ void ConfigParser::configSystemInit(Json::Value config)
     std::string path_to_perception_code = config["path_to_perception_code"].asString();
     std::string server_ip_add = config["server_ip_address"].asString();
 
-    // check if this file exists
-    struct stat info;
-    assert(stat(&path_to_khepera_code[0], &info) == 0);
-
     simulation_flag = config["simulation"].asBool();
     ROS_INFO("Simulation Flag: %s", simulation_flag ? "true" : "false");
     if(simulation_flag)
         ROS_WARN("Simulation flag is active!");
+    else
+    {
+        // Hardware mode still relies on the external template directories.
+        struct stat info;
+        assert(stat(&path_to_khepera_code[0], &info) == 0);
+        assert(stat(&path_to_perception_code[0], &info) == 0);
+    }
     config = config[config["config_selection"].asString()];
 
     // Iterate through all agents

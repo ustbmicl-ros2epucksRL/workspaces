@@ -1,12 +1,11 @@
 import rospy
 import numpy as np
 from scipy import ndimage
-import matplotlib.pyplot as plt
 
 from nav_msgs.msg import OccupancyGrid
 
-# 发布给系统其余模块使用的地图话题
-pub = rospy.Publisher('/map', OccupancyGrid, queue_size=10)
+
+pub = None
 
 def filter_map(map_msg):
   # 地图分辨率与原点（当前函数中未直接使用，保留便于后续调参/扩展）
@@ -34,6 +33,7 @@ def filter_map(map_msg):
 if __name__ == '__main__':
   # 订阅 slam_toolbox 输出地图，过滤后转发到 /map
   rospy.init_node('map_filter', anonymous=False)
+  pub = rospy.Publisher('/map', OccupancyGrid, queue_size=1, latch=True)
   rospy.Subscriber("/slam_toolbox/map", OccupancyGrid, filter_map)
   rospy.spin()
 

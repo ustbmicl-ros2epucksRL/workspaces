@@ -10,7 +10,7 @@ ceres_loss_function: None                                 # 残差项采用的�
 map_name: /slam_toolbox/map                               # OccupancyGrid 发布前缀；同时会发布 <map_name>_metadata
 map_frame: map                                            # 地图坐标系名称；也是 map->odom 变换的父坐标系
 odom_frames: ["agent_0/odom", "agent_1/odom", "agent_2/odom", "agent_3/odom", "agent_4/odom"]  # 各机器人里程计坐标系列表；需与下方各列表按索引一一对应
-base_frames: ["agent_0/base_link", "agent_1/base_link", "agent_2/base_link", "agent_3/base_link", "agent_4/base_link"]  # 各机器人用于取姿态和关联传感器的基准坐标系列表
+base_frames: ["agent_0/base_laser_link", "agent_1/base_laser_link", "agent_2/base_laser_link", "agent_3/base_laser_link", "agent_4/base_laser_link"]  # 必须与 LaserScan.header.frame_id 一致，否则同步建图会持续报 not found
 #laser_topics: ["/agent_0/base_scan", "/agent_1/base_scan", "/agent_2/base_scan", "/agent_3/base_scan", "/agent_4/base_scan"]  # 旧版激光话题命名示例
 laser_topics: ["/robosar_agent_bringup_node/agent_0/feedback/scan", "/robosar_agent_bringup_node/agent_1/feedback/scan", "/robosar_agent_bringup_node/agent_2/feedback/scan", "/robosar_agent_bringup_node/agent_3/feedback/scan", "/robosar_agent_bringup_node/agent_4/feedback/scan"]  # 各机器人 LaserScan 输入话题列表
 apriltag_topics: ["/robosar_agent_bringup_node/agent_0/feedback/apriltag", "/robosar_agent_bringup_node/agent_1/feedback/apriltag", "/robosar_agent_bringup_node/agent_2/feedback/apriltag", "/robosar_agent_bringup_node/agent_3/feedback/apriltag", "/robosar_agent_bringup_node/agent_4/feedback/apriltag"]  # 各机器人 AprilTagDetectionArray 输入话题列表
@@ -26,10 +26,10 @@ debug_logging: false                                      # 是否将 slam_toolb
 throttle_scans: 1                                         # 同步模式的扫描抽样系数；1 表示每帧都处理
 transform_publish_period: 0.02                            # 发布 map->odom 变换的周期，单位秒；0 表示不发布
 tag_publish_period: 0.5                                   # 发布 AprilTag 相关标记/变换的周期，单位秒
-map_update_interval: 5.0                                  # 重建并发布 2D OccupancyGrid 的周期，单位秒
+map_update_interval: 1.0                                  # 重建并发布 2D OccupancyGrid 的周期，单位秒
 resolution: 0.05                                          # 2D OccupancyGrid 分辨率，单位米/格
-max_laser_range: 30.0                                      # 用于 OccupancyGrid 栅格化的最大激光距离，单位米；不会超过量测的 range_max
-minimum_time_interval: 0.5                                # 同步模式下两次已处理扫描之间允许的最短时间间隔，单位秒
+max_laser_range: 8.0                                      # 用于 OccupancyGrid 栅格化的最大激光距离，单位米；不会超过量测的 range_max
+minimum_time_interval: 0.09                                # 同步模式下两次已处理扫描之间允许的最短时间间隔，单位秒
 transform_timeout: 0.2                                    # 查询 TF 时等待变换可用的超时时间，单位秒
 tf_buffer_duration: 30.                                   # TF 缓冲区保留历史变换的时长，单位秒
 stack_size_to_use: 40000000                               # 节点启动时设置的线程栈大小，单位字节；用于大位姿图的序列化与反序列化
@@ -40,28 +40,28 @@ sync_queue_max_delay: 1.0                                 # 同步模式允许�
 # 通用建图流程参数
 use_scan_matching: true                                   # 是否使用扫描匹配对里程计初值做位姿修正
 use_scan_barycenter: true                                # 计算扫描间相对位置时是否使用扫描端点重心；false 时使用扫描位姿
-minimum_travel_distance: 0.5                             # 触发处理新扫描所需的最小平移量，单位米；与 minimum_travel_heading 共同起作用
-minimum_travel_heading: 0.5                              # 触发处理新扫描所需的最小航向变化，单位弧度；与 minimum_travel_distance 共同起作用
+minimum_travel_distance: 0.03                             # 触发处理新扫描所需的最小平移量，单位米；与 minimum_travel_heading 共同起作用
+minimum_travel_heading: 0.08                              # 触发处理新扫描所需的最小航向变化，单位弧度；与 minimum_travel_distance 共同起作用
 scan_buffer_size: 10                                      # 用于扫描匹配的历史扫描链长度
 scan_buffer_maximum_scan_distance: 10                     # 历史扫描链首尾允许的最大空间跨度，单位米
-link_match_minimum_response_fine: 0.5                     # 常规连边在精匹配阶段的最小相关性响应阈值；值越大，连边条件越严格
-link_scan_maximum_distance: 1.5                           # 允许建立常规连边的扫描间最大距离，单位米
+link_match_minimum_response_fine: 0.6                     # 常规连边在精匹配阶段的最小相关性响应阈值；值越大，连边条件越严格
+link_scan_maximum_distance: 1.0                           # 允许建立常规连边的扫描间最大距离，单位米
 do_loop_closing: true                                     # 是否启用回环检测与回环约束连边
 loop_match_minimum_chain_size: 10                          # 回环候选需要满足的最小已链接扫描链长度
 loop_match_maximum_variance_coarse: 3.0                   # 粗搜索阶段允许进入细搜索的解方差上限
-loop_match_minimum_response_coarse: 0.35                  # 粗搜索阶段进入细搜索所需的最小响应阈值；值越大，筛选越严格
-loop_match_minimum_response_fine: 0.45                    # 细搜索阶段接受回环约束所需的最小响应阈值；值越大，筛选越严格
+loop_match_minimum_response_coarse: 0.45                  # 粗搜索阶段进入细搜索所需的最小响应阈值；值越大，筛选越严格
+loop_match_minimum_response_fine: 0.55                    # 细搜索阶段接受回环约束所需的最小响应阈值；值越大，筛选越严格
 
 # 常规扫描匹配相关性搜索参数
-correlation_search_space_dimension: 0.5                   # 常规扫描匹配平移搜索网格的边长，单位米
+correlation_search_space_dimension: 0.3                   # 常规扫描匹配平移搜索网格的边长，单位米
 correlation_search_space_resolution: 0.01                 # 常规扫描匹配搜索网格的分辨率，单位米
-correlation_search_space_smear_deviation: 0.1             # 常规扫描匹配相关性平滑的模糊标准差，单位米
+correlation_search_space_smear_deviation: 0.05             # 常规扫描匹配相关性平滑的模糊标准差，单位米
 
 # 回环检测相关性搜索参数
-loop_search_space_dimension: 1.0                          # 回环匹配平移搜索网格的边长，单位米
+loop_search_space_dimension: 0.6                          # 回环匹配平移搜索网格的边长，单位米
 loop_search_space_resolution: 0.01                        # 回环匹配搜索网格的分辨率，单位米
 loop_search_space_smear_deviation: 0.03                   # 回环匹配相关性平滑的模糊标准差，单位米
-loop_search_maximum_distance: 5.0                         # 当前位姿附近可进入回环候选集合的最大距离，单位米
+loop_search_maximum_distance: 3.0                         # 当前位姿附近可进入回环候选集合的最大距离，单位米
 
 # 扫描匹配评分与惩罚参数
 distance_variance_penalty: 1.0                            # 扫描匹配对平移偏离里程计初值的容忍尺度；值越大，平移偏差惩罚越弱

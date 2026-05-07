@@ -18,8 +18,8 @@ Costmap2D::Costmap2D() : nh_(""), size_width(0), size_height(0), track_unknown_s
     create_translation_table();
   }
 
-  // costmap publisher
-  costmap_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("robosar_navigation/costmap", 1);
+  // Keep the latest costmap available for late subscribers such as task_graph.
+  costmap_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("robosar_navigation/costmap", 1, true);
 
   ROS_INFO("Requesting the map...");
   map_sub_ = nh_.subscribe("map", 1, &Costmap2D::incomingMap, this);

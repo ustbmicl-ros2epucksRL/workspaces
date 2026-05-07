@@ -10,7 +10,7 @@ ceres_loss_function: None
 map_name: /slam_toolbox/map                               # OccupancyGrid 发布前缀；同时会发布 <map_name>_metadata
 map_frame: map                                            # 地图坐标系名称；也是 map->odom 变换的父坐标系
 odom_frames: ["agent_0/odom", "agent_1/odom", "agent_2/odom", "agent_3/odom", "agent_4/odom"]  # 各机器人里程计坐标系列表；需与下方各列表按索引一一对应
-base_frames: ["agent_0/base_link", "agent_1/base_link", "agent_2/base_link", "agent_3/base_link", "agent_4/base_link"]  # 各机器人用于取姿态和关联传感器的基准坐标系列表
+base_frames: ["agent_0/base_laser_link", "agent_1/base_laser_link", "agent_2/base_laser_link", "agent_3/base_laser_link", "agent_4/base_laser_link"]  # 必须与 LaserScan.header.frame_id 一致，否则同步建图会持续报 not found
 #laser_topics: ["/agent_0/base_scan", "/agent_1/base_scan", "/agent_2/base_scan", "/agent_3/base_scan", "/agent_4/base_scan"]  # 旧版激光话题命名示例
 laser_topics: ["/robosar_agent_bringup_node/agent_0/feedback/scan", "/robosar_agent_bringup_node/agent_1/feedback/scan", "/robosar_agent_bringup_node/agent_2/feedback/scan", "/robosar_agent_bringup_node/agent_3/feedback/scan", "/robosar_agent_bringup_node/agent_4/feedback/scan"]  # 各机器人 LaserScan 输入话题列表
 apriltag_topics: ["/robosar_agent_bringup_node/agent_0/feedback/apriltag", "/robosar_agent_bringup_node/agent_1/feedback/apriltag", "/robosar_agent_bringup_node/agent_2/feedback/apriltag", "/robosar_agent_bringup_node/agent_3/feedback/apriltag", "/robosar_agent_bringup_node/agent_4/feedback/apriltag"]  # 各机器人 AprilTagDetectionArray 输入话题列表

@@ -5,6 +5,7 @@
     <!-- Run SLAM Toolbox for mapping -->
     <node pkg="slam_toolbox" type="$(arg slam_node_type)" name="slam_toolbox" output="screen">
         <rosparam command="load" file="$(find slam_toolbox)/config/robosar_mapping_w.yaml" />
+        <param name="use_tf_message_filter" value="false" />
     </node>
     <!-- Run mapping filter -->
     <node pkg="slam_toolbox" name="map_filter" type="map_filter.py" />

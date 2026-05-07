@@ -214,10 +214,17 @@ void SlamToolbox::setROSInterfaces(ros::NodeHandle& node)
   for(size_t idx = 0; idx < laser_topics_.size(); idx++)//
   {
     ROS_INFO("Subscribing to scan: %s", laser_topics_[idx].c_str());
-    scan_filter_subs_.push_back(std::make_unique<message_filters::Subscriber<sensor_msgs::LaserScan> >(node, laser_topics_[idx], 5));
-    scan_filters_.push_back(std::make_unique<tf2_ros::MessageFilter<sensor_msgs::LaserScan> >(*scan_filter_subs_.back(), *tf_, odom_frames_[idx], 5, node));
-    scan_filters_.back()->registerCallback(boost::bind(&SlamToolbox::laserCallback, this, _1));
-
+    if (use_tf_message_filter_)
+    {
+      scan_filter_subs_.push_back(std::make_unique<message_filters::Subscriber<sensor_msgs::LaserScan> >(node, laser_topics_[idx], 5));
+      scan_filters_.push_back(std::make_unique<tf2_ros::MessageFilter<sensor_msgs::LaserScan> >(*scan_filter_subs_.back(), *tf_, odom_frames_[idx], 5, node));
+      scan_filters_.back()->registerCallback(boost::bind(&SlamToolbox::laserCallback, this, _1));
+    }
+    else
+    {
+      scan_subs_.push_back(node.subscribe<sensor_msgs::LaserScan>(
+        laser_topics_[idx], 20, &SlamToolbox::laserCallback, this));
+    }
     ROS_INFO("Subscribing to apriltag detectors: %s", apriltag_topics_[idx].c_str());
     apriltag_subs_.push_back(std::make_unique<message_filters::Subscriber<apriltag_ros::AprilTagDetectionArray> >(node, apriltag_topics_[idx], 5));
     apriltag_subs_.back()->registerCallback(boost::bind(&SlamToolbox::apriltagCallback, this, _1));

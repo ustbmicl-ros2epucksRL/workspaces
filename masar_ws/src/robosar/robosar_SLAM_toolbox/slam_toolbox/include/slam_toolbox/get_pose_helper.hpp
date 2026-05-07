@@ -41,26 +41,38 @@ public:
     const ros::Time& t,
     std::string ref_frame = std::string(""))//
   {
-    // Only succeed if ref_frame matches base_frame_ since using wrong pose helper
-    //ROS_INFO("Comparing ref_frame: %s vs base_frame_: %s", ref_frame.c_str(), base_frame_.c_str());
-    if(ref_frame != base_frame_)//
+    auto normalizeFrame = [](const std::string& frame) -> std::string
+    {
+      if (!frame.empty() && frame.front() == '/')
+      {
+        return frame.substr(1);
+      }
+      return frame;
+    };
+
+    const std::string normalized_ref_frame = normalizeFrame(ref_frame);
+    const std::string normalized_base_frame = normalizeFrame(base_frame_);
+
+    // Only succeed if ref_frame matches base_frame_ since using wrong pose helper.
+    if (!normalized_ref_frame.empty() &&
+        normalized_ref_frame != normalized_base_frame)
     {
       return false;
     }
-    geometry_msgs::TransformStamped base_ident, odom_pose;
-    base_ident.header.stamp = t;
-    base_ident.header.frame_id = base_frame_;
-    base_ident.transform.rotation.w = 1.0;
+
+    geometry_msgs::TransformStamped odom_pose;
 
     try
     {
-      odom_pose = tf_->transform(base_ident, odom_frame_);
+      odom_pose = tf_->lookupTransform(
+        odom_frame_, base_frame_, t, ros::Duration(0.1));
     }
-    catch(tf2::TransformException e)
+    catch (const tf2::TransformException& e)
     {
       ROS_WARN("Failed to compute odom pose, skipping scan (%s)", e.what());
       return false;
     }
+
 
     const double yaw = tf2::getYaw(odom_pose.transform.rotation);
     karto_pose = karto::Pose2(odom_pose.transform.translation.x,

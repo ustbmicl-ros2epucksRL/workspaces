@@ -2,7 +2,7 @@
   <param name="/use_sim_time" value="true"/>
   
   <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
-  <node name="map_server" pkg="map_server" type="map_server" args="/root/catkin_ws2/src/robosar/robosar_sim_bringup/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
+  <node name="map_server" pkg="map_server" type="map_server" args="$(find robosar_sim_bringup)/worlds/gazebo_config/maps/tepper.yaml" respawn="false" >
     <remap from="/map" to="/sim_map"/>
   </node>
   

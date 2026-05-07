@@ -48,7 +48,7 @@ LoopClosureAssistant::LoopClosureAssistant(
     &LoopClosureAssistant::interactiveModeCallback,this);
   node.setParam("interactive_mode", interactive_mode_);
   marker_publisher_ = node.advertise<visualization_msgs::MarkerArray>(
-    "karto_graph_visualization",1);
+    "karto_graph_visualization",1, true);
   node.param("map_frame", map_frame_, std::string("map"));
   node.param("enable_interactive_mode", enable_interactive_mode_, false);
 }

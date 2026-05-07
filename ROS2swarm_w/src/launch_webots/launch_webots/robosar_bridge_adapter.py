@@ -14,15 +14,15 @@ Per robot:
   odom:    /robot_N/odom  ->  /.../agent_N/odom  (+ TF broadcast)
   cmd_vel: /.../agent_N/cmd_vel  ->  /robot_N/cmd_vel
 
-KEY FIX: Webots e-puck odom always starts at (0,0,0) regardless of the
-robot's position in the Webots world. In contrast, Gazebo odom starts at
-the robot's world position. The original RoboSAR SLAM/nav stack assumes
-each robot starts at a UNIQUE position. Without the spawn offset, all
-robots appear at the map origin and SLAM cannot differentiate them.
+Important behavior:
+  - Recent Webots / webots_ros2_driver combinations already publish odom in a
+    global world frame. In that case applying the historical spawn offset a
+    second time corrupts the robot trajectories.
+  - Older setups may still need the spawn offset workaround.
 
-This adapter applies the Webots spawn position as an offset to odom so
-that each robot starts at its actual world position, matching the
-Gazebo convention expected by the ROS1 stack.
+This adapter therefore keeps spawn-offset correction configurable. In the
+current RoboSAR Webots pipeline the diff-drive odom is local to each robot's
+spawn pose, so the offset stays enabled by default.
 
 TF published with Webots sim-time:
   agent_N/odom -> agent_N/base_link            (dynamic, uses odom stamp)
@@ -31,6 +31,7 @@ TF published with Webots sim-time:
 
 map -> agent_N/odom is NOT published here; SLAM handles it.
 """
+import copy
 import math
 import rclpy
 from rclpy.node import Node
@@ -62,9 +63,18 @@ def rotate_2d(x, y, theta):
 
 
 class RobotBridge:
-    """Bridge instance for a single robot with spawn-position offset."""
+    """Bridge instance for a single robot."""
 
-    def __init__(self, node, robot_index, spawn_x, spawn_y, spawn_yaw):
+    def __init__(
+        self,
+        node,
+        robot_index,
+        spawn_x,
+        spawn_y,
+        spawn_yaw,
+        apply_spawn_offset,
+        normalize_scan,
+    ):
         self.node = node
         self.idx = robot_index
         self.robot_name = 'robot_%d' % robot_index
@@ -72,7 +82,10 @@ class RobotBridge:
         self.spawn_x = spawn_x
         self.spawn_y = spawn_y
         self.spawn_yaw = spawn_yaw
+        self.apply_spawn_offset = apply_spawn_offset
+        self.normalize_scan = normalize_scan
         self._last_missing_stamp_log = self.node.get_clock().now()
+        self._last_scan_stamp = None
 
         robosar_prefix = '/%s/%s' % (ROBOSAR_NS, self.agent_name)
 
@@ -128,9 +141,29 @@ class RobotBridge:
         return world_x, world_y, world_yaw
 
     def _on_scan(self, msg):
-        msg.header.stamp = self._resolve_stamp(msg.header.stamp, 'scan')
-        msg.header.frame_id = '%s/base_laser_link' % self.agent_name
-        self.scan_pub.publish(msg)
+        stamp = self._resolve_stamp(msg.header.stamp, 'scan')
+        scan = copy.deepcopy(msg)
+        scan.header.stamp = stamp
+        scan.header.frame_id = '%s/base_laser_link' % self.agent_name
+
+        if self.normalize_scan and scan.angle_increment < 0.0:
+            scan.ranges = list(reversed(scan.ranges))
+            scan.intensities = list(reversed(scan.intensities))
+            scan.angle_min, scan.angle_max = scan.angle_max, scan.angle_min
+            scan.angle_increment = abs(scan.angle_increment)
+
+        if self._last_scan_stamp is not None:
+            dt = (
+                stamp.sec - self._last_scan_stamp.sec
+                + (stamp.nanosec - self._last_scan_stamp.nanosec) * 1e-9
+            )
+            if dt > 0.0 and scan.scan_time == 0.0:
+                scan.scan_time = dt
+            if dt > 0.0 and scan.time_increment == 0.0 and len(scan.ranges) > 1:
+                scan.time_increment = dt / float(len(scan.ranges) - 1)
+        self._last_scan_stamp = stamp
+
+        self.scan_pub.publish(scan)
 
     def _on_odom(self, msg):
         stamp = self._resolve_stamp(msg.header.stamp, 'odom')
@@ -139,31 +172,32 @@ class RobotBridge:
         local_y = msg.pose.pose.position.y
         local_yaw = quaternion_to_yaw(msg.pose.pose.orientation)
 
-        world_x, world_y, world_yaw = self._apply_spawn_offset(
-            local_x, local_y, local_yaw)
+        if self.apply_spawn_offset:
+            world_x, world_y, world_yaw = self._apply_spawn_offset(
+                local_x, local_y, local_yaw)
+        else:
+            world_x, world_y, world_yaw = local_x, local_y, local_yaw
 
-        msg.header.stamp = stamp
-        msg.header.frame_id = '%s/odom' % self.agent_name
-        msg.child_frame_id = '%s/base_link' % self.agent_name
-        msg.pose.pose.position.x = world_x
-        msg.pose.pose.position.y = world_y
-        msg.pose.pose.orientation = yaw_to_quaternion(world_yaw)
-        self.odom_pub.publish(msg)
+        odom = copy.deepcopy(msg)
+        odom.header.stamp = stamp
+        odom.header.frame_id = '%s/odom' % self.agent_name
+        odom.child_frame_id = '%s/base_link' % self.agent_name
+        odom.pose.pose.position.x = world_x
+        odom.pose.pose.position.y = world_y
+        odom.pose.pose.orientation = yaw_to_quaternion(world_yaw)
+        self.odom_pub.publish(odom)
 
         t = TransformStamped()
         t.header.stamp = stamp
-        t.header.frame_id = msg.header.frame_id
-        t.child_frame_id = msg.child_frame_id
+        t.header.frame_id = odom.header.frame_id
+        t.child_frame_id = odom.child_frame_id
         t.transform.translation.x = world_x
         t.transform.translation.y = world_y
         t.transform.translation.z = 0.0
-        t.transform.rotation = msg.pose.pose.orientation
+        t.transform.rotation = odom.pose.pose.orientation
         self.node.tf_broadcaster.sendTransform(t)
 
     def _on_cmd_vel(self, msg):
-        linear = msg.linear.x
-        angular = msg.angular.z
-
         self.cmd_pub.publish(msg)
 
 
@@ -175,6 +209,8 @@ class RobosarBridgeAdapter(Node):
         self.declare_parameter('spawn_x', [0.0])
         self.declare_parameter('spawn_y', [0.0])
         self.declare_parameter('spawn_yaw', [0.0])
+        self.declare_parameter('apply_spawn_offset', True)
+        self.declare_parameter('normalize_scan', True)
 
         num_robots = self.get_parameter(
             'num_robots').get_parameter_value().integer_value
@@ -184,6 +220,10 @@ class RobosarBridgeAdapter(Node):
             'spawn_y').get_parameter_value().double_array_value)
         spawn_yaw = list(self.get_parameter(
             'spawn_yaw').get_parameter_value().double_array_value)
+        apply_spawn_offset = self.get_parameter(
+            'apply_spawn_offset').get_parameter_value().bool_value
+        normalize_scan = self.get_parameter(
+            'normalize_scan').get_parameter_value().bool_value
 
         while len(spawn_x) < num_robots:
             spawn_x.append(0.0)
@@ -200,7 +240,13 @@ class RobosarBridgeAdapter(Node):
 
         for i in range(num_robots):
             bridge = RobotBridge(
-                self, i, spawn_x[i], spawn_y[i], spawn_yaw[i]
+                self,
+                i,
+                spawn_x[i],
+                spawn_y[i],
+                spawn_yaw[i],
+                apply_spawn_offset,
+                normalize_scan,
             )
             self.bridges.append(bridge)
 
@@ -231,9 +277,12 @@ class RobosarBridgeAdapter(Node):
 
         self.get_logger().info(
             'RoboSAR Bridge Adapter started: %d robots '
-            '(robot_N <-> %s/agent_N), use_sim_time=%s'
+            '(robot_N <-> %s/agent_N), use_sim_time=%s, '
+            'apply_spawn_offset=%s, normalize_scan=%s'
             % (num_robots, ROBOSAR_NS,
-               self.get_parameter('use_sim_time').value))
+               self.get_parameter('use_sim_time').value,
+               apply_spawn_offset,
+               normalize_scan))
 
     def _publish_static_transforms(self):
         stamp = self.get_clock().now().to_msg()

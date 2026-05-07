@@ -107,7 +107,7 @@ sleep 1
 
 # —— 逐条启动（按需改命令）——
 start "roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch"     # 1 启动机器人 agent
-start "roslaunch robosar_sim_bringup robosar_sim_tepper.launch"               # 2 启动仿真（一般会拉起 gzserver/gzclient）
+start "GAZEBO_MODEL_DATABASE_URI='' roslaunch robosar_sim_bringup robosar_sim_tepper.launch"  # 2 启动仿真；当前世界资源均为本地文件，禁用在线模型库查询可避免 Fuel SSL 报错刷屏
 start "roslaunch slam_toolbox robosar_mapping_sim_g.launch slam_node_type:=${SLAM_NODE_TYPE}"  # 3 启动 SLAM/mapping
 start "roslaunch robosar_task_generator task_generator.launch"                 # 4 任务生成器
 start "roslaunch robosar_navigation mission_executive.launch"                  # 5 导航/任务执行

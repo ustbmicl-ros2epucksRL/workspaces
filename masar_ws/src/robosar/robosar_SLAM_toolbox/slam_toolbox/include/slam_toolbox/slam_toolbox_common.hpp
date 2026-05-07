@@ -110,6 +110,7 @@ protected:
   std::unique_ptr<tf2_ros::Buffer> tf_;
   std::unique_ptr<tf2_ros::TransformListener> tfL_;
   std::unique_ptr<tf2_ros::TransformBroadcaster> tfB_;
+  std::vector<ros::Subscriber> scan_subs_;
   std::vector<std::unique_ptr<message_filters::Subscriber<sensor_msgs::LaserScan> > > scan_filter_subs_;
   std::vector<std::unique_ptr<tf2_ros::MessageFilter<sensor_msgs::LaserScan> > > scan_filters_;
   std::vector<std::unique_ptr<message_filters::Subscriber<apriltag_ros::AprilTagDetectionArray> > > apriltag_subs_;//
@@ -125,7 +126,7 @@ protected:
   int throttle_scans_;
 
   double resolution_;
-  bool first_measurement_, enable_interactive_mode_;
+  bool first_measurement_, enable_interactive_mode_, use_tf_message_filter_;
 
   // Book keeping
   std::unique_ptr<mapper_utils::SMapper> smapper_;
