@@ -6,7 +6,10 @@
     <remap from="/map" to="/sim_map"/>
   </node>
   
-  <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen" />
+  <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen" clear_params="true">
+    <param name="sim_scene" value="tepper" />
+    <param name="scene_config_path" value="$(find robosar_sim_bringup)/config/sim_scenes.json" />
+  </node>
   
   <!--使用stage_ros仿真-->
   <!--group ns="robosar_agent_bringup_node">
