@@ -491,6 +491,7 @@ Visualization Manager:
       Marker Topic: /robosar_sim/fire_markers
       Name: fire_sources
       Namespaces:
+        detected_fire_sources: true
         fire_sources: true
       Queue Size: 100
       Value: true
@@ -499,6 +500,8 @@ Visualization Manager:
       Marker Topic: /robosar_sim/transport_markers
       Name: transport_objects
       Namespaces:
+        detected_transport_objects: true
+        transport_targets: true
         transport_objects: true
       Queue Size: 100
       Value: true

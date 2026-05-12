@@ -15,7 +15,7 @@ import math
 
 import rospy
 from cv_bridge import CvBridge, CvBridgeError
-from PyQt5 import QtWidgets, QtGui
+from PyQt5 import QtWidgets, QtGui, QtCore
 from PyQt5.QtCore import QTimer, QSize
 from std_msgs.msg import String, Bool, Float32
 from sensor_msgs.msg import Image
@@ -61,6 +61,8 @@ class Ui(QtWidgets.QDialog):
         self.n_agents_active = 0
         self.n_victims = args.num_victims
         self.tot_victims_found = 0
+        self.tot_fires_found = 0
+        self.tot_boxes_found = 0
         self.seen_tags = set()
         self.life_scores = []
         self.percent_explored = 0.0
@@ -75,6 +77,8 @@ class Ui(QtWidgets.QDialog):
         self.agent_status_dict = {}
         # key: agent name, value: list of tag IDs
         self.agent_tag_dict = {}
+        self.fire_count_label = self.create_summary_box("发现火源", 3)
+        self.box_count_label = self.create_summary_box("发现箱子", 4)
 
         # init ROS stuff
         rospy.init_node("robosar_gui")
@@ -89,6 +93,16 @@ class Ui(QtWidgets.QDialog):
             self.display_agents_status,
         )
         rospy.Subscriber("/percent_completed", Float32, self.display_area_explored)
+        rospy.Subscriber(
+            "/robosar_sim/emergency_objects",
+            EmergencyObjectArray,
+            self.display_emergency_objects,
+        )
+        rospy.Subscriber(
+            "/robosar_sim/emergency_events",
+            EmergencyObject,
+            self.handle_emergency_event,
+        )
         # rospy.Subscriber("/slam_toolbox/victim_markers", Marker, self.update_agent_tag_dict)
         # initialize a subscriber for every agent_id/feedback/apriltag topic
         self.elasped_time = 0
@@ -114,8 +128,44 @@ class Ui(QtWidgets.QDialog):
 
         self.show()
 
+    def create_summary_box(self, title, insert_index):
+        group_box = QtWidgets.QGroupBox(title, self)
+        group_box.setAlignment(QtCore.Qt.AlignCenter)
+        layout = QtWidgets.QHBoxLayout(group_box)
+        label = QtWidgets.QLabel("0", group_box)
+        label.setMaximumSize(QSize(50, 50))
+        font = QtGui.QFont()
+        font.setPointSize(20)
+        label.setFont(font)
+        label.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(label)
+        self.ui.horizontalLayout_4.insertWidget(insert_index, group_box)
+        return label
+
     def display_area_explored(self, msg):
         self.percent_explored = round(msg.data, 2)
+
+    def display_emergency_objects(self, msg):
+        victims = 0
+        fires = 0
+        boxes = 0
+        for obj in msg.objects:
+            if not obj.discovered:
+                continue
+            if obj.object_type == obj.VICTIM:
+                victims += 1
+            elif obj.object_type == obj.FIRE:
+                fires += 1
+            elif obj.object_type == obj.BOX:
+                boxes += 1
+
+        self.tot_victims_found = victims
+        self.tot_fires_found = fires
+        self.tot_boxes_found = boxes
+
+    def handle_emergency_event(self, msg):
+        if msg.discovered:
+            self.new_victim_detection = 1
 
     def update_agent_tag_dict(self, msg):
         agent_id = msg.header.frame_id.split("/")[0]
@@ -178,6 +228,8 @@ class Ui(QtWidgets.QDialog):
                 )
         self.ui.active_agents_label.setText(str(self.n_agents_active))
         self.ui.victims_found_label.setText(str(self.tot_victims_found))
+        self.fire_count_label.setText(str(self.tot_fires_found))
+        self.box_count_label.setText(str(self.tot_boxes_found))
         self.ui.area_explored_label.setText(str(int(self.percent_explored * 100)))
         self.ui.life_score_label.setText(str(sum(self.life_scores)))
 

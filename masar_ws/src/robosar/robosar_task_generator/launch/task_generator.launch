@@ -8,7 +8,7 @@
     <!--webots-->
     <!-- Use default= so launch callers can override these for Webots. -->
     <arg name="mc_geofence" default="[]"/>
-    <arg name="geofence" default="[2.0, 18.0, 1.0, 18.0]"/>
+    <arg name="geofence" default="[2.0, 17.5, 1.0, 18.0]"/>
 
     <node pkg="robosar_task_generator" type="robosar_task_graph_node" name="robosar_task_graph_node" output="screen">
         <param name="eta" value="0.5"/>

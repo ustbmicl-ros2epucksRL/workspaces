@@ -14,6 +14,7 @@ find_package(catkin REQUIRED COMPONENTS
   nav_msgs
   std_msgs
   actionlib_msgs
+  geometry_msgs
  )
 
 ## System dependencies are found with CMake's conventions
@@ -57,6 +58,8 @@ add_message_files(
   controller_status.msg
   mission_command.msg
   PointArray.msg
+  EmergencyObject.msg
+  EmergencyObjectArray.msg
 )
 
 ## Generate services in the 'srv' folder

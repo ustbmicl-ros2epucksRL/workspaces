@@ -105,6 +105,17 @@ class GlobalInfoSupervisor(Node):
                 elif def_name in ['transport_box', 'target_zone', 'flocking_target']:
                     self.object_nodes[def_name] = node
                     self.get_logger().info(f'找到物体: {def_name}')
+                elif any(
+                    def_name.startswith(prefix)
+                    for prefix in (
+                        'victim_',
+                        'fire_source_',
+                        'transport_box_',
+                        'target_zone_',
+                    )
+                ):
+                    self.object_nodes[def_name] = node
+                    self.get_logger().info(f'找到物体: {def_name}')
                 elif def_name.startswith('navigation_target_'):
                     self.object_nodes[def_name] = node
                     self.get_logger().info(f'找到导航目标: {def_name}')

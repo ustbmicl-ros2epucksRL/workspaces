@@ -9,6 +9,7 @@ started separately by the wrapper script.
 import math
 import os
 import random
+import json
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -52,6 +53,47 @@ def _resolve_static_map_path(package_share: str, static_map: str) -> str:
     return os.path.join(package_share, 'maps', static_map)
 
 
+def _resolve_scene_name(static_map_path: str, sim_scene: str) -> str:
+    if sim_scene:
+        return sim_scene
+    if static_map_path:
+        return os.path.splitext(os.path.basename(static_map_path))[0]
+    return ''
+
+
+def _load_scene_task_objects(scene_config_path: str, scene_name: str):
+    if not scene_config_path or not os.path.isfile(scene_config_path):
+        return {}
+
+    with open(scene_config_path, 'r', encoding='utf-8') as f:
+        config = json.load(f)
+
+    scenes = config.get('scenes', {})
+    if scene_name not in scenes:
+        return {}
+
+    scene = scenes[scene_name]
+    return {
+        'victims': [tuple(pos) for pos in scene.get('victims', [])],
+        'fires': [tuple(pos) for pos in scene.get('fire_sources', [])],
+        'transport_boxes': [tuple(pos) for pos in scene.get('transport_objects', [])],
+        'transport_targets': [tuple(pos) for pos in scene.get('transport_targets', [])],
+    }
+
+
+def _scene_objects_to_occupied(task_objects):
+    occupied = []
+    for x, y in task_objects.get('victims', []):
+        occupied.append((x, y, 0.22))
+    for x, y in task_objects.get('fires', []):
+        occupied.append((x, y, 0.18))
+    for x, y in task_objects.get('transport_boxes', []):
+        occupied.append((x, y, (0.28, 0.28)))
+    for x, y in task_objects.get('transport_targets', []):
+        occupied.append((x, y, 0.3))
+    return occupied
+
+
 def _build_robot_actions(number_robots: int, robot_type: str):
     node_factory = create_epuck_nodes if robot_type == 'e_puck' else create_burger_nodes
     actions = []
@@ -80,6 +122,8 @@ def _build_launch(context, *args, **kwargs):
     min_distance = float(LaunchConfiguration('min_distance').perform(context))
     z_height = float(LaunchConfiguration('z_height').perform(context))
     static_map = LaunchConfiguration('static_map').perform(context)
+    sim_scene = LaunchConfiguration('sim_scene').perform(context)
+    scene_config = LaunchConfiguration('scene_config').perform(context)
     publish_static_map = _to_bool(
         LaunchConfiguration('publish_static_map').perform(context)
     )
@@ -96,6 +140,8 @@ def _build_launch(context, *args, **kwargs):
 
     robot_type = _resolve_robot_type(raw_robot)
     static_map_path = _resolve_static_map_path(package_share, static_map)
+    scene_name = _resolve_scene_name(static_map_path, sim_scene)
+    task_objects = _load_scene_task_objects(scene_config, scene_name)
 
     if random_seed_raw:
         random.seed(int(random_seed_raw))
@@ -108,6 +154,7 @@ def _build_launch(context, *args, **kwargs):
     print('  robot type      |', robot_type)
     print('  sensor type     |', sensor_type)
     print('  static map      |', static_map_path or '(none)')
+    print('  sim scene       |', scene_name or '(none)')
     print('  publish map     |', publish_static_map)
     print('  area            | X[%.1f, %.1f] Y[%.1f, %.1f]' % (
         x_min, x_max, y_min, y_max))
@@ -119,7 +166,8 @@ def _build_launch(context, *args, **kwargs):
     template_path = _resolve_world_template_path(package_share, webots_world)
 
     existing_objects = parse_world_file_objects(template_path)
-    occupied = [(x, y, radius) for x, y, radius, _ in existing_objects]    
+    occupied = [(x, y, radius) for x, y, radius, _ in existing_objects]
+    occupied.extend(_scene_objects_to_occupied(task_objects))
     positions = generate_random_positions_with_obstacles(
         number_robots,
         x_min,
@@ -142,7 +190,7 @@ def _build_launch(context, *args, **kwargs):
         number_robots,
         positions,
         z_height,
-        {},
+        task_objects,
     )
 
     actions = []
@@ -241,6 +289,8 @@ def generate_launch_description():
         DeclareLaunchArgument('min_distance', default_value='0.15'),
         DeclareLaunchArgument('z_height', default_value='0.0'),
         DeclareLaunchArgument('static_map', default_value=''),
+        DeclareLaunchArgument('sim_scene', default_value=''),
+        DeclareLaunchArgument('scene_config', default_value=''),
         DeclareLaunchArgument('publish_static_map', default_value='false'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('apply_spawn_offset', default_value='true'),

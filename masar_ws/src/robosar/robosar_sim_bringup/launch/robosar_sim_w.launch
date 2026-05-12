@@ -11,6 +11,7 @@
   <node pkg="robosar_sim_bringup" type="AprilTagSim.py" name="generate_april_tags_node" output="screen">
     <param name="sim_scene" value="$(arg sim_scene)" />
     <param name="scene_config_path" value="$(find robosar_sim_bringup)/config/sim_scenes.json" />
+    <param name="spawn_gazebo_entities" value="false" />
   </node>
 
   <!--其中仿真器的启动、机器人模型的加载 在 ros2 容器侧-->

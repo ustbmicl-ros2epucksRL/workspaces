@@ -28,6 +28,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}}"
 HOST_WORKSPACE_DIR="$(cd -- "${WORKSPACE_DIR}/.." && pwd)"
 SCENE_STATE_FILE="${SCENE_STATE_FILE:-${HOST_WORKSPACE_DIR}/.robosar_scene_state.json}"
+SCENE_CONFIG="${SCENE_CONFIG:-${HOST_WORKSPACE_DIR}/masar_ws/src/robosar/robosar_sim_bringup/config/sim_scenes.json}"
 
 # --- 配置（可通过环境变量覆盖） ---
 NUM_ROBOTS="${NUM_ROBOTS:-5}"
@@ -114,6 +115,8 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 STATIC_MAP="$(resolve_static_map_path "${STATIC_MAP}" "${WEBOTS_WORLD}")"
+SIM_SCENE="${SIM_SCENE:-$(basename "${STATIC_MAP}")}"
+SIM_SCENE="${SIM_SCENE%.yaml}"
 write_scene_state "${STATIC_MAP}"
 
 echo "============================================================"
@@ -123,6 +126,8 @@ echo "  NUM_ROBOTS   = ${NUM_ROBOTS}"
 echo "  ROBOT_TYPE   = ${ROBOT_TYPE}"
 echo "  WEBOTS_WORLD = ${WEBOTS_WORLD}"
 echo "  STATIC_MAP   = ${STATIC_MAP}"
+echo "  SIM_SCENE    = ${SIM_SCENE}"
+echo "  SCENE_CONFIG = ${SCENE_CONFIG}"
 echo "  PUBLISH_MAP  = ${PUBLISH_STATIC_MAP}"
 echo "  ROS1_MASTER  = ${ROS1_MASTER_IP}"
 echo "  SPAWN_X      = [${SPAWN_X_MIN}, ${SPAWN_X_MAX}]"
@@ -155,6 +160,8 @@ ros2 launch launch_webots robosar_webots_sim.launch.py \
     number_robots:=${NUM_ROBOTS} \
     robot:=${ROBOT_TYPE} \
     static_map:=${STATIC_MAP} \
+    sim_scene:=${SIM_SCENE} \
+    scene_config:=${SCENE_CONFIG} \
     publish_static_map:=${PUBLISH_STATIC_MAP} \
     x_min:=${SPAWN_X_MIN} x_max:=${SPAWN_X_MAX} \
     y_min:=${SPAWN_Y_MIN} y_max:=${SPAWN_Y_MAX} \

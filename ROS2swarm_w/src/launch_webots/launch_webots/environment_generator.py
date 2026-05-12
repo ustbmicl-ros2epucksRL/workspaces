@@ -9,6 +9,12 @@ import re
 import math
 import random
 
+PEDESTRIAN_ROOT_HEIGHT = 1.27
+PEDESTRIAN_PROTO_URL = (
+    'https://raw.githubusercontent.com/cyberbotics/webots/'
+    '{version}/projects/humans/pedestrian/protos/Pedestrian.proto'
+)
+
 
 def parse_world_file_objects(world_file_path: str) -> list:
     """
@@ -350,6 +356,55 @@ def generate_transport_box(name: str, x: float, y: float, z: float = 0.05, size:
 '''
 
 
+def generate_victim(name: str, x: float, y: float, z: float = 0.0) -> str:
+    """生成受害者实体（Webots 官方 Pedestrian，静态带碰撞体）"""
+    root_z = z + PEDESTRIAN_ROOT_HEIGHT
+    return f'''DEF {name} Pedestrian {{
+  translation {x} {y} {root_z}
+  name "{name}"
+  shirtColor 0.8 0.2 0.2
+  pantsColor 0.18 0.18 0.24
+  shoesColor 0.16 0.1 0.06
+  skinColor 0.96 0.79 0.68
+  enableBoundingObject TRUE
+}}
+'''
+
+
+def generate_fire_source(
+    name: str,
+    x: float,
+    y: float,
+    z: float = 0.09,
+    radius: float = 0.14,
+    height: float = 0.18,
+) -> str:
+    """生成火源占位实体（静态圆柱）"""
+    return f'''DEF {name} Solid {{
+  translation {x} {y} {z}
+  children [
+    Shape {{
+      appearance PBRAppearance {{
+        baseColor 1 0.3 0.05
+        emissiveColor 0.9 0.2 0.0
+        roughness 0.25
+        metalness 0
+      }}
+      geometry Cylinder {{
+        radius {radius}
+        height {height}
+      }}
+    }}
+  ]
+  name "{name}"
+  boundingObject Cylinder {{
+    radius {radius}
+    height {height}
+  }}
+}}
+'''
+
+
 def generate_target_zone(name: str, x: float, y: float, z: float = 0.001, radius: float = 0.25) -> str:
     """生成运输任务的目标点（绿色圆形区域，可进入，无碰撞）"""
     return f'''DEF {name} Solid {{
@@ -493,6 +548,30 @@ def generate_global_info_supervisor() -> str:
 '''
 
 
+def _resolve_webots_version(world_content: str) -> str:
+    """从世界文件头中解析 Webots 版本号。"""
+    match = re.search(r'^#VRML_SIM\s+(\S+)\s+utf8', world_content, re.MULTILINE)
+    if match:
+        return match.group(1)
+    return 'R2025a'
+
+
+def _ensure_pedestrian_proto_import(world_content: str) -> str:
+    """确保世界文件声明了 Pedestrian EXTERNPROTO。"""
+    if 'Pedestrian.proto' in world_content:
+        return world_content
+
+    version = _resolve_webots_version(world_content)
+    import_line = f'EXTERNPROTO "{PEDESTRIAN_PROTO_URL.format(version=version)}"'
+    header_match = re.match(r'(#VRML_SIM[^\n]*\n)(.*)$', world_content, re.DOTALL)
+    if not header_match:
+        return import_line + '\n\n' + world_content
+
+    header = header_match.group(1)
+    remainder = header_match.group(2).lstrip('\n')
+    return header + '\n' + import_line + '\n' + remainder
+
+
 def generate_world_file(
     template_world: str,
     output_world: str,
@@ -507,10 +586,32 @@ def generate_world_file(
         template_content = f.read()
     
     output_content = template_content
+    if task_objects and task_objects.get('victims'):
+        output_content = _ensure_pedestrian_proto_import(output_content)
     if not output_content.endswith('\n'):
         output_content += '\n'
     
     if task_objects:
+        if 'victims' in task_objects and task_objects['victims']:
+            for i, (x, y) in enumerate(task_objects['victims']):
+                output_content += generate_victim(f'victim_{i}', x, y)
+                output_content += "\n"
+
+        if 'fires' in task_objects and task_objects['fires']:
+            for i, (x, y) in enumerate(task_objects['fires']):
+                output_content += generate_fire_source(f'fire_source_{i}', x, y)
+                output_content += "\n"
+
+        if 'transport_boxes' in task_objects and task_objects['transport_boxes']:
+            for i, (x, y) in enumerate(task_objects['transport_boxes']):
+                output_content += generate_transport_box(f'transport_box_{i}', x, y)
+                output_content += "\n"
+
+        if 'transport_targets' in task_objects and task_objects['transport_targets']:
+            for i, (x, y) in enumerate(task_objects['transport_targets']):
+                output_content += generate_target_zone(f'target_zone_{i}', x, y)
+                output_content += "\n"
+
         if 'transport_box' in task_objects and task_objects['transport_box']:
             x, y = task_objects['transport_box']
             output_content += generate_transport_box('transport_box', x, y)
