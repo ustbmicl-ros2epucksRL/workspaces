@@ -75,7 +75,7 @@ def test_astar_simple_path_handles_search_failure_without_stale_path():
     assert "A* failed, falling back to a direct local segment" in source
 
 
-def test_plan_manager_launch_exposes_robust_stage0_parameters():
+def test_plan_manager_launch_exposes_robust_response_demo_parameters():
     launch = PLAN_MANAGER_LAUNCH.read_text()
 
     assert "plan_manager/max_frm_type" in launch
@@ -193,7 +193,7 @@ def test_plan_manager_throttles_timeout_reassignment_and_single_file_reduce_logs
     assert "already at minimum formation type" in source
 
 
-def test_stage0_formation_switching_is_stable_but_not_overly_conservative():
+def test_response_demo_formation_switching_is_stable_but_not_overly_conservative():
     launch = PLAN_MANAGER_LAUNCH.read_text()
 
     assert '<param name="plan_manager/formation_reduce_hold_time" value="0.6"/>' in launch
@@ -361,6 +361,7 @@ def test_response_mux_applies_laser_safety_once_with_sector_context():
 
     assert "apply_scan_safety(" in timer_callback
     assert "safety_min_range=self.min_ranges[name]" not in timer_callback
+    assert timer_callback.count("select_command(") == 1
 
 
 def test_plan_manager_recenters_local_goal_inside_detected_corridor():

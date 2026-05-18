@@ -1,0 +1,182 @@
+# 第一/第二阶段 Tepper 场景响应组运行配置。
+# 本文件只用于 ROS1+Gazebo 的搜索组 + 应急组闭环，不影响第 0 阶段 demo。
+
+# 响应组四个 TurtleBot 的命名空间。
+robot_names: [tb_0, tb_1, tb_2, tb_3]
+
+# 响应组在 Tepper 大场景中的默认出生位姿由 tepper_response_demo.launch 的 tb_i_x/y/yaw 参数配置。
+
+# 全局坐标系。Tepper Gazebo 与 DEFORM world 通过 map->world 静态变换对齐。
+frame_id: map
+
+# 响应组初始中心，用于搜索组首次发现任务但尚无响应组状态时计算 staging pose。
+initial_response_center_x: 16.55
+initial_response_center_y: 8.70
+
+# 是否等待 /response_group/start 信号后才开始接任务派发。
+wait_for_start: true
+
+# 第一阶段可设为 true：到达任务点后执行 6 秒自转占位；第二阶段设为 false 使用 checkpoint 控制器。
+use_spin_placeholder: false
+
+# victim/fire/box 到目标实体前的预备停车距离，单位为米。
+staging_distance_victim: 0.9
+staging_distance_fire: 1.1
+staging_distance_box: 0.8
+
+# 普通任务控制器默认执行时长，单位为秒；roundflocking 会优先使用该值。
+default_hold_seconds: 8.0
+
+# 编队槽位间距和初始队形由 tepper_response_demo.launch 统一传给 DEFORM 与协调节点。
+
+# 严格槽位到达判定半径，单位为米；Tepper 阶段主要使用下方宽松目标区域判定。
+arrival_radius: 0.45
+
+# 启用朝向判定时使用的偏航角容差，单位为弧度。
+arrival_yaw_tolerance: 0.95
+
+# 严格槽位到达条件需要连续保持的时间，单位为秒。
+arrival_hold_seconds: 0.8
+
+# 是否在严格到达判定中检查机器人朝向。
+use_yaw_barrier: false
+
+# 是否启用较宽松的目标区域到达判定。
+enable_goal_region_arrival: true
+
+# 目标区域判定中，每个机器人距离 staging pose 的最大允许距离，单位为米。
+goal_region_robot_radius: 1.35
+
+# 目标区域判定中，响应组中心距离 staging pose 的最大允许距离，单位为米。
+goal_region_center_radius: 0.95
+
+# 目标区域到达条件需要连续保持的时间，单位为秒。
+goal_region_hold_seconds: 0.8
+
+# 单个任务点允许导航的最长时间，超时后发布失败状态，单位为秒。
+navigation_timeout: 300.0
+
+# 协调节点、速度融合节点和任务控制器的定时更新频率，单位为赫兹。
+rate: 10.0
+task_controller_rate: 10.0
+global_info_rate: 10.0
+
+# 速度指令新鲜度超时时间，超过该时间未收到新指令则该指令源置零，单位为秒。
+command_timeout: 0.6
+
+# 前向激光减速距离，前方障碍进入该距离后开始按比例降低前进速度，单位为米。
+wall_slowdown_distance: 0.65
+
+# 前向激光硬停止距离，前方障碍小于该距离时停止前进并向开阔侧转向，单位为米。
+wall_stop_distance: 0.30
+
+# 侧向贴墙触发距离，侧向障碍小于该距离时触发贴墙脱离转向，单位为米。
+wall_side_stop_distance: 0.30
+
+# 侧向贴墙脱离时保留的最大爬行速度，单位为米每秒。
+wall_side_crawl_speed: 0.08
+
+# 前向安全扇区角宽，单位为度。
+safety_front_angle_deg: 100.0
+
+# 左右侧安全扇区角宽，单位为度。
+safety_side_angle_deg: 90.0
+
+# 后向安全扇区角宽，用于倒车恢复时判断后方空间，单位为度。
+safety_rear_angle_deg: 90.0
+
+# 向开阔侧转向时使用的角速度，单位为弧度每秒。
+safety_escape_turn_speed: 0.55
+
+# 是否由激光安全层发布近障碍状态，供编队规划触发队形收缩。
+publish_formation_avoid: true
+
+# 触发近障碍状态的距离阈值，单位为米。
+formation_reduce_distance: 0.52
+
+# 解除近障碍状态的距离阈值，单位为米。
+formation_clear_distance: 0.70
+
+# 已知队友方向的忽略半角，避免把队友误判成障碍，单位为度。
+formation_ignore_robot_angle_deg: 24.0
+
+# 参与队友方向忽略的最大队友距离，单位为米。
+formation_ignore_robot_max_distance: 1.5
+
+# 是否启用卡滞恢复。
+stuck_recovery_enabled: true
+
+# 判定为主动前进指令的最小线速度，单位为米每秒。
+stuck_linear_command_threshold: 0.04
+
+# 判定为主动转向指令的最小角速度，单位为弧度每秒。
+stuck_angular_command_threshold: 0.25
+
+# 判定线速度几乎不动的里程计阈值，单位为米每秒。
+stuck_odom_speed_threshold: 0.015
+
+# 判定角速度几乎不动的里程计阈值，单位为弧度每秒。
+stuck_odom_angular_threshold: 0.05
+
+# 卡滞候选状态需要持续的时间，超过后进入恢复动作，单位为秒。
+stuck_seconds: 2.0
+
+# 卡滞恢复要求机器人附近存在障碍的距离阈值，单位为米。
+stuck_obstacle_distance: 0.65
+
+# 卡滞恢复倒车速度，单位为米每秒。
+recovery_reverse_speed: 0.06
+
+# 允许倒车恢复所需的最小后方空间，单位为米。
+recovery_reverse_clearance: 0.35
+
+# 第二阶段运输任务需要接触箱子，严格参考 ROS2swarm transport 的 bypass_protection 语义。
+transport_task_bypass_scan_safety: true
+
+# 速度融合节点初始行为模式。任务管理器启动前会发布 STOP。
+default_mode: STOP
+
+# 是否启用 checkpoint 控制器；false 时会使用简易目标跟踪兜底。
+checkpoint_controller_enabled: true
+
+# roundflocking checkpoint 文件，相对 assets/checkpoints 目录。
+roundflocking_checkpoint_file: roundflocking/flocking_genome_package_gen99.pkl
+
+# transport checkpoint 文件，相对 assets/checkpoints 目录。
+transport_checkpoint_file: transport/transport_genome_package_gen264.pkl
+
+# checkpoint 控制器最大线速度，单位为米每秒。
+max_linear_velocity: 0.15
+
+# checkpoint 控制器最大角速度，单位为弧度每秒。
+max_angular_velocity: 0.8
+
+# roundflocking 默认持续时间，单位为秒；若任务消息 hold_seconds>0，会优先使用消息值。
+roundflocking_duration: 8.0
+
+# transport 最长执行时间，单位为秒。
+transport_max_duration: 90.0
+
+# transport 箱子到目标区中心的完成阈值，单位为米。
+goal_threshold: 0.25
+
+# transport 完成判定需要连续保持的时间，单位为秒。
+transport_goal_hold_seconds: 1.0
+
+# transport 超时时是否按完成处理；打开后可保证阶段闭环不会卡在单个箱子任务。
+complete_transport_on_timeout: true
+
+# 第一阶段自转占位控制器持续时间，单位为秒。
+spin_duration: 6.0
+
+# 第一阶段自转占位控制器角速度，单位为弧度每秒。
+spin_angular_velocity: 0.6
+
+# roundflocking 激光采样扇区数量，对齐 ROS2swarm。
+n_lidar_rays: 12
+
+# checkpoint 观测中使用的最大激光范围，单位为米。
+max_range: 3.5
+
+# Tepper 场景坐标归一化尺度；转换公式保持 ROS2swarm 口径，只为大地图调整尺度参数。
+world_scale: 20.0

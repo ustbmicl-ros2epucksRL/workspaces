@@ -4,12 +4,12 @@ from pathlib import Path
 
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
-SCRIPT = PACKAGE_DIR / "scripts" / "run_stage0_response_deform_demo.sh"
+SCRIPT = PACKAGE_DIR / "scripts" / "run_response_deform_demo.sh"
 WORKSPACE_DIR = PACKAGE_DIR.parents[2]
-ROOT_SCRIPT = WORKSPACE_DIR / "run_stage0_response_deform_demo.sh"
+ROOT_SCRIPT = WORKSPACE_DIR / "run_response_deform_demo.sh"
 REFERENCE_WORLD = PACKAGE_DIR / "worlds" / "deform_navigation_demo.world"
-PACKAGE_START_SCRIPT = PACKAGE_DIR / "scripts" / "start_stage0_response_tasks.sh"
-ROOT_START_SCRIPT = WORKSPACE_DIR / "start_stage0_response_tasks.sh"
+PACKAGE_START_SCRIPT = PACKAGE_DIR / "scripts" / "start_response_tasks.sh"
+ROOT_START_SCRIPT = WORKSPACE_DIR / "start_response_tasks.sh"
 
 
 def run_dry_script(*args, **env_overrides):
@@ -27,11 +27,11 @@ def run_dry_script(*args, **env_overrides):
     )
 
 
-def test_stage0_run_script_builds_default_roslaunch_command():
+def test_response_demo_run_script_builds_default_roslaunch_command():
     result = run_dry_script(ROBOSAR_USE_VGLRUN="0")
 
     assert result.returncode == 0, result.stderr
-    assert "roslaunch robosar_emergency_response stage0_response_deform_demo.launch" in result.stdout
+    assert "roslaunch robosar_emergency_response response_deform_demo.launch" in result.stdout
     assert "gz_gui:=true" in result.stdout
     assert "rviz:=true" in result.stdout
     assert "model:=burger" in result.stdout
@@ -43,7 +43,7 @@ def test_stage0_run_script_builds_default_roslaunch_command():
     assert "robosar_sim_bringup" not in result.stdout
 
 
-def test_stage0_run_script_supports_vglrun_and_passthrough_overrides():
+def test_response_demo_run_script_supports_vglrun_and_passthrough_overrides():
     result = run_dry_script(
         "--vglrun",
         "--headless",
@@ -58,7 +58,7 @@ def test_stage0_run_script_supports_vglrun_and_passthrough_overrides():
     assert "goal_sequence_file:=/tmp/goals.yaml" in result.stdout
 
 
-def test_workspace_root_script_delegates_to_stage0_launcher():
+def test_workspace_root_script_delegates_to_response_demo_launcher():
     env = os.environ.copy()
     env["ROBOSAR_SKIP_SETUP"] = "1"
     env["ROBOSAR_USE_VGLRUN"] = "0"
@@ -73,13 +73,13 @@ def test_workspace_root_script_delegates_to_stage0_launcher():
     )
 
     assert result.returncode == 0, result.stderr
-    assert "roslaunch robosar_emergency_response stage0_response_deform_demo.launch" in result.stdout
+    assert "roslaunch robosar_emergency_response response_deform_demo.launch" in result.stdout
     assert "gz_gui:=false" in result.stdout
     assert "rviz:=false" in result.stdout
     assert f"world_name:={REFERENCE_WORLD}" in result.stdout
 
 
-def test_workspace_root_script_keeps_stage0_independent_from_search_group():
+def test_workspace_root_script_keeps_response_demo_independent_from_search_group():
     env = os.environ.copy()
     env["ROBOSAR_SKIP_SETUP"] = "1"
     env["ROBOSAR_USE_VGLRUN"] = "0"
@@ -94,7 +94,7 @@ def test_workspace_root_script_keeps_stage0_independent_from_search_group():
     )
 
     assert result.returncode == 0, result.stderr
-    assert "stage0_response_deform_demo.launch" in result.stdout
+    assert "response_deform_demo.launch" in result.stdout
     assert "launch_robosar_g.sh" not in result.stdout
     assert "robosar_sim_tepper.launch" not in result.stdout
     assert "robosar_sim_bringup" not in result.stdout
@@ -102,7 +102,7 @@ def test_workspace_root_script_keeps_stage0_independent_from_search_group():
     assert f"world_name:={REFERENCE_WORLD}" in result.stdout
 
 
-def test_stage0_run_script_can_reuse_shared_master_when_requested():
+def test_response_demo_run_script_can_reuse_shared_master_when_requested():
     result = run_dry_script(
         "--shared-master",
         ROS_MASTER_URI="http://example.invalid:12345",
@@ -115,7 +115,7 @@ def test_stage0_run_script_can_reuse_shared_master_when_requested():
     assert "GAZEBO_MASTER_URI=http://example.invalid:12346" in result.stdout
 
 
-def test_stage0_run_script_reports_targeted_cleanup_for_ctrl_c():
+def test_response_demo_run_script_reports_targeted_cleanup_for_ctrl_c():
     result = run_dry_script("--cleanup-only", ROBOSAR_USE_VGLRUN="0")
 
     assert result.returncode == 0, result.stderr
@@ -128,7 +128,7 @@ def test_stage0_run_script_reports_targeted_cleanup_for_ctrl_c():
     assert "tepper" not in result.stdout
 
 
-def test_stage0_run_script_has_ctrl_c_trap_and_managed_process_group():
+def test_response_demo_run_script_has_ctrl_c_trap_and_managed_process_group():
     script_text = SCRIPT.read_text()
 
     assert "trap 'handle_interrupt' INT TERM" in script_text
@@ -137,27 +137,27 @@ def test_stage0_run_script_has_ctrl_c_trap_and_managed_process_group():
     assert 'kill "-$signal" "-$pid"' in script_text
 
 
-def test_stage0_cleanup_tolerates_processes_that_exit_while_scanning_proc():
+def test_response_demo_cleanup_tolerates_processes_that_exit_while_scanning_proc():
     script_text = SCRIPT.read_text()
 
     assert "env_lines=" in script_text
-    assert '2>/dev/null || continue)' in script_text
+    assert 'cat "$env_file" 2>/dev/null | tr' in script_text
     assert "kill_pid_list always succeeds for cleanup callers" in script_text
     assert "pids_with_env_value always succeeds for cleanup callers" in script_text
 
 
-def test_stage0_launch_defaults_to_deform_navigation_demo_world():
-    launch_file = PACKAGE_DIR / "launch" / "stage0_response_deform_demo.launch"
+def test_response_demo_launch_defaults_to_deform_navigation_demo_world():
+    launch_file = PACKAGE_DIR / "launch" / "response_deform_demo.launch"
     launch_xml = launch_file.read_text()
 
     assert "deform_navigation_demo.world" in launch_xml
-    assert "stage0_deform_navigation_reference.world" not in launch_xml
-    assert "stage0_response_corridor.world" not in launch_xml
+    assert "deform_navigation_reference.world" not in launch_xml
+    assert "response_corridor.world" not in launch_xml
     assert '<arg name="frm_type" default="3"/>' in launch_xml
     assert '<arg name="max_frm_type" default="3"/>' in launch_xml
 
 
-def test_stage0_task_start_script_publishes_start_signal():
+def test_response_demo_task_start_script_publishes_start_signal():
     env = os.environ.copy()
     env["ROBOSAR_SKIP_SETUP"] = "1"
     result = subprocess.run(

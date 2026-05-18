@@ -1,0 +1,81 @@
+<launch>
+  <arg name="model" default="burger"/>
+  <arg name="response_group_config" default="$(find robosar_emergency_response)/config/tepper_response_group.yaml"/>
+  <arg name="use_spin_placeholder" default="false"/>
+  <arg name="frm_type" default="3"/>
+  <arg name="max_frm_type" default="3"/>
+  <arg name="formation_interval" default="0.8"/>
+  <arg name="tb_0_x" default="17.00"/>
+  <arg name="tb_0_y" default="8.70"/>
+  <arg name="tb_0_yaw" default="0.0"/>
+  <arg name="tb_1_x" default="16.55"/>
+  <arg name="tb_1_y" default="9.04"/>
+  <arg name="tb_1_yaw" default="0.0"/>
+  <arg name="tb_2_x" default="16.55"/>
+  <arg name="tb_2_y" default="8.36"/>
+  <arg name="tb_2_yaw" default="0.0"/>
+  <arg name="tb_3_x" default="16.10"/>
+  <arg name="tb_3_y" default="8.70"/>
+  <arg name="tb_3_yaw" default="0.0"/>
+
+  <param name="/use_sim_time" value="true"/>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="response_map_to_world"
+        args="0 0 0 0 0 0 1 map world"/>
+
+  <include file="$(find robosar_emergency_response)/launch/response_group_gazebo.launch">
+    <arg name="start_gazebo" value="false"/>
+    <arg name="gz_gui" value="false"/>
+    <arg name="rviz" value="false"/>
+    <arg name="model" value="$(arg model)"/>
+    <arg name="tb_0_x" value="$(arg tb_0_x)"/>
+    <arg name="tb_0_y" value="$(arg tb_0_y)"/>
+    <arg name="tb_0_yaw" value="$(arg tb_0_yaw)"/>
+    <arg name="tb_1_x" value="$(arg tb_1_x)"/>
+    <arg name="tb_1_y" value="$(arg tb_1_y)"/>
+    <arg name="tb_1_yaw" value="$(arg tb_1_yaw)"/>
+    <arg name="tb_2_x" value="$(arg tb_2_x)"/>
+    <arg name="tb_2_y" value="$(arg tb_2_y)"/>
+    <arg name="tb_2_yaw" value="$(arg tb_2_yaw)"/>
+    <arg name="tb_3_x" value="$(arg tb_3_x)"/>
+    <arg name="tb_3_y" value="$(arg tb_3_y)"/>
+    <arg name="tb_3_yaw" value="$(arg tb_3_yaw)"/>
+  </include>
+
+  <include file="$(find robosar_emergency_response)/launch/response_group_deform.launch">
+    <arg name="frm_type" value="$(arg frm_type)"/>
+    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="formation_interval" value="$(arg formation_interval)"/>
+  </include>
+
+  <node pkg="robosar_emergency_response" type="emergency_task_manager_node.py"
+        name="emergency_task_manager_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+    <param name="use_spin_placeholder" value="$(arg use_spin_placeholder)"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="deform_dispatch_bridge_node.py"
+        name="deform_dispatch_bridge_node" output="screen"/>
+
+  <node pkg="robosar_emergency_response" type="response_group_coordinator_node.py"
+        name="response_group_coordinator_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+    <param name="formation_interval" value="$(arg formation_interval)"/>
+    <param name="formation_type" value="$(arg frm_type)"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"
+        name="response_cmd_mux_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_global_info_node.py"
+        name="response_global_info_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_task_controller_node.py"
+        name="response_task_controller_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+  </node>
+</launch>

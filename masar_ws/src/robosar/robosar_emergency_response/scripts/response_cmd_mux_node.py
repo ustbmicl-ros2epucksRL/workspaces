@@ -32,6 +32,7 @@ except ImportError:
 import rospy
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
+from robosar_messages.msg import EmergencyTask
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Int16, String
 from tf.transformations import euler_from_quaternion
@@ -79,6 +80,9 @@ class ResponseCmdMuxNode:
         self.recovery_reverse_clearance = float(
             rospy.get_param("~recovery_reverse_clearance", 0.35)
         )
+        self.transport_task_bypass_scan_safety = bool(
+            rospy.get_param("~transport_task_bypass_scan_safety", False)
+        )
 
         self.deform_cmds = {name: Twist2D() for name in self.robot_names}
         self.task_cmds = {name: Twist2D() for name in self.robot_names}
@@ -92,6 +96,7 @@ class ResponseCmdMuxNode:
         self.robot_speeds = {name: 0.0 for name in self.robot_names}
         self.robot_angular_speeds = {name: 0.0 for name in self.robot_names}
         self.stuck_since = {name: None for name in self.robot_names}
+        self.active_task_type = 0
 
         self.final_pubs = {}
         self.raw_pubs = {}
@@ -102,6 +107,12 @@ class ResponseCmdMuxNode:
             rospy.get_param("~mode_topic", "/response_group/behavior_mode"),
             String,
             self._mode_callback,
+            queue_size=10,
+        )
+        self.active_task_sub = rospy.Subscriber(
+            rospy.get_param("~active_task_topic", "/response_group/active_task"),
+            EmergencyTask,
+            self._active_task_callback,
             queue_size=10,
         )
 
@@ -150,6 +161,9 @@ class ResponseCmdMuxNode:
 
     def _mode_callback(self, msg):
         self.mode = msg.data
+
+    def _active_task_callback(self, msg):
+        self.active_task_type = int(msg.task_type)
 
     def _deform_callback(self, msg, robot_name):
         self.deform_cmds[robot_name] = Twist2D(msg.linear.x, msg.angular.z)
@@ -208,58 +222,61 @@ class ResponseCmdMuxNode:
 
     def _timer_callback(self, _event):
         now = rospy.Time.now().to_sec()
-        for name in self.robot_names:
-            raw = select_command(
-                mode=self.mode,
-                deform_cmd=self.deform_cmds[name],
-                task_cmd=self.task_cmds[name],
-                now=now,
-                last_deform_time=self.last_deform_times[name],
-                last_task_time=self.last_task_times[name],
-                command_timeout=self.command_timeout,
-                safety_min_range=None,
-            )
-            safe = select_command(
-                mode=self.mode,
-                deform_cmd=self.deform_cmds[name],
-                task_cmd=self.task_cmds[name],
-                now=now,
-                last_deform_time=self.last_deform_times[name],
-                last_task_time=self.last_task_times[name],
-                command_timeout=self.command_timeout,
-                safety_min_range=None,
-            )
-            sectors = self.scan_sectors[name]
-            safe = apply_scan_safety(
-                command=safe,
-                sectors=sectors,
-                stop_distance=self.stop_distance,
-                slowdown_distance=self.slowdown_distance,
-                escape_turn_speed=self.escape_turn_speed,
-                side_stop_distance=self.side_stop_distance,
-                side_crawl_speed=self.side_crawl_speed,
-            )
-            safe = apply_stuck_recovery(
-                command=safe,
-                sectors=sectors,
-                is_stuck=self._update_stuck_state(name, raw, sectors, now),
-                reverse_speed=self.recovery_reverse_speed,
-                reverse_clearance=self.recovery_reverse_clearance,
-                escape_turn_speed=self.escape_turn_speed,
-            )
-            raw_msg = self._to_twist(raw)
-            safe_msg = self._to_twist(safe)
-            self.raw_pubs[name].publish(raw_msg)
-            self.safe_pubs[name].publish(safe_msg)
-            self.final_pubs[name].publish(safe_msg)
-            if self.publish_formation_avoid:
-                self.avoid_states[name] = hysteresis_avoid_state(
-                    previous_state=self.avoid_states[name],
-                    min_range=self.min_ranges_all[name],
-                    reduce_distance=self.formation_reduce_distance,
-                    clear_distance=self.formation_clear_distance,
+        try:
+            for name in self.robot_names:
+                raw = select_command(
+                    mode=self.mode,
+                    deform_cmd=self.deform_cmds[name],
+                    task_cmd=self.task_cmds[name],
+                    now=now,
+                    last_deform_time=self.last_deform_times[name],
+                    last_task_time=self.last_task_times[name],
+                    command_timeout=self.command_timeout,
+                    safety_min_range=None,
                 )
-                self.avoid_pubs[name].publish(Int16(1 if self.avoid_states[name] else 0))
+                safe = raw
+                sectors = self.scan_sectors[name]
+                bypass_scan_safety = (
+                    self.mode == "TASK_CONTROL"
+                    and self.active_task_type == EmergencyTask.BOX
+                    and self.transport_task_bypass_scan_safety
+                )
+                if not bypass_scan_safety:
+                    safe = apply_scan_safety(
+                        command=safe,
+                        sectors=sectors,
+                        stop_distance=self.stop_distance,
+                        slowdown_distance=self.slowdown_distance,
+                        escape_turn_speed=self.escape_turn_speed,
+                        side_stop_distance=self.side_stop_distance,
+                        side_crawl_speed=self.side_crawl_speed,
+                    )
+                    safe = apply_stuck_recovery(
+                        command=safe,
+                        sectors=sectors,
+                        is_stuck=self._update_stuck_state(name, raw, sectors, now),
+                        reverse_speed=self.recovery_reverse_speed,
+                        reverse_clearance=self.recovery_reverse_clearance,
+                        escape_turn_speed=self.escape_turn_speed,
+                    )
+                else:
+                    self.stuck_since[name] = None
+                raw_msg = self._to_twist(raw)
+                safe_msg = self._to_twist(safe)
+                self.raw_pubs[name].publish(raw_msg)
+                self.safe_pubs[name].publish(safe_msg)
+                self.final_pubs[name].publish(safe_msg)
+                if self.publish_formation_avoid:
+                    self.avoid_states[name] = hysteresis_avoid_state(
+                        previous_state=self.avoid_states[name],
+                        min_range=self.min_ranges_all[name],
+                        reduce_distance=self.formation_reduce_distance,
+                        clear_distance=self.formation_clear_distance,
+                    )
+                    self.avoid_pubs[name].publish(Int16(1 if self.avoid_states[name] else 0))
+        except rospy.ROSException:
+            # Topic shutdown during roslaunch teardown is expected.
+            return
 
     def _update_stuck_state(self, robot_name, raw_command, sectors, now):
         if not self.stuck_recovery_enabled or sectors is None:

@@ -17,7 +17,7 @@ import numpy as np
 import rospy
 import tf
 from apriltag_ros.msg import AprilTagDetection, AprilTagDetectionArray
-from gazebo_msgs.srv import DeleteModel, SpawnModel
+from gazebo_msgs.srv import DeleteModel, GetWorldProperties, SpawnModel
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from nav_msgs.msg import OccupancyGrid
 from robosar_messages.msg import EmergencyObject, EmergencyObjectArray
@@ -1054,11 +1054,16 @@ class AprilTagSim:
         try:
             rospy.wait_for_service("/gazebo/spawn_sdf_model", timeout=0.2)
             rospy.wait_for_service("/gazebo/delete_model", timeout=0.2)
+            rospy.wait_for_service("/gazebo/get_world_properties", timeout=0.2)
         except rospy.ROSException:
             return
 
         spawn_model = rospy.ServiceProxy("/gazebo/spawn_sdf_model", SpawnModel)
         delete_model = rospy.ServiceProxy("/gazebo/delete_model", DeleteModel)
+        get_world_properties = rospy.ServiceProxy(
+            "/gazebo/get_world_properties",
+            GetWorldProperties,
+        )
 
         desired_models = []
         for idx, record in enumerate(self.victim_records):
@@ -1073,11 +1078,24 @@ class AprilTagSim:
                 ("robosar_target_zone_{}".format(idx), self.make_target_zone_sdf)
             )
 
+        try:
+            existing_models = set(get_world_properties().model_names)
+        except rospy.ServiceException as exc:
+            rospy.logwarn_throttle(2.0, "Failed to read Gazebo model list: %s", exc)
+            return
+
         for model_name, _ in desired_models:
+            if model_name not in existing_models:
+                continue
             try:
                 delete_model(model_name)
-            except rospy.ServiceException:
-                pass
+            except rospy.ServiceException as exc:
+                rospy.logwarn_throttle(
+                    2.0,
+                    "Failed to delete existing Gazebo emergency entity '%s': %s",
+                    model_name,
+                    exc,
+                )
 
         def spawn_checked(model_name, model_xml):
             result = spawn_model(model_name, model_xml, "", self.build_zero_pose(), "world")

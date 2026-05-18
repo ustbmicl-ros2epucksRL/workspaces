@@ -1,7 +1,7 @@
 # 第 0 阶段响应组运行配置。
 # 本文件由响应组协调节点和速度安全融合节点加载。
 # 编队规划器的部分参数仍在 response_plan_manager_one_run.xml 中配置。
-# 五个阶段目标点在 stage0_goal_sequence.yaml 中配置。
+# 五个阶段目标点在 response_goal_sequence.yaml 中配置。
 
 # 响应组四个机器人的命名空间。
 robot_names: [tb_0, tb_1, tb_2, tb_3]
@@ -9,20 +9,7 @@ robot_names: [tb_0, tb_1, tb_2, tb_3]
 # 状态、目标和可视化标记使用的全局坐标系。
 frame_id: map
 
-# 相邻编队槽位的标称间距，单位为米。
-formation_interval: 0.8
-
-# 协调节点初始使用的编队类型。数值越大队形越宽，运行中可收缩到 1。
-formation_type: 3
-
-# 编队规划中的领航机器人编号。
-leader_id: 0
-
-# 响应组机器人数量。
-tb_num: 4
-
-# 轨迹优化时纳入考虑的邻近队友数量。
-other_num_in_opti: 2
+# 编队槽位间距和初始队形由 launch 统一传给 DEFORM 与协调节点。
 
 # 严格槽位到达判定半径，单位为米。
 arrival_radius: 0.30

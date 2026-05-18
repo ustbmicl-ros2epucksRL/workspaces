@@ -3,7 +3,7 @@
   <arg name="rviz" default="true"/>
   <arg name="model" default="burger"/>
   <arg name="world_name" default="$(find robosar_emergency_response)/worlds/deform_navigation_demo.world"/>
-  <arg name="goal_sequence_file" default="$(find robosar_emergency_response)/config/stage0_goal_sequence.yaml"/>
+  <arg name="goal_sequence_file" default="$(find robosar_emergency_response)/config/response_goal_sequence.yaml"/>
   <arg name="response_group_config" default="$(find robosar_emergency_response)/config/response_group.yaml"/>
   <arg name="wait_for_start" default="true"/>
   <arg name="start_delay" default="1.0"/>
@@ -42,6 +42,8 @@
   <node pkg="robosar_emergency_response" type="response_group_coordinator_node.py"
         name="response_group_coordinator_node" output="screen">
     <rosparam file="$(arg response_group_config)" command="load"/>
+    <param name="formation_interval" value="$(arg formation_interval)"/>
+    <param name="formation_type" value="$(arg frm_type)"/>
   </node>
 
   <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"

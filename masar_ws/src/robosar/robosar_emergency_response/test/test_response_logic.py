@@ -365,7 +365,7 @@ def test_apply_stuck_recovery_backs_away_and_turns_toward_open_side():
     assert command == Twist2D(-0.06, 0.55)
 
 
-def test_prepare_nav_goal_preserves_stage0_goal_identity_and_pose():
+def test_prepare_nav_goal_preserves_response_demo_goal_identity_and_pose():
     goal = GoalSpec(goal_id=7, x=-3.0, y=1.25, yaw=math.pi / 2, frame_id="map")
 
     nav_goal = prepare_nav_goal(goal)

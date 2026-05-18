@@ -1,6 +1,7 @@
 <launch>
   <arg name="sim_map_yaml" default="$(find robosar_sim_bringup)/worlds/gazebo_config/maps/tepper.yaml"/>
   <arg name="sim_scene" default="tepper"/>
+  <arg name="rviz" default="true"/>
   <param name="/use_sim_time" value="true"/>
   
   <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
@@ -23,6 +24,6 @@
     <param name="publish_hz" value="10.0" />
   </node>
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
+  <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
   </node>
 </launch>

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish the stage-0 response-group goal sequence."""
+"""Publish the response-demo response-group goal sequence."""
 
 import os
 import sys
@@ -30,10 +30,10 @@ class ResponseGoalSequenceNode:
         self.goal_topic = rospy.get_param("~goal_topic", "/response_group/formation_goal")
         self.task_topic = rospy.get_param("~task_topic", "/response_group/active_task")
         self.mode_topic = rospy.get_param("~mode_topic", "/response_group/behavior_mode")
-        self.state_topic = rospy.get_param("~state_topic", "/response_group/stage0_state")
+        self.state_topic = rospy.get_param("~state_topic", "/response_group/response_demo_state")
         self.status_topic = rospy.get_param("~status_topic", "/response_group/status")
         self.goal_marker_topic = rospy.get_param(
-            "~goal_marker_topic", "/response_group/stage0_goal_markers"
+            "~goal_marker_topic", "/response_group/response_demo_goal_markers"
         )
         self.robot_names = rospy.get_param("~robot_names", ["tb_0", "tb_1", "tb_2", "tb_3"])
         self.wait_for_start = as_bool(rospy.get_param("~wait_for_start", True))
@@ -116,7 +116,7 @@ class ResponseGoalSequenceNode:
             marker = Marker()
             marker.header.stamp = rospy.Time.now()
             marker.header.frame_id = goal.frame_id
-            marker.ns = "stage0_response_goals"
+            marker.ns = "response_demo_goals"
             marker.id = goal.goal_id
             marker.type = Marker.CYLINDER
             marker.action = Marker.ADD
@@ -136,7 +136,7 @@ class ResponseGoalSequenceNode:
 
             label = Marker()
             label.header = marker.header
-            label.ns = "stage0_response_goal_labels"
+            label.ns = "response_demo_goal_labels"
             label.id = goal.goal_id
             label.type = Marker.TEXT_VIEW_FACING
             label.action = Marker.ADD

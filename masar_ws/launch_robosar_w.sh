@@ -1,39 +1,67 @@
 #!/usr/bin/env bash
+# 作用：启动 RoboSAR 原有 Webots 桥接/搜索任务闭环栈，包括地图上下文、SLAM、任务生成、导航调度和控制 GUI。
+# 用法：./launch_robosar_w.sh [选项]
+# 常用示例：./launch_robosar_w.sh --vglrun
+# 常用示例：./launch_robosar_w.sh --no-rviz --no-vglrun
+# 常用示例：./launch_robosar_w.sh --dry-run --sim-scene tepper
+# 说明：运行 ./launch_robosar_w.sh --help 可查看完整参数；按 Ctrl+C 会关闭本脚本拉起的进程组。
 
-set -e
-(set -o pipefail) 2>/dev/null || true
+set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR}"
-WORKSPACE_SETUP="$WORKSPACE_DIR/devel/setup.bash"
-LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
-GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
-SCENE_CONFIG_PATH="$WORKSPACE_DIR/src/robosar/robosar_sim_bringup/config/sim_scenes.json"
-SHARED_SCENE_STATE_FILE="${ROBOSAR_SCENE_STATE_FILE:-$(cd "$WORKSPACE_DIR/.." && pwd)/.robosar_scene_state.json}"
+usage() {
+  cat <<'EOF'
+作用：
+  启动 RoboSAR ROS1 Webots 桥接/搜索任务闭环栈。
+  启动顺序保持原始工程逻辑：roscore -> agent -> Webots ROS 侧桥接 -> SLAM -> 任务生成 -> 导航/控制 -> GUI。
 
-pids=()
-SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
-# Gazebo task-generator geofence is [2,19,0,18] in the original static-map frame.
-# Webots + bridge + SLAM currently shift that frame into the negative quadrant, so
-# use the translated bounds here while keeping Gazebo's shared launch defaults intact.
-WEBOTS_TASK_GEOFENCE="${WEBOTS_TASK_GEOFENCE:-[-20.0,20.0,-20.0,20.0]}"
+用法：
+  ./launch_robosar_w.sh [选项]
 
-source_ros_env() {
-  [ -f "/opt/ros/noetic/setup.bash" ] && . /opt/ros/noetic/setup.bash
+选项：
+  --rviz              设置 rviz:=true，显示 RViz。
+  --no-rviz           设置 rviz:=false，不显示 RViz。
+  --vglrun            使用 vglrun -d ${ROBOSAR_VGLRUN_DEVICE} 包装 Webots ROS 侧桥接 launch。
+  --no-vglrun         禁用 vglrun。
+  --sim-scene         设置仿真场景名，覆盖 ROBOSAR_SIM_SCENE。
+  --sim-map-yaml      设置静态地图 yaml，覆盖 ROBOSAR_SIM_MAP_YAML。
+  --task-geofence     设置任务生成器 geofence，默认读取 WEBOTS_TASK_GEOFENCE。
+  --slam-node-type    设置 SLAM 节点类型，默认读取 SLAM_NODE_TYPE 或 sync_slam_toolbox_node。
+  --dry-run           只打印启动顺序和命令，不真正启动 ROS/Webots 桥接。
+  -h, --help          显示本说明。
 
-  if [ -f "$WORKSPACE_SETUP" ]; then
-    . "$WORKSPACE_SETUP"
-  elif [ -f "$LEGACY_WORKSPACE_SETUP" ]; then
-    . "$LEGACY_WORKSPACE_SETUP"
-  else
-    echo "[error] no catkin workspace setup found."
-    echo "  looked for: $WORKSPACE_SETUP"
-    echo "  fallback:   $LEGACY_WORKSPACE_SETUP"
-    exit 1
-  fi
+环境变量：
+  WORKSPACE_DIR             masar_ws 工作空间路径；默认是脚本所在目录。
+  ROBOSAR_USE_VGLRUN        auto、1/true 或 0/false；默认 auto。
+  ROBOSAR_VGLRUN_DEVICE     vglrun 使用的 DRM 设备；默认 /dev/dri/card0。
+  ROBOSAR_RVIZ              RViz 默认开关；默认 true。
+  ROBOSAR_SIM_SCENE         Webots/Gazebo 共享场景名覆盖。
+  ROBOSAR_SIM_MAP_YAML      静态地图 yaml 覆盖。
+  ROBOSAR_SCENE_STATE_FILE  GUI 写入的共享场景状态文件。
+  WEBOTS_TASK_GEOFENCE      Webots 任务生成 geofence；默认 [-20.0,20.0,-20.0,20.0]。
+  SLAM_NODE_TYPE            SLAM 节点类型；默认 sync_slam_toolbox_node。
+EOF
 }
 
-source_ros_env
+die() {
+  echo "[robosar-w][error] $*" >&2
+  exit 1
+}
+
+quote_args() {
+  printf "%q " "$@"
+}
+
+source_ros_env() {
+  [[ -f "/opt/ros/noetic/setup.bash" ]] && source "/opt/ros/noetic/setup.bash"
+
+  if [[ -f "$WORKSPACE_SETUP" ]]; then
+    source "$WORKSPACE_SETUP"
+  elif [[ -f "$LEGACY_WORKSPACE_SETUP" ]]; then
+    source "$LEGACY_WORKSPACE_SETUP"
+  else
+    die "no catkin workspace setup found. looked for: $WORKSPACE_SETUP; fallback: $LEGACY_WORKSPACE_SETUP"
+  fi
+}
 
 resolve_scene_context() {
   local scene_lines
@@ -93,82 +121,225 @@ PY
   ROBOSAR_SIM_SCENE_SOURCE="${scene_lines[2]}"
 }
 
-resolve_scene_context
+start_process_group() {
+  local label="$1"
+  local cmd="$2"
+  local wait_sec="${3:-1}"
 
-echo "[scene] name=${ROBOSAR_SIM_SCENE_NAME} source=${ROBOSAR_SIM_SCENE_SOURCE}"
-echo "[scene] map=${ROBOSAR_SIM_MAP_PATH}"
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[robosar-w][dry-run] ${label}: ${cmd}"
+    return
+  fi
 
-start() {
-  local cmd="$1"
-  local wait_sec="${2:-1}"
-  setsid bash -lc "source_ros_env() { [ -f \"/opt/ros/noetic/setup.bash\" ] && . /opt/ros/noetic/setup.bash; if [ -f \"$WORKSPACE_SETUP\" ]; then . \"$WORKSPACE_SETUP\"; elif [ -f \"$LEGACY_WORKSPACE_SETUP\" ]; then . \"$LEGACY_WORKSPACE_SETUP\"; else echo \"[error] no catkin workspace setup found.\"; exit 1; fi; }; source_ros_env; $cmd" &
+  setsid bash -lc "
+    set -e
+    WORKSPACE_SETUP=$(printf "%q" "$WORKSPACE_SETUP")
+    LEGACY_WORKSPACE_SETUP=$(printf "%q" "$LEGACY_WORKSPACE_SETUP")
+    source_ros_env() {
+      [ -f /opt/ros/noetic/setup.bash ] && . /opt/ros/noetic/setup.bash
+      if [ -f \"\$WORKSPACE_SETUP\" ]; then
+        . \"\$WORKSPACE_SETUP\"
+      elif [ -f \"\$LEGACY_WORKSPACE_SETUP\" ]; then
+        . \"\$LEGACY_WORKSPACE_SETUP\"
+      else
+        echo '[robosar-w][error] no catkin setup found' >&2
+        exit 1
+      fi
+    }
+    source_ros_env
+    ${cmd}
+  " &
+
   local pid=$!
-  pids+=("$pid")
-  echo "[start] ($pid) $cmd"
+  PIDS+=("$pid")
+  echo "[robosar-w][start] ($pid) ${label}: ${cmd}"
   sleep "$wait_sec"
 }
 
-cleanup() {                            # 定义清理函数：当按 Ctrl+C 或收到 TERM 时执行
-  echo -e "\n[cleanup] stopping all launched processes..."
-
-  for pid in "${pids[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then            # kill -0 只是探测进程是否存在
-      echo "  -> SIGINT to PGID $pid"
-      kill -INT -"${pid}" 2>/dev/null || true      # 对“负 PID”发信号 = 发给该 PID 的整个进程组
+wait_for_roscore() {
+  local i
+  for i in $(seq 1 30); do
+    if rostopic list >/dev/null 2>&1; then
+      echo "[robosar-w] roscore is ready (took ~${i}s)"
+      return
     fi
+    sleep 1
   done
-  sleep 2                                          # 等 2 秒，给程序收尾时间
+  die "roscore did not become ready within 30s"
+}
 
-  # 2) 还活着的发 SIGTERM（更强硬一些的正常退出信号）
-  for pid in "${pids[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-      echo "  -> SIGTERM to PGID $pid"
-      kill -TERM -"${pid}" 2>/dev/null || true
-    fi
+start_roscore() {
+  if [[ "$DRY_RUN" == "1" ]]; then
+    echo "[robosar-w][dry-run] roscore: roscore"
+    return
+  fi
+
+  echo "[robosar-w][start] launching roscore..."
+  setsid roscore &
+  local pid=$!
+  PIDS+=("$pid")
+  wait_for_roscore
+}
+
+cleanup() {
+  local pid
+  echo
+  echo "[robosar-w][cleanup] stopping all launched processes..."
+
+  for pid in "${PIDS[@]}"; do
+    echo "  -> SIGINT to PGID $pid"
+    kill -INT -"${pid}" 2>/dev/null || true
   done
   sleep 2
 
-  # 3) 仍不退出就 KILL 兜底（不可恢复）
-  for pid in "${pids[@]}"; do
-    if kill -0 "$pid" 2>/dev/null; then
-      echo "  -> SIGKILL to PGID $pid (force)"
-      kill -KILL -"${pid}" 2>/dev/null || true
-    fi
+  for pid in "${PIDS[@]}"; do
+    echo "  -> SIGTERM to PGID $pid"
+    kill -TERM -"${pid}" 2>/dev/null || true
   done
+  sleep 2
 
+  for pid in "${PIDS[@]}"; do
+    echo "  -> SIGKILL to PGID $pid"
+    kill -KILL -"${pid}" 2>/dev/null || true
+  done
 }
 
-trap 'cleanup; exit 130' INT TERM
+handle_interrupt() {
+  cleanup
+  exit 130
+}
 
-# Step 1: start roscore explicitly and wait until it's ready
-echo "[start] launching roscore..."
-setsid roscore &
-ROSCORE_PID=$!
-pids+=("$ROSCORE_PID")
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR}"
+WORKSPACE_SETUP="$WORKSPACE_DIR/devel/setup.bash"
+LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
+GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
+SCENE_CONFIG_PATH="$WORKSPACE_DIR/src/robosar/robosar_sim_bringup/config/sim_scenes.json"
+SHARED_SCENE_STATE_FILE="${ROBOSAR_SCENE_STATE_FILE:-$(cd "$WORKSPACE_DIR/.." && pwd)/.robosar_scene_state.json}"
 
-for i in $(seq 1 30); do
-  if rostopic list >/dev/null 2>&1; then
-    echo "[start] roscore is ready (took ~${i}s)"
-    break
-  fi
-  sleep 1
+DRY_RUN=0
+RVIZ="${ROBOSAR_RVIZ:-true}"
+USE_VGLRUN="${ROBOSAR_USE_VGLRUN:-auto}"
+VGLRUN_DEVICE="${ROBOSAR_VGLRUN_DEVICE:-/dev/dri/card0}"
+SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
+WEBOTS_TASK_GEOFENCE="${WEBOTS_TASK_GEOFENCE:-[-20.0,20.0,-20.0,20.0]}"
+PIDS=()
+
+while (($#)); do
+  case "$1" in
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      ;;
+    --rviz)
+      RVIZ=true
+      ;;
+    --no-rviz)
+      RVIZ=false
+      ;;
+    --vglrun)
+      USE_VGLRUN=1
+      ;;
+    --no-vglrun)
+      USE_VGLRUN=0
+      ;;
+    --sim-scene)
+      shift
+      [[ $# -gt 0 ]] || die "--sim-scene requires a value"
+      ROBOSAR_SIM_SCENE="$1"
+      ;;
+    --sim-map-yaml)
+      shift
+      [[ $# -gt 0 ]] || die "--sim-map-yaml requires a value"
+      ROBOSAR_SIM_MAP_YAML="$1"
+      ;;
+    --task-geofence)
+      shift
+      [[ $# -gt 0 ]] || die "--task-geofence requires a value"
+      WEBOTS_TASK_GEOFENCE="$1"
+      ;;
+    --slam-node-type)
+      shift
+      [[ $# -gt 0 ]] || die "--slam-node-type requires a value"
+      SLAM_NODE_TYPE="$1"
+      ;;
+    *)
+      die "unknown option: $1"
+      ;;
+  esac
+  shift
 done
 
-# IMPORTANT: set sim-time BEFORE starting any ROS nodes.
-# Otherwise early-started nodes (especially roscpp SLAM) may latch wall-time
-# and publish TF with epoch timestamps, causing TF extrapolation errors.
-echo "[start] setting /use_sim_time=true before launching nodes..."
-rosparam set /use_sim_time true
-sleep 1
+WRAPPER=()
+case "${USE_VGLRUN,,}" in
+  auto)
+    if command -v vglrun >/dev/null 2>&1 && [[ -e "$VGLRUN_DEVICE" ]]; then
+      WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
+    fi
+    ;;
+  1|true|yes|on)
+    WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
+    ;;
+  0|false|no|off)
+    ;;
+  *)
+    die "ROBOSAR_USE_VGLRUN must be auto, 1/true, or 0/false; got '$USE_VGLRUN'."
+    ;;
+esac
 
-# —— 逐条启动（按需改命令）——
-start "roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch"     # 1 启动机器人 agent
-start "roslaunch robosar_sim_bringup robosar_sim_w.launch sim_scene:=${ROBOSAR_SIM_SCENE_NAME} sim_map_yaml:=${ROBOSAR_SIM_MAP_PATH}"               # 2 启动仿真服务节点
-start "roslaunch slam_toolbox robosar_mapping_sim_w.launch slam_node_type:=${SLAM_NODE_TYPE}"  # 3 启动 SLAM/mapping
-start "roslaunch robosar_task_generator task_generator.launch geofence:='${WEBOTS_TASK_GEOFENCE}'"  # 4 Webots 侧任务生成器参数覆盖
-start "roslaunch robosar_navigation mission_executive.launch"                  # 5 导航/任务执行
-start "rosrun robosar_controller robosar_traffic_controller_node"              # 6 控制器
-start "rosrun robosar_task_allocator mission_commander.py -s=true -t='high'"   # 7 任务分配/调度器
-start "python3 \"$GUI_SCRIPT\""                                                # 8 GUI
+resolve_scene_context
 
-wait                                      # 等待所有后台子进程退出；当你 Ctrl+C 时，会触发 trap -> cleanup -> 再退出
+VGLRUN_CMD=""
+if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
+  VGLRUN_CMD="$(quote_args "${WRAPPER[@]}")"
+fi
+
+WEBOTS_SIM_CMD="${VGLRUN_CMD}roslaunch robosar_sim_bringup robosar_sim_w.launch sim_scene:=${ROBOSAR_SIM_SCENE_NAME} sim_map_yaml:=${ROBOSAR_SIM_MAP_PATH} rviz:=${RVIZ}"
+
+echo "[robosar-w] workspace=$WORKSPACE_DIR"
+echo "[robosar-w] scene=${ROBOSAR_SIM_SCENE_NAME} source=${ROBOSAR_SIM_SCENE_SOURCE}"
+echo "[robosar-w] map=${ROBOSAR_SIM_MAP_PATH}"
+echo "[robosar-w] rviz=$RVIZ slam_node_type=$SLAM_NODE_TYPE geofence=$WEBOTS_TASK_GEOFENCE"
+if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
+  echo "[robosar-w] using vglrun device=$VGLRUN_DEVICE"
+else
+  echo "[robosar-w] vglrun disabled or unavailable"
+fi
+
+if [[ "$DRY_RUN" == "0" ]]; then
+  source_ros_env
+
+  if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
+    command -v vglrun >/dev/null 2>&1 || die "vglrun requested but not found in PATH."
+    [[ -e "$VGLRUN_DEVICE" ]] || die "vglrun device not found: $VGLRUN_DEVICE"
+  fi
+
+  trap 'handle_interrupt' INT TERM
+fi
+
+start_roscore
+
+if [[ "$DRY_RUN" == "0" ]]; then
+  echo "[robosar-w] setting /use_sim_time=true before launching nodes..."
+  rosparam set /use_sim_time true
+else
+  echo "[robosar-w][dry-run] rosparam: rosparam set /use_sim_time true"
+fi
+
+start_process_group "agent_bringup" "roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch" 1
+start_process_group "webots_ros_bridge" "$WEBOTS_SIM_CMD" 1
+start_process_group "slam" "roslaunch slam_toolbox robosar_mapping_sim_w.launch slam_node_type:=${SLAM_NODE_TYPE}" 1
+start_process_group "task_generator" "roslaunch robosar_task_generator task_generator.launch geofence:='${WEBOTS_TASK_GEOFENCE}'" 1
+start_process_group "mission_executive" "roslaunch robosar_navigation mission_executive.launch" 1
+start_process_group "traffic_controller" "rosrun robosar_controller robosar_traffic_controller_node" 1
+start_process_group "mission_commander" "rosrun robosar_task_allocator mission_commander.py -s=true -t='high'" 1
+start_process_group "gui" "python3 $(printf "%q" "$GUI_SCRIPT")" 1
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  exit 0
+fi
+
+wait

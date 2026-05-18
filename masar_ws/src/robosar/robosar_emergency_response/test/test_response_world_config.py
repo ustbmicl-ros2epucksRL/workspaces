@@ -6,8 +6,8 @@ import yaml
 
 PACKAGE_DIR = Path(__file__).resolve().parents[1]
 WORLD = PACKAGE_DIR / "worlds" / "deform_navigation_demo.world"
-OLD_WORLD = PACKAGE_DIR / "worlds" / "stage0_deform_navigation_reference.world"
-GOAL_SEQUENCE = PACKAGE_DIR / "config" / "stage0_goal_sequence.yaml"
+OLD_WORLD = PACKAGE_DIR / "worlds" / "deform_navigation_reference.world"
+GOAL_SEQUENCE = PACKAGE_DIR / "config" / "response_goal_sequence.yaml"
 DEFORM_ENV = (
     PACKAGE_DIR.parents[1]
     / "robosar_deform_vendor"
@@ -52,7 +52,7 @@ def _world_model_names():
     return {model.attrib["name"] for model in tree.findall(".//model")}
 
 
-def _stage0_goals():
+def _response_demo_goals():
     with GOAL_SEQUENCE.open("r", encoding="utf-8") as stream:
         return yaml.safe_load(stream)["goals"]
 
@@ -67,12 +67,12 @@ def _ground_height():
         return float(yaml.safe_load(stream)["grid_map"]["ground_height"])
 
 
-def test_stage0_world_uses_requested_demo_name_only():
+def test_response_demo_world_uses_requested_demo_name_only():
     assert WORLD.exists()
     assert not OLD_WORLD.exists()
 
 
-def test_stage0_world_contains_reference_demo_geometry():
+def test_response_demo_world_contains_reference_demo_geometry():
     names = _world_model_names()
 
     assert {"boundary_north", "boundary_south", "boundary_west", "boundary_east"} <= names
@@ -80,22 +80,22 @@ def test_stage0_world_contains_reference_demo_geometry():
     assert "elliptical_obstacle" in names
 
 
-def test_stage0_goal_markers_are_not_gazebo_obstacles():
+def test_response_demo_goal_markers_are_not_gazebo_obstacles():
     names = _world_model_names()
 
     assert not [name for name in names if name.startswith("white_goal_marker_")]
 
     tree = ET.parse(WORLD)
-    for goal in _stage0_goals():
+    for goal in _response_demo_goals():
         marker = tree.find(".//model[@name='yellow_goal_marker_{}']".format(goal["id"]))
         assert marker is not None
         assert marker.find(".//collision") is None
 
 
-def test_stage0_gazebo_goal_markers_are_yellow_and_match_goal_sequence():
+def test_response_demo_gazebo_goal_markers_are_yellow_and_match_goal_sequence():
     tree = ET.parse(WORLD)
 
-    for goal in _stage0_goals():
+    for goal in _response_demo_goals():
         marker = tree.find(".//model[@name='yellow_goal_marker_{}']".format(goal["id"]))
         assert marker is not None
         pose = [float(value) for value in marker.findtext("pose").split()]
@@ -110,10 +110,10 @@ def test_stage0_gazebo_goal_markers_are_yellow_and_match_goal_sequence():
         assert marker.findtext(".//material/diffuse").startswith("1.0 0.86 0.0")
 
 
-def test_stage0_goal_markers_are_visible_in_gazebo_but_hidden_from_robot_depth_cameras():
+def test_response_demo_goal_markers_are_visible_in_gazebo_but_hidden_from_robot_depth_cameras():
     tree = ET.parse(WORLD)
 
-    for goal in _stage0_goals():
+    for goal in _response_demo_goals():
         visual = tree.find(".//model[@name='yellow_goal_marker_{}']//visual".format(goal["id"]))
         assert visual is not None
         assert int(visual.findtext("visibility_flags"), 0) == GOAL_MARKER_VISIBILITY_FLAG
@@ -148,11 +148,11 @@ def test_deform_grid_map_ignores_low_active_goal_region_obstacles_only():
     assert "shouldIgnoreGoalRegionPoint(md_.proj_points_[i])" in source
 
 
-def test_stage0_goal_markers_stay_below_the_ground_filter():
+def test_response_demo_goal_markers_stay_below_the_ground_filter():
     tree = ET.parse(WORLD)
     marker_heights = []
 
-    for goal in _stage0_goals():
+    for goal in _response_demo_goals():
         marker = tree.find(".//model[@name='yellow_goal_marker_{}']".format(goal["id"]))
         assert marker is not None
         pose = [float(value) for value in marker.findtext("pose").split()]
@@ -163,21 +163,21 @@ def test_stage0_goal_markers_stay_below_the_ground_filter():
     assert _ground_height() < _mobile_robot_height()
 
 
-def test_stage0_goal_sequence_node_publishes_rviz_goal_markers():
+def test_response_demo_goal_sequence_node_publishes_rviz_goal_markers():
     node = (PACKAGE_DIR / "scripts" / "response_goal_sequence_node.py").read_text()
 
-    assert "/response_group/stage0_goal_markers" in node
+    assert "/response_group/response_demo_goal_markers" in node
     assert "MarkerArray" in node
     assert "marker.color.r = 1.0" in node
 
 
-def test_stage0_goal_sequence_has_five_safe_waypoints():
-    goals = _stage0_goals()
+def test_response_demo_goal_sequence_has_five_safe_waypoints():
+    goals = _response_demo_goals()
     assert len(goals) == 5
     assert [goal["id"] for goal in goals] == [0, 1, 2, 3, 4]
 
     for goal in goals:
-        assert not _inside_stage0_obstacle(goal["x"], goal["y"])
+        assert not _inside_response_demo_obstacle(goal["x"], goal["y"])
 
 
 def test_first_goal_keeps_single_file_tail_clear_of_west_wall():
@@ -191,13 +191,13 @@ def test_first_goal_keeps_single_file_tail_clear_of_west_wall():
     assert first_goal["x"] + single_file_tail_offset >= west_wall_inner_x + 0.30
 
 
-def _inside_stage0_obstacle(x, y):
+def _inside_response_demo_obstacle(x, y):
     inside_rectangle = -3.25 <= x <= -1.45 and -3.5 <= y <= 3.5
     inside_ellipse_footprint = 1.35 <= x <= 3.35 and -3.8 <= y <= 3.8
     return inside_rectangle or inside_ellipse_footprint
 
 
-def test_stage0_world_has_centered_square_boundary():
+def test_response_demo_world_has_centered_square_boundary():
     tree = ET.parse(WORLD)
     north = tree.find(".//model[@name='boundary_north']")
     south = tree.find(".//model[@name='boundary_south']")
@@ -216,7 +216,7 @@ def test_stage0_world_has_centered_square_boundary():
     assert (north_size[0], west_size[1]) == (12.4, 12.4)
 
 
-def test_stage0_world_has_side_by_side_obstacles_with_a_central_passage():
+def test_response_demo_world_has_side_by_side_obstacles_with_a_central_passage():
     tree = ET.parse(WORLD)
     rect = tree.find(".//model[@name='rectangular_wall_obstacle']")
     ellipse = tree.find(".//model[@name='elliptical_obstacle']")

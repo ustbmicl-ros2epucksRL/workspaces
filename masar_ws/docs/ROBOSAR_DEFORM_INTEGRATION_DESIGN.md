@@ -3,10 +3,10 @@
 本文基于当前可读代码重新梳理 `/root/workspace/masar_ws` 与 `/root/workspace/DEFORM` 的实现边界，并按当前诉求把阶段定义调整为：
 
 - 第 0 阶段：只做 ROS1+Gazebo+RViz 下的 4 台 TurtleBot 应急组可变编队导航闭环。
-- 第一阶段：搜索组先发现/发布应急任务点，再由 4 台 TurtleBot 应急组可变编队导航到目标，到位后切任务控制器接口并自转 6 秒，随后继续下一个任务。
-- 第二阶段：后续再把第一阶段的 6 秒自转占位控制器替换为 ROS1 实现的任务执行控制器，参考 `/root/workspace/ROS2swarm_w`，但不引入 ROS2/Webots 运行时。
+- 第一阶段：搜索组先发现/发布应急任务点，再由 4 台 TurtleBot 应急组可变编队导航到目标，到位后切任务控制器接口；运行参数 `use_spin_placeholder:=true` 时执行 6 秒自转占位，随后继续下一个任务。
+- 第二阶段：在 ROS1 内实现 `/root/workspace/ROS2swarm_w` 的 checkpoint 控制器口径适配，不引入 ROS2/Webots 运行时；默认按 `victim/fire -> roundflocking`、`box -> transport` 选择任务控制器。
 
-当前结论：目标可以实现，但不能把 DEFORM 整仓直接合并后期待自动闭环。当前 `masar_ws` 已经存在一份 `src/robosar_deform_vendor` 拷贝，后续重点不是“从零复制”，而是补齐缺失的 DEFORM 运行资源，并在 `masar_ws` 内新增应急任务管理、目标派发、到达屏障、控制器切换和安全层。
+当前结论：目标可以实现，且第 0 阶段以及第一/第二阶段的 ROS1+Gazebo 工程闭环入口已经落地。当前 `masar_ws` 内保留 `src/robosar_deform_vendor` 作为 DEFORM ROS1 vendor 拷贝，不改 `/root/workspace/DEFORM`；应急任务管理、目标派发、到达屏障、控制器切换、安全层、`/global_info` 适配和 checkpoint 任务控制器均在 `src/robosar/robosar_emergency_response` 内实现。
 
 ## 1. 范围结论
 
@@ -14,9 +14,9 @@
 
 - 只考虑 ROS1 + Gazebo + RViz。
 - 不改 `/root/workspace/DEFORM`。
-- 不接 ROS2 + Webots。
+- 不接 ROS2 + Webots 运行时；只复用 `/root/workspace/ROS2swarm_w` 中 checkpoint 控制器的输入输出语义。
 - 不把响应组注册进 RoboSAR 现有 frontier/coverage 搜索任务分配器。
-- 不在第一阶段实现真实 victim/fire/transport 任务策略，只保留任务控制器接口并用 6 秒自转占位验证闭环。
+- 第一阶段可用 6 秒自转占位验证闭环；第二阶段默认启用 ROS1 checkpoint 任务控制器。
 
 系统目标链路：
 
@@ -24,7 +24,7 @@
 搜索组探索 -> 发现应急目标 -> 生成应急任务
 -> 应急组接单 -> DEFORM 风格可变编队导航到 staging pose
 -> 全员到达屏障 -> 切换任务控制器
--> 第一阶段自转 6 秒占位
+-> 第一阶段自转 6 秒占位或第二阶段 checkpoint 控制器
 -> DONE -> 继续下一个任务
 ```
 
@@ -36,7 +36,7 @@
 - `/root/workspace/DEFORM` 原始 demo 默认偏 12 机器人，必须改成 4 机器人配置。
 - `src/robosar_deform_vendor` 当前已包含 DEFORM 的主要 ROS1 源码包、消息、服务、仿真 world、TurtleBot/Realsense 描述，以及已从 `/root/workspace/DEFORM` 复制回来的 `perception/drone_detect`。
 - 响应组专用 launch 默认使用 `drone_detect` 输出的 `/tb_i/camera/depth/image_filter`，避免 DEFORM 把队友当成动态障碍持续触发压缩/重分配；如需压力测试，可通过 `response_plan_manager_one_run.xml` 的 `depth_topic` 参数切回 raw depth。
-- `src/robosar/robosar_emergency_response` 当前只有 checkpoint 资源，没有可运行的响应组源码、launch 和 config。
+- `src/robosar/robosar_emergency_response` 当前已包含第 0 阶段响应组源码、launch、config，以及第一/第二阶段任务管理和 checkpoint 控制器节点。
 - 第 0 阶段不是任务管理闭环，而是应急组单独完成“Gazebo 环境 + RViz + 可变编队导航 + 依次目标点”的闭环。
 - 第一阶段才接入搜索组发现的任务点，并在到达后执行 6 秒自转占位任务。
 - `/sim_map` 是静态地图，不包含箱子、临时障碍、搜索机器人、响应机器人等未知/动态障碍；应急组避障与变形不能只依赖 `/sim_map`。
@@ -205,13 +205,13 @@ tb_3: x=16.10, y=8.70, yaw=0.0
 第 0 阶段默认使用当前项目内的 DEFORM 风格编队展示 world，只启动应急响应组 `tb_0 ... tb_3`，用于验证参考图方向的可变编队导航效果：
 
 ```text
-src/robosar/robosar_emergency_response/worlds/stage0_deform_navigation_reference.world
+src/robosar/robosar_emergency_response/worlds/deform_navigation_reference.world
 ```
 
 旧的简化 corridor world 和 vendor 中的 DEFORM 多障碍 world 保留为压力测试或对照场景，可通过 launch 参数切回：
 
 ```text
-world_name:=$(find robosar_emergency_response)/worlds/stage0_response_corridor.world
+world_name:=$(find robosar_emergency_response)/worlds/response_corridor.world
 world_name:=$(find multi_turtlebot3_simulation)/worlds/test_multi_obs.world
 ```
 
@@ -229,12 +229,12 @@ world_name:=$(find multi_turtlebot3_simulation)/worlds/test_multi_obs.world
 建议新增：
 
 ```text
-robosar_emergency_response/launch/stage0_response_deform_demo.launch
+robosar_emergency_response/launch/response_deform_demo.launch
 robosar_emergency_response/launch/response_group_gazebo.launch
 robosar_emergency_response/launch/response_group_deform.launch
 robosar_emergency_response/launch/response_plan_manager_one_run.xml
 robosar_emergency_response/config/deform/frm_shape_response4.yaml
-robosar_emergency_response/config/stage0_goal_sequence.yaml
+robosar_emergency_response/config/response_goal_sequence.yaml
 robosar_emergency_response/config/response_group.yaml
 robosar_emergency_response/scripts/response_goal_sequence_node.py
 robosar_emergency_response/scripts/response_group_coordinator_node.py
@@ -245,7 +245,7 @@ robosar_emergency_response/scripts/response_cmd_mux_node.py
 第 0 阶段数据流：
 
 ```text
-stage0_goal_sequence.yaml
+response_goal_sequence.yaml
 -> response_goal_sequence_node.py
 -> /response_group/active_task              robosar_messages/EmergencyTask，承载稳定 task_id
 -> /response_group/formation_goal
@@ -292,8 +292,8 @@ AprilTagSim.py / 搜索组发现逻辑
 -> response_cmd_mux_node.py
 -> /tb_i/cmd_vel
 -> 全员到达屏障
--> /response_group/behavior_mode = TASK_SPIN_6S_PLACEHOLDER
--> spin_task_placeholder_node.py
+-> /response_group/behavior_mode = TASK_CONTROL
+-> response_task_controller_node.py
 -> /tb_i/task_cmd_vel
 -> response_cmd_mux_node.py
 -> /tb_i/cmd_vel
@@ -304,10 +304,15 @@ AprilTagSim.py / 搜索组发现逻辑
 
 ### 8.2 应急任务管理器
 
-新增：
+已实现：
 
 ```text
 robosar_emergency_response/scripts/emergency_task_manager_node.py
+robosar_emergency_response/scripts/response_global_info_node.py
+robosar_emergency_response/scripts/response_task_controller_node.py
+robosar_emergency_response/launch/tepper_response_demo.launch
+robosar_emergency_response/config/tepper_response_group.yaml
+run_tepper_response_demo.sh
 ```
 
 输入：
@@ -315,6 +320,7 @@ robosar_emergency_response/scripts/emergency_task_manager_node.py
 ```text
 /robosar_sim/emergency_events      robosar_messages/EmergencyObject
 /robosar_sim/emergency_objects     robosar_messages/EmergencyObjectArray
+/system_mission_command            robosar_messages/mission_command，GUI START/STOP/HOME
 /response_group/status             robosar_messages/ResponseGroupStatus
 /response_group/task_result        robosar_messages/EmergencyTask，status 使用 DONE/FAILED
 ```
@@ -324,7 +330,7 @@ robosar_emergency_response/scripts/emergency_task_manager_node.py
 ```text
 /emergency/tasks                   robosar_messages/EmergencyTaskArray
 /emergency/active_task             robosar_messages/EmergencyTask
-/response_group/dispatch_task      robosar_messages/EmergencyTask
+/response_group/active_task        robosar_messages/EmergencyTask
 /emergency/task_markers            visualization_msgs/MarkerArray
 ```
 
@@ -368,7 +374,16 @@ staging_distance_fire: 1.1
 staging_distance_box: 0.8
 ```
 
-第一阶段不要求到达目标后的任务编队队形；到 staging pose 后只执行 6 秒自转占位。
+第一阶段不要求到达目标后的任务编队队形；到 staging pose 后可通过 `use_spin_placeholder:=true` 执行 6 秒自转占位。第二阶段默认使用 checkpoint 控制器：`victim/fire` 进入 `TASK_ROUNDFLOCKING`，`box` 进入 `TASK_TRANSPORT`。
+
+checkpoint 控制器严格复刻 ROS2swarm_w 的转换口径：
+
+- `/global_info` 使用 JSON，字段为 `timestamp`、`robots`、`objects`。
+- `robots[robot_name]` 包含 `position{x,y,z}`、`velocity{x,y}`、行优先 3x3 `orientation`。
+- roundflocking 观测为 `[x/scale, y/scale, vx_body, vy_body, target_rel_x_body/scale, target_rel_y_body/scale, lidar_midpoints...]`。
+- transport 观测为 `[x/scale, y/scale, vx_body, vy_body, box_to_target_body/scale, robot_to_box_body/scale, box_vx_body, box_vy_body, on_goal]`。
+- roundflocking 输出先按 sigmoid 映射到 VMAS 全向 `[vx, vy]`，再转换成差速 `Twist`。
+- transport 输出直接按 sigmoid 映射到 `linear.x/angular.z`。
 
 注意：DEFORM 原始 goal 回调只使用 `PoseStamped.pose.position.x/y`，不使用 yaw。`staging_yaw` 应写入 `EmergencyTask.staging_pose` 供到达屏障、占位任务或后续第二阶段任务控制器使用；不要把 yaw 完成交给 `/move_base_simple/goal`。应用层目标编号也必须走 `EmergencyTask.task_id`，不能塞进 `PoseStamped.header.seq`，因为 ROS 发布时会把 `Header.seq` 当作传输序号维护。
 
@@ -397,19 +412,21 @@ navigation_timeout: 180.0
 
 当前第 0 阶段已在当前 vendor 拷贝的 `plan_manager` 中增加轻量状态出口 `/tb_i/deform_reached`（`std_msgs/Bool`）：新目标到来发布 `False`，DEFORM 内部判定 `tb i reach goal` 时发布 `True`。`response_group_coordinator_node.py` 仍保留外部 odom/slot 屏障，但优先使用全员 `deform_reached=True` 作为目标完成信号，避免解析日志，也避免外部节点反推 DEFORM 动态压缩队形时出现槽位误差。
 
-### 8.5 6 秒自转占位控制器
+### 8.5 任务控制器
 
-新增：
+占位自转和 checkpoint 控制器已统一收敛到：
 
 ```text
-robosar_emergency_response/scripts/spin_task_placeholder_node.py
+robosar_emergency_response/scripts/response_task_controller_node.py
 ```
 
 输入：
 
 ```text
 /response_group/behavior_mode
-/emergency/active_task
+/response_group/active_task
+/global_info
+/tb_i/scan
 ```
 
 输出：
@@ -427,6 +444,18 @@ on TASK_SPIN_6S_PLACEHOLDER:
   keep spin_duration seconds
   publish zero Twist for tb_0..tb_3
   report DONE
+
+on TASK_ROUNDFLOCKING:
+  build ROS2swarm-compatible observation from /global_info and /tb_i/scan
+  run roundflocking checkpoint per robot
+  publish /tb_i/task_cmd_vel
+  report DONE after hold_seconds
+
+on TASK_TRANSPORT:
+  build ROS2swarm-compatible observation from /global_info
+  run transport checkpoint per robot
+  publish /tb_i/task_cmd_vel
+  report DONE when box reaches target_zone or max duration expires
 ```
 
 推荐默认参数：
@@ -460,7 +489,7 @@ task_timeout: 10.0
 - `NAV_FORMATION`: 只接受 `/tb_i/deform_cmd_vel`。
 - `TASK_CONTROL`: 只接受 `/tb_i/task_cmd_vel`。
 - `FAILED` / `STOP`: 输出零速度。
-- 安全层始终最后生效。
+- 安全层默认最后生效；transport 任务可通过 `transport_task_bypass_scan_safety: true` 临时放行接触箱子的 checkpoint 控制输出。
 
 这一步是必须项，否则 DEFORM 和任务控制器会同时写 `/tb_i/cmd_vel`，导致控制权冲突。
 
@@ -533,28 +562,31 @@ src/robosar_deform_vendor/utility/tb_simulation/realsense_gazebo_plugin
 - `src/robosar_deform_vendor/perception/drone_detect` 已从 `/root/workspace/DEFORM` 复制源码、launch、config、package.xml。
 - `src/robosar_deform_vendor/plan_manager/launch/multi_run.launch` 仍按 12 台机器人启动，不能直接作为响应组启动文件。
 - `src/robosar_deform_vendor/plan_manager/config/frm_shape.yaml` 仍是 `vehicle_number: 12`，第 0/第一阶段应使用响应组专用 `frm_shape_response4.yaml`，不要直接改动原始参考配置。
-- `src/robosar/robosar_emergency_response` 已建立 ROS package，第 0 阶段源码/launch/config 已落地；第一阶段节点仍按后续计划实现。
+- `src/robosar/robosar_emergency_response` 已建立 ROS package，第 0 阶段源码/launch/config 已落地；第一/第二阶段任务管理、global_info 和 checkpoint 控制器也已实现。
 
 应急响应包：
 
 ```text
 src/robosar/robosar_emergency_response/package.xml
 src/robosar/robosar_emergency_response/CMakeLists.txt
-src/robosar/robosar_emergency_response/launch/stage0_response_deform_demo.launch
-src/robosar/robosar_emergency_response/launch/stage1_emergency_response_demo.launch
+src/robosar/robosar_emergency_response/launch/response_deform_demo.launch
+src/robosar/robosar_emergency_response/launch/tepper_response_demo.launch
 src/robosar/robosar_emergency_response/launch/response_group_gazebo.launch
 src/robosar/robosar_emergency_response/launch/response_group_deform.launch
 src/robosar/robosar_emergency_response/launch/response_plan_manager_one_run.xml
 src/robosar/robosar_emergency_response/config/deform/frm_shape_response4.yaml
-src/robosar/robosar_emergency_response/config/stage0_goal_sequence.yaml
+src/robosar/robosar_emergency_response/config/response_goal_sequence.yaml
 src/robosar/robosar_emergency_response/config/response_group.yaml
+src/robosar/robosar_emergency_response/config/tepper_response_group.yaml
 src/robosar/robosar_emergency_response/scripts/response_goal_sequence_node.py
 src/robosar/robosar_emergency_response/scripts/emergency_task_manager_node.py
+src/robosar/robosar_emergency_response/scripts/response_global_info_node.py
+src/robosar/robosar_emergency_response/scripts/response_task_controller_node.py
 src/robosar/robosar_emergency_response/scripts/response_group_coordinator_node.py
 src/robosar/robosar_emergency_response/scripts/deform_dispatch_bridge_node.py
 src/robosar/robosar_emergency_response/scripts/response_cmd_mux_node.py
-src/robosar/robosar_emergency_response/scripts/spin_task_placeholder_node.py
-src/robosar/robosar_emergency_response/scripts/dynamic_obstacle_cloud_node.py
+src/robosar/robosar_emergency_response/scripts/run_tepper_response_demo.sh
+run_tepper_response_demo.sh
 ```
 
 ## 12. 阶段计划
@@ -565,7 +597,7 @@ src/robosar/robosar_emergency_response/scripts/dynamic_obstacle_cloud_node.py
 
 - 基于已复制的 DEFORM vendor 包启动，使用 `drone_detect` filtered depth 输入。
 - 建立 4 机器人 `frm_shape_response4.yaml`。
-- 默认使用 `robosar_emergency_response/worlds/stage0_deform_navigation_reference.world` 展示第 0 阶段响应组可变编队；旧 corridor world 和 vendor `test_multi_obs.world` 保留为压力测试。
+- 默认使用 `robosar_emergency_response/worlds/deform_navigation_reference.world` 展示第 0 阶段响应组可变编队；旧 corridor world 和 vendor `test_multi_obs.world` 保留为压力测试。
 - 启动 4 台 TurtleBot、DEFORM plan manager、RViz。
 - 用预设目标序列驱动响应组依次导航。
 - 验证队形压缩、展开、槽位重分配和避障稳定性。
@@ -599,11 +631,11 @@ src/robosar/robosar_emergency_response/scripts/dynamic_obstacle_cloud_node.py
 
 目标：
 
-- 实现 ROS1 `response_global_info_node.py`，复刻 ROS2swarm_w 的 `/global_info` JSON。
-- victim/fire 接 ROS1 版 `neat_roundflocking_node.py`。
-- box/transport 接 ROS1 版 `neat_transport_node.py`。
-- 用真实任务控制器替换第一阶段的 6 秒自转占位。
-- 调 Gazebo box 质量、摩擦、接触参数和安全白名单。
+- 已实现 ROS1 `response_global_info_node.py`，复刻 ROS2swarm_w 的 `/global_info` JSON。
+- 已实现统一 `response_task_controller_node.py`，内部按任务类型选择 roundflocking 或 transport checkpoint。
+- 已保留第一阶段 6 秒自转占位，通过 `use_spin_placeholder:=true` 切回。
+- transport 任务参考 ROS2swarm_w 的 `bypass_protection` 语义，在 `response_cmd_mux_node.py` 中通过 `transport_task_bypass_scan_safety` 允许任务控制阶段接触箱子。
+- 后续仍可继续调 Gazebo box 质量、摩擦、接触参数和安全白名单。
 
 第二阶段参考但不直接运行 ROS2：
 
@@ -702,8 +734,30 @@ DEFORM 原始 `PlanManager` 只打印 `tb i reach goal`，没有标准完成 top
 5. 4 台 TurtleBot 自转 6 秒。
 6. 任务状态变为 DONE，并自动执行下一个任务。
 
+第二阶段 MVP：
+
+1. `response_global_info_node.py` 发布 ROS2swarm 兼容 `/global_info`。
+2. `response_task_controller_node.py` 根据任务类型加载 checkpoint。
+3. victim/fire 任务执行 roundflocking checkpoint。
+4. box 任务执行 transport checkpoint，并在任务控制阶段允许接触箱子。
+5. 任务完成或超时后上报 DONE/FAILED，由任务管理器继续派发下一个任务。
+
 这个 MVP 已经覆盖核心诉求：
 
 ```text
 探索搜索组定位目标 -> 应急组可变编队导航 -> 全员到达后切控制器执行 -> 往复
+```
+
+当前运行入口：
+
+```bash
+./run_tepper_response_demo.sh --vglrun
+```
+
+启动后使用 GUI 中的 `Start` / `Stop` / `Home` 按钮控制探索组与响应组。
+
+如只验证第一阶段占位控制器：
+
+```bash
+./run_tepper_response_demo.sh use_spin_placeholder:=true
 ```

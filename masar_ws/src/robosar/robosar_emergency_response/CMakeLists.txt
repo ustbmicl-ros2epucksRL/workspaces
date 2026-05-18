@@ -5,6 +5,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   geometry_msgs
+  gazebo_msgs
   nav_msgs
   sensor_msgs
   visualization_msgs
@@ -18,6 +19,7 @@ catkin_package(
     rospy
     std_msgs
     geometry_msgs
+    gazebo_msgs
     nav_msgs
     sensor_msgs
     visualization_msgs
@@ -25,16 +27,20 @@ catkin_package(
 )
 
 catkin_install_python(PROGRAMS
+  scripts/emergency_task_manager_node.py
   scripts/response_goal_sequence_node.py
   scripts/deform_dispatch_bridge_node.py
   scripts/response_group_coordinator_node.py
   scripts/response_cmd_mux_node.py
+  scripts/response_global_info_node.py
+  scripts/response_task_controller_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(PROGRAMS
-  scripts/run_stage0_response_deform_demo.sh
-  scripts/start_stage0_response_tasks.sh
+  scripts/run_response_deform_demo.sh
+  scripts/start_response_tasks.sh
+  scripts/run_tepper_response_demo.sh
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

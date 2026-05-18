@@ -1,4 +1,6 @@
 <launch>
+  <arg name="gz_gui" default="true"/>
+  <arg name="rviz" default="true"/>
   <param name="/use_sim_time" value="true"/>
   
   <!--使用stage_ros仿真时静态地图配置使用stage_config，使用gazebo时使用gazebo_config-->
@@ -30,7 +32,7 @@
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(find robosar_gazebo_sim)/world/tepper.world"/>
     <arg name="debug" value="false" />
-    <arg name="gui" value="true" />
+    <arg name="gui" value="$(arg gz_gui)" />
     <arg name="paused" value="false"/>
     <arg name="use_sim_time" value="true"/>
     <arg name="headless" value="false"/>
@@ -51,6 +53,6 @@
 
   <node pkg="tf2_ros" type="static_transform_publisher" name="link5_broadcaster" args="0 0 0 0 0 0 1 map agent_4/odom" />
 
-  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
+  <node if="$(arg rviz)" name="rviz" pkg="rviz" type="rviz" args="-d $(find robosar_sim_bringup)/rviz/multi_robot.rviz">
   </node>
 </launch>

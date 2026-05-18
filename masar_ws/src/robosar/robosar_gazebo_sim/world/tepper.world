@@ -2020,6 +2020,100 @@
         <enable_wind>0</enable_wind>
         <kinematic>0</kinematic>
       </link>
+      <!-- Close the lower-left opening to match the static Tepper map:
+           Gazebo state endpoints approximately (2.804, 5.424) -> (2.475, 0.895). -->
+      <link name='Wall_lower_left_closure'>
+        <collision name='Wall_lower_left_closure_Collision'>
+          <geometry>
+            <box>
+              <size>4.54158 0.15 2.5</size>
+            </box>
+          </geometry>
+          <pose>0 0 1.25 0 -0 0</pose>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='Wall_lower_left_closure_Visual'>
+          <pose>0 0 1.25 0 -0 0</pose>
+          <geometry>
+            <box>
+              <size>4.54158 0.15 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Bricks</name>
+            </script>
+            <ambient>1 1 1 1</ambient>
+          </material>
+          <meta>
+            <layer>0</layer>
+          </meta>
+        </visual>
+        <pose>8.040406 5.840463 0 0 -0 1.498292</pose>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
+      <!-- Close the lower-right opening to match the static Tepper map:
+           Gazebo state endpoints approximately (18.887, 10.643) -> (18.593, 7.709). -->
+      <link name='Wall_lower_right_closure'>
+        <collision name='Wall_lower_right_closure_Collision'>
+          <geometry>
+            <box>
+              <size>2.94806 0.15 2.5</size>
+            </box>
+          </geometry>
+          <pose>0 0 1.25 0 -0 0</pose>
+          <max_contacts>10</max_contacts>
+          <surface>
+            <contact>
+              <ode/>
+            </contact>
+            <bounce/>
+            <friction>
+              <torsional>
+                <ode/>
+              </torsional>
+              <ode/>
+            </friction>
+          </surface>
+        </collision>
+        <visual name='Wall_lower_right_closure_Visual'>
+          <pose>0 0 1.25 0 -0 0</pose>
+          <geometry>
+            <box>
+              <size>2.94806 0.15 2.5</size>
+            </box>
+          </geometry>
+          <material>
+            <script>
+              <uri>file://media/materials/scripts/gazebo.material</uri>
+              <name>Gazebo/Bricks</name>
+            </script>
+            <ambient>1 1 1 1</ambient>
+          </material>
+          <meta>
+            <layer>0</layer>
+          </meta>
+        </visual>
+        <pose>-8.060286 -0.175905 0 0 -0 1.470880</pose>
+        <self_collide>0</self_collide>
+        <enable_wind>0</enable_wind>
+        <kinematic>0</kinematic>
+      </link>
       <static>1</static>
     </model>
     <state world_name='default'>
@@ -2272,6 +2366,18 @@
         </link>
         <link name='Wall_9'>
           <pose>17.3118 10.0405 0 0 -0 0.365013</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+        <link name='Wall_lower_left_closure'>
+          <pose>2.639594 3.159587 0 0 0 -1.643300</pose>
+          <velocity>0 0 0 0 -0 0</velocity>
+          <acceleration>0 0 0 0 -0 0</acceleration>
+          <wrench>0 0 0 0 -0 0</wrench>
+        </link>
+        <link name='Wall_lower_right_closure'>
+          <pose>18.740286 9.175955 0 0 0 -1.670712</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 0 0 -0 0</acceleration>
           <wrench>0 0 0 0 -0 0</wrench>

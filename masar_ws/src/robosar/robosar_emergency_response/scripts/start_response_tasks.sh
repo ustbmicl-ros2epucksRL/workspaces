@@ -5,26 +5,26 @@ set -euo pipefail
 usage() {
   cat <<'EOF'
 Usage:
-  start_stage0_response_tasks.sh [options]
+  start_response_tasks.sh [options]
 
-Publishes the phase-0 task-start signal consumed by response_goal_sequence_node:
+Publishes the response-demo task-start signal consumed by response_goal_sequence_node:
   rostopic pub -1 /response_group/start std_msgs/Bool "data: true"
 
 Options:
-  --isolated      Use the isolated ROS master used by the stage-0 launcher. Default.
+  --isolated      Use the isolated ROS master used by the response demo launcher. Default.
   --shared-master Reuse the caller's ROS_MASTER_URI.
   --dry-run       Print the resolved command without executing it.
   -h, --help      Show this help.
 
 Environment:
   WORKSPACE_DIR           Catkin workspace root. Auto-detected when unset.
-  ROBOSAR_STAGE0_ROS_PORT Isolated ROS master port. Default: 11411.
+  ROBOSAR_RESPONSE_DEMO_ROS_PORT Isolated ROS master port. Default: 11411.
   ROBOSAR_SKIP_SETUP      Set to 1 for dry-run tests that should not source ROS.
 EOF
 }
 
 die() {
-  echo "[stage0-start][error] $*" >&2
+  echo "[response-start][error] $*" >&2
   exit 1
 }
 
@@ -65,8 +65,8 @@ source_ros_env() {
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="$(resolve_workspace_dir)"
 DRY_RUN=0
-STAGE0_ISOLATED="${ROBOSAR_STAGE0_ISOLATED:-1}"
-STAGE0_ROS_PORT="${ROBOSAR_STAGE0_ROS_PORT:-11411}"
+RESPONSE_DEMO_ISOLATED="${ROBOSAR_RESPONSE_DEMO_ISOLATED:-1}"
+RESPONSE_DEMO_ROS_PORT="${ROBOSAR_RESPONSE_DEMO_ROS_PORT:-11411}"
 
 while (($#)); do
   case "$1" in
@@ -78,10 +78,10 @@ while (($#)); do
       DRY_RUN=1
       ;;
     --isolated)
-      STAGE0_ISOLATED=1
+      RESPONSE_DEMO_ISOLATED=1
       ;;
     --shared-master)
-      STAGE0_ISOLATED=0
+      RESPONSE_DEMO_ISOLATED=0
       ;;
     *)
       die "unknown option: $1"
@@ -90,24 +90,24 @@ while (($#)); do
   shift
 done
 
-case "${STAGE0_ISOLATED,,}" in
+case "${RESPONSE_DEMO_ISOLATED,,}" in
   1|true|yes|on)
-    export ROS_MASTER_URI="${ROBOSAR_STAGE0_ROS_MASTER_URI:-http://127.0.0.1:${STAGE0_ROS_PORT}}"
+    export ROS_MASTER_URI="${ROBOSAR_RESPONSE_DEMO_ROS_MASTER_URI:-http://127.0.0.1:${RESPONSE_DEMO_ROS_PORT}}"
     ;;
   0|false|no|off)
     ;;
   *)
-    die "ROBOSAR_STAGE0_ISOLATED must be 1/true or 0/false; got '$STAGE0_ISOLATED'."
+    die "ROBOSAR_RESPONSE_DEMO_ISOLATED must be 1/true or 0/false; got '$RESPONSE_DEMO_ISOLATED'."
     ;;
 esac
 
 COMMAND=(rostopic pub -1 /response_group/start std_msgs/Bool "data: true")
 
 if [[ "$DRY_RUN" == "1" ]]; then
-  echo "[stage0-start][dry-run] workspace=$WORKSPACE_DIR"
-  echo "[stage0-start][dry-run] ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>}"
-  echo "[stage0-start][dry-run] payload=data: true"
-  printf '[stage0-start][dry-run] command='
+  echo "[response-start][dry-run] workspace=$WORKSPACE_DIR"
+  echo "[response-start][dry-run] ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>}"
+  echo "[response-start][dry-run] payload=data: true"
+  printf '[response-start][dry-run] command='
   printf '%q ' "${COMMAND[@]}"
   printf '\n'
   exit 0
@@ -117,8 +117,8 @@ if [[ "${ROBOSAR_SKIP_SETUP:-0}" != "1" ]]; then
   source_ros_env
 fi
 
-echo "[stage0-start] ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>}"
-printf '[stage0-start] command='
+echo "[response-start] ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>}"
+printf '[response-start] command='
 printf '%q ' "${COMMAND[@]}"
 printf '\n'
 exec "${COMMAND[@]}"

@@ -4,6 +4,18 @@
   <arg name="rviz" default="true"/>
   <arg name="model" default="burger"/>
   <arg name="world_name" default="$(find robosar_emergency_response)/worlds/deform_navigation_demo.world"/>
+  <arg name="tb_0_x" default="4.2"/>
+  <arg name="tb_0_y" default="-4.6"/>
+  <arg name="tb_0_yaw" default="1.5708"/>
+  <arg name="tb_1_x" default="4.8"/>
+  <arg name="tb_1_y" default="-4.6"/>
+  <arg name="tb_1_yaw" default="1.5708"/>
+  <arg name="tb_2_x" default="4.2"/>
+  <arg name="tb_2_y" default="-5.2"/>
+  <arg name="tb_2_yaw" default="1.5708"/>
+  <arg name="tb_3_x" default="4.8"/>
+  <arg name="tb_3_y" default="-5.2"/>
+  <arg name="tb_3_yaw" default="1.5708"/>
 
   <include if="$(arg start_gazebo)" file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" value="$(arg world_name)"/>
@@ -20,36 +32,36 @@
   <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
     <arg name="model" value="$(arg model)"/>
     <arg name="tb3_name" value="tb_0"/>
-    <arg name="robot_x_pos" value="4.2"/>
-    <arg name="robot_y_pos" value="-4.6"/>
+    <arg name="robot_x_pos" value="$(arg tb_0_x)"/>
+    <arg name="robot_y_pos" value="$(arg tb_0_y)"/>
     <arg name="robot_z_pos" value="0.0"/>
-    <arg name="robot_yaw" value="1.5708"/>
+    <arg name="robot_yaw" value="$(arg tb_0_yaw)"/>
   </include>
 
   <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
     <arg name="model" value="$(arg model)"/>
     <arg name="tb3_name" value="tb_1"/>
-    <arg name="robot_x_pos" value="4.8"/>
-    <arg name="robot_y_pos" value="-4.6"/>
+    <arg name="robot_x_pos" value="$(arg tb_1_x)"/>
+    <arg name="robot_y_pos" value="$(arg tb_1_y)"/>
     <arg name="robot_z_pos" value="0.0"/>
-    <arg name="robot_yaw" value="1.5708"/>
+    <arg name="robot_yaw" value="$(arg tb_1_yaw)"/>
   </include>
 
   <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
     <arg name="model" value="$(arg model)"/>
     <arg name="tb3_name" value="tb_2"/>
-    <arg name="robot_x_pos" value="4.2"/>
-    <arg name="robot_y_pos" value="-5.2"/>
+    <arg name="robot_x_pos" value="$(arg tb_2_x)"/>
+    <arg name="robot_y_pos" value="$(arg tb_2_y)"/>
     <arg name="robot_z_pos" value="0.0"/>
-    <arg name="robot_yaw" value="1.5708"/>
+    <arg name="robot_yaw" value="$(arg tb_2_yaw)"/>
   </include>
 
   <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
     <arg name="model" value="$(arg model)"/>
     <arg name="tb3_name" value="tb_3"/>
-    <arg name="robot_x_pos" value="4.8"/>
-    <arg name="robot_y_pos" value="-5.2"/>
+    <arg name="robot_x_pos" value="$(arg tb_3_x)"/>
+    <arg name="robot_y_pos" value="$(arg tb_3_y)"/>
     <arg name="robot_z_pos" value="0.0"/>
-    <arg name="robot_yaw" value="1.5708"/>
+    <arg name="robot_yaw" value="$(arg tb_3_yaw)"/>
   </include>
 </launch>
