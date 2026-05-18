@@ -64,6 +64,10 @@ class AprilTagSim:
         self.transport_goal_distance_step = rospy.get_param(
             "~transport_goal_distance_step", 0.1
         )
+        self.search_robot_names = rospy.get_param(
+            "~search_robot_names",
+            ["agent_0", "agent_1", "agent_2", "agent_3", "agent_4"],
+        )
         self.transport_path_clearance = rospy.get_param(
             "~transport_path_clearance", 0.18
         )
@@ -74,14 +78,14 @@ class AprilTagSim:
         self.box_friction = rospy.get_param("~transport_box_friction", 0.8)
         self.fire_radius = rospy.get_param("~fire_radius", 0.14)
         self.fire_height = rospy.get_param("~fire_height", 0.18)
-        self.victim_height = rospy.get_param("~victim_height", 1.7)
+        self.victim_height = rospy.get_param("~victim_height", 1.05)
         self.victim_collision_radius = rospy.get_param(
-            "~victim_collision_radius", 0.18
+            "~victim_collision_radius", 0.12
         )
-        self.victim_mesh_uri = rospy.get_param(
-            "~victim_mesh_uri", "file:///usr/share/gazebo-11/media/models/walk.dae"
-        )
-        self.victim_mesh_scale = rospy.get_param("~victim_mesh_scale", 1.0)
+        self.victim_body_radius = rospy.get_param("~victim_body_radius", 0.085)
+        self.victim_head_radius = rospy.get_param("~victim_head_radius", 0.09)
+        self.victim_arm_radius = rospy.get_param("~victim_arm_radius", 0.025)
+        self.victim_leg_radius = rospy.get_param("~victim_leg_radius", 0.035)
         self.robot_spawn_exclusion_radius = rospy.get_param(
             "~robot_spawn_exclusion_radius", 0.45
         )
@@ -425,26 +429,37 @@ class AprilTagSim:
             box_pose[1],
         )
 
-    def get_active_agents(self):
-        rospy.wait_for_service("/robosar_agent_bringup_node/agent_status")
-        try:
-            get_status = rospy.ServiceProxy(
-                "/robosar_agent_bringup_node/agent_status", agent_status
+    def register_active_agent(self, agent_name):
+        self.agent_active_status[agent_name] = True
+        if agent_name not in self.apriltag_feedback_pub:
+            self.apriltag_feedback_pub[agent_name] = rospy.Publisher(
+                "/robosar_agent_bringup_node/{}/feedback/apriltag".format(
+                    agent_name
+                ),
+                AprilTagDetectionArray,
+                queue_size=10,
             )
+
+    def use_configured_agents(self):
+        for agent_name in self.search_robot_names:
+            self.register_active_agent(agent_name)
+
+    def get_active_agents(self):
+        service_name = "/robosar_agent_bringup_node/agent_status"
+        try:
+            rospy.wait_for_service(service_name, timeout=0.1)
+            get_status = rospy.ServiceProxy(service_name, agent_status)
             resp = get_status()
             for agent_name in resp.agents_active:
-                self.agent_active_status[agent_name] = True
-                if agent_name not in self.apriltag_feedback_pub:
-                    self.apriltag_feedback_pub[agent_name] = rospy.Publisher(
-                        "/robosar_agent_bringup_node/{}/feedback/apriltag".format(
-                            agent_name
-                        ),
-                        AprilTagDetectionArray,
-                        queue_size=10,
-                    )
+                self.register_active_agent(agent_name)
             return True
-        except rospy.ServiceException as exc:
-            rospy.logwarn("Agent status service call failed: %s", exc)
+        except (rospy.ROSException, rospy.ServiceException) as exc:
+            self.use_configured_agents()
+            rospy.logwarn_throttle(
+                5.0,
+                "Agent status service is not available; using configured search robots for detection: %s",
+                exc,
+            )
             return False
 
     def get_agent_position(self):
@@ -780,6 +795,26 @@ class AprilTagSim:
         )
 
     def make_victim_sdf(self, model_name, pose):
+        height = float(self.victim_height)
+        body_radius = float(self.victim_body_radius)
+        head_radius = float(self.victim_head_radius)
+        arm_radius = float(self.victim_arm_radius)
+        leg_radius = float(self.victim_leg_radius)
+        foot_height = max(0.035, height * 0.035)
+        leg_length = height * 0.42
+        torso_length = height * 0.34
+        arm_length = height * 0.36
+        torso_z = foot_height + leg_length + torso_length * 0.5
+        shoulder_z = foot_height + leg_length + torso_length * 0.88
+        arm_z = shoulder_z - arm_length * 0.5
+        head_z = foot_height + leg_length + torso_length + head_radius
+        leg_z = foot_height + leg_length * 0.5
+        leg_offset = body_radius * 0.55
+        arm_offset = body_radius + arm_radius + 0.035
+        foot_y = 0.025
+        foot_size_x = max(0.08, body_radius * 1.05)
+        foot_size_y = max(0.12, body_radius * 1.45)
+
         return """
 <sdf version='1.6'>
   <model name='{name}'>
@@ -795,13 +830,106 @@ class AprilTagSim:
           </cylinder>
         </geometry>
       </collision>
-      <visual name='visual'>
+      <visual name='torso'>
+        <pose>0 0 {torso_z} 0 0 0</pose>
         <geometry>
-          <mesh>
-            <uri>{mesh_uri}</uri>
-            <scale>{scale} {scale} {scale}</scale>
-          </mesh>
+          <cylinder>
+            <radius>{body_radius}</radius>
+            <length>{torso_length}</length>
+          </cylinder>
         </geometry>
+        <material>
+          <ambient>0.0 0.28 0.05 1.0</ambient>
+          <diffuse>0.0 0.32 0.07 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='head'>
+        <pose>0 0 {head_z} 0 0 0</pose>
+        <geometry>
+          <sphere>
+            <radius>{head_radius}</radius>
+          </sphere>
+        </geometry>
+        <material>
+          <ambient>0.76 0.48 0.33 1.0</ambient>
+          <diffuse>0.82 0.55 0.38 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='left_arm'>
+        <pose>-{arm_offset} 0 {arm_z} 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>{arm_radius}</radius>
+            <length>{arm_length}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.0 0.28 0.05 1.0</ambient>
+          <diffuse>0.0 0.32 0.07 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='right_arm'>
+        <pose>{arm_offset} 0 {arm_z} 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>{arm_radius}</radius>
+            <length>{arm_length}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.0 0.28 0.05 1.0</ambient>
+          <diffuse>0.0 0.32 0.07 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='left_leg'>
+        <pose>-{leg_offset} 0 {leg_z} 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>{leg_radius}</radius>
+            <length>{leg_length}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.08 0.08 0.1 1.0</ambient>
+          <diffuse>0.1 0.1 0.12 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='right_leg'>
+        <pose>{leg_offset} 0 {leg_z} 0 0 0</pose>
+        <geometry>
+          <cylinder>
+            <radius>{leg_radius}</radius>
+            <length>{leg_length}</length>
+          </cylinder>
+        </geometry>
+        <material>
+          <ambient>0.08 0.08 0.1 1.0</ambient>
+          <diffuse>0.1 0.1 0.12 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='left_foot'>
+        <pose>-{leg_offset} {foot_y} {foot_z} 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>{foot_size_x} {foot_size_y} {foot_height}</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.04 0.04 0.04 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+        </material>
+      </visual>
+      <visual name='right_foot'>
+        <pose>{leg_offset} {foot_y} {foot_z} 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>{foot_size_x} {foot_size_y} {foot_height}</size>
+          </box>
+        </geometry>
+        <material>
+          <ambient>0.04 0.04 0.04 1.0</ambient>
+          <diffuse>0.05 0.05 0.05 1.0</diffuse>
+        </material>
       </visual>
     </link>
   </model>
@@ -810,11 +938,27 @@ class AprilTagSim:
             name=model_name,
             x=pose[0],
             y=pose[1],
-            collision_z=self.victim_height * 0.5,
+            collision_z=height * 0.5,
             collision_radius=self.victim_collision_radius,
-            height=self.victim_height,
-            mesh_uri=self.victim_mesh_uri,
-            scale=self.victim_mesh_scale,
+            height=height,
+            body_radius=body_radius,
+            head_radius=head_radius,
+            arm_radius=arm_radius,
+            leg_radius=leg_radius,
+            foot_height=foot_height,
+            foot_z=foot_height * 0.5,
+            leg_length=leg_length,
+            torso_length=torso_length,
+            arm_length=arm_length,
+            torso_z=torso_z,
+            head_z=head_z,
+            arm_z=arm_z,
+            leg_z=leg_z,
+            leg_offset=leg_offset,
+            arm_offset=arm_offset,
+            foot_y=foot_y,
+            foot_size_x=foot_size_x,
+            foot_size_y=foot_size_y,
         )
 
     def make_transport_box_sdf(self, model_name, pose):
@@ -935,44 +1079,47 @@ class AprilTagSim:
             except rospy.ServiceException:
                 pass
 
+        def spawn_checked(model_name, model_xml):
+            result = spawn_model(model_name, model_xml, "", self.build_zero_pose(), "world")
+            if not result.success:
+                rospy.logwarn(
+                    "Gazebo rejected emergency entity '%s': %s",
+                    model_name,
+                    result.status_message,
+                )
+                return False
+            return True
+
         try:
+            all_spawned = True
             for idx, record in enumerate(self.victim_records):
                 model_name = "robosar_victim_{}".format(idx)
-                spawn_model(
+                all_spawned = spawn_checked(
                     model_name,
                     self.make_victim_sdf(model_name, record.pose),
-                    "",
-                    self.build_zero_pose(),
-                    "world",
-                )
+                ) and all_spawned
             for idx, record in enumerate(self.fire_records):
                 model_name = "robosar_fire_{}".format(idx)
-                spawn_model(
+                all_spawned = spawn_checked(
                     model_name,
                     self.make_fire_sdf(model_name, record.pose),
-                    "",
-                    self.build_zero_pose(),
-                    "world",
-                )
+                ) and all_spawned
             for idx, record in enumerate(self.box_records):
                 box_model_name = "robosar_transport_box_{}".format(idx)
-                spawn_model(
+                all_spawned = spawn_checked(
                     box_model_name,
                     self.make_transport_box_sdf(box_model_name, record.pose),
-                    "",
-                    self.build_zero_pose(),
-                    "world",
-                )
+                ) and all_spawned
                 target_model_name = "robosar_target_zone_{}".format(idx)
-                spawn_model(
+                all_spawned = spawn_checked(
                     target_model_name,
                     self.make_target_zone_sdf(target_model_name, record.goal_pose),
-                    "",
-                    self.build_zero_pose(),
-                    "world",
-                )
+                ) and all_spawned
         except rospy.ServiceException as exc:
             rospy.logwarn_throttle(2.0, "Failed to spawn Gazebo emergency entities: %s", exc)
+            return
+
+        if not all_spawned:
             return
 
         self.gazebo_models_spawned = True
@@ -985,10 +1132,9 @@ class AprilTagSim:
         )
 
     def simulate_aptil_tag(self):
-        self.get_active_agents()
-
         while not rospy.is_shutdown():
             self.ensure_gazebo_scene_entities()
+            self.get_active_agents()
             self.publish_static_scene_markers()
             self.check_agent_poses()
             self.rate.sleep()

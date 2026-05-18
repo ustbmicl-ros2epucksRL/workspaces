@@ -1,0 +1,48 @@
+<launch>
+  <arg name="tb_num" default="4"/>
+  <arg name="frm_type" default="3"/>
+  <arg name="max_frm_type" default="3"/>
+  <arg name="other_num_in_opti" default="2"/>
+  <arg name="formation_interval" default="0.8"/>
+  <arg name="leader_id" default="0"/>
+
+  <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
+    <arg name="tb_id" value="0"/>
+    <arg name="tb_num" value="$(arg tb_num)"/>
+    <arg name="frm_type" value="$(arg frm_type)"/>
+    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
+    <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="leader_id" value="$(arg leader_id)"/>
+  </include>
+
+  <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
+    <arg name="tb_id" value="1"/>
+    <arg name="tb_num" value="$(arg tb_num)"/>
+    <arg name="frm_type" value="$(arg frm_type)"/>
+    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
+    <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="leader_id" value="$(arg leader_id)"/>
+  </include>
+
+  <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
+    <arg name="tb_id" value="2"/>
+    <arg name="tb_num" value="$(arg tb_num)"/>
+    <arg name="frm_type" value="$(arg frm_type)"/>
+    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
+    <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="leader_id" value="$(arg leader_id)"/>
+  </include>
+
+  <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
+    <arg name="tb_id" value="3"/>
+    <arg name="tb_num" value="$(arg tb_num)"/>
+    <arg name="frm_type" value="$(arg frm_type)"/>
+    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
+    <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="leader_id" value="$(arg leader_id)"/>
+  </include>
+</launch>

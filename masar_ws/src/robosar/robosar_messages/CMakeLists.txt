@@ -60,6 +60,9 @@ add_message_files(
   PointArray.msg
   EmergencyObject.msg
   EmergencyObjectArray.msg
+  EmergencyTask.msg
+  EmergencyTaskArray.msg
+  ResponseGroupStatus.msg
 )
 
 ## Generate services in the 'srv' folder

@@ -1,6 +1,6 @@
-image: tepper.pgm
+image: /root/workspace/masar_ws/src/robosar/robosar_sim_bringup/worlds/gazebo_config/maps/tepper.pgm
 resolution: 0.050000
-origin: [0.430951, -0.659927, 0.000000]
+origin: [0.544023, -1.036921, 0.000000]
 negate: 0
 occupied_thresh: 0.65
 free_thresh: 0.196

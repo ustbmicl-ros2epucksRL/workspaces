@@ -102,7 +102,55 @@ Visualization Manager:
         agent_4/base_link:
           Value: true
         agent_4/odom:
+          Value: false
+        tb_0/base_footprint:
+          Value: false
+        tb_0/base_link:
           Value: true
+        tb_0/odom:
+          Value: false
+        tb_1/base_footprint:
+          Value: false
+        tb_1/base_link:
+          Value: true
+        tb_1/odom:
+          Value: false
+        tb_2/base_footprint:
+          Value: false
+        tb_2/base_link:
+          Value: true
+        tb_2/odom:
+          Value: false
+        tb_3/base_footprint:
+          Value: false
+        tb_3/base_link:
+          Value: true
+        tb_3/odom:
+          Value: false
+        tb_4/base_footprint:
+          Value: false
+        tb_4/base_link:
+          Value: true
+        tb_4/odom:
+          Value: false
+        tb_5/base_footprint:
+          Value: false
+        tb_5/base_link:
+          Value: true
+        tb_5/odom:
+          Value: false
+        tb_6/base_footprint:
+          Value: false
+        tb_6/base_link:
+          Value: true
+        tb_6/odom:
+          Value: false
+        tb_7/base_footprint:
+          Value: false
+        tb_7/base_link:
+          Value: true
+        tb_7/odom:
+          Value: false
         map:
           Value: true
       Marker Alpha: 1
@@ -137,6 +185,39 @@ Visualization Manager:
             agent_4/base_footprint:
               agent_4/base_link:
                 agent_4/base_laser_link:
+                  {}
+          world:
+            tb_0/odom:
+              tb_0/base_footprint:
+                tb_0/base_link:
+                  {}
+            tb_1/odom:
+              tb_1/base_footprint:
+                tb_1/base_link:
+                  {}
+            tb_2/odom:
+              tb_2/base_footprint:
+                tb_2/base_link:
+                  {}
+            tb_3/odom:
+              tb_3/base_footprint:
+                tb_3/base_link:
+                  {}
+            tb_4/odom:
+              tb_4/base_footprint:
+                tb_4/base_link:
+                  {}
+            tb_5/odom:
+              tb_5/base_footprint:
+                tb_5/base_link:
+                  {}
+            tb_6/odom:
+              tb_6/base_footprint:
+                tb_6/base_link:
+                  {}
+            tb_7/odom:
+              tb_7/base_footprint:
+                tb_7/base_link:
                   {}
       Update Interval: 0
       Value: true
@@ -504,6 +585,64 @@ Visualization Manager:
         transport_targets: true
         transport_objects: true
       Queue Size: 100
+      Value: true
+    - Class: rviz/MarkerArray
+      Enabled: true
+      Marker Topic: /emergency/task_markers
+      Name: emergency_tasks
+      Namespaces:
+        emergency_task_goal: true
+        emergency_task_text: true
+        emergency_tasks: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /response_group/center_goal_marker
+      Name: response_goal
+      Namespaces:
+        response_group_goal: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /response_group/formation_slots
+      Name: response_slots
+      Namespaces:
+        response_group_slots: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /response_group/state_text
+      Name: response_state_text
+      Namespaces:
+        response_group_state: true
+      Queue Size: 100
+      Value: true
+    - Alpha: 1
+      Buffer Length: 1
+      Class: rviz/Path
+      Color: 0; 255; 255
+      Enabled: true
+      Head Diameter: 0.20000000298023224
+      Head Length: 0.10000000149011612
+      Length: 0.30000001192092896
+      Line Style: Lines
+      Line Width: 0.05000000074505806
+      Name: response_path
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Pose Color: 255; 85; 255
+      Pose Style: None
+      Queue Size: 10
+      Radius: 0.029999999329447746
+      Shaft Diameter: 0.10000000149011612
+      Shaft Length: 0.10000000149011612
+      Topic: /response_group/path
+      Unreliable: false
       Value: true
     - Class: rviz/Marker
       Enabled: true

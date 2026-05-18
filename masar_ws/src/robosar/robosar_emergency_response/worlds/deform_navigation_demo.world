@@ -1,0 +1,218 @@
+<sdf version='1.7'>
+  <world name='deform_navigation_demo'>
+    <light name='sun' type='directional'>
+      <cast_shadows>1</cast_shadows>
+      <pose>0 0 12 0 0 0</pose>
+      <diffuse>0.82 0.82 0.82 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <attenuation>
+        <range>1000</range>
+        <constant>0.9</constant>
+        <linear>0.01</linear>
+        <quadratic>0.001</quadratic>
+      </attenuation>
+      <direction>-0.25 0.15 -0.95</direction>
+    </light>
+
+    <model name='ground_plane'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>16 16</size>
+            </plane>
+          </geometry>
+        </collision>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>16 16</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.47 0.47 0.47 1</ambient>
+            <diffuse>0.47 0.47 0.47 1</diffuse>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='boundary_north'>
+      <static>1</static>
+      <pose>0.0 6.2 0.55 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'><geometry><box><size>12.4 0.16 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>12.4 0.16 1.1</size></box></geometry><material><ambient>0.94 0.94 0.90 1</ambient><diffuse>0.94 0.94 0.90 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='boundary_south'>
+      <static>1</static>
+      <pose>0.0 -6.2 0.55 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'><geometry><box><size>12.4 0.16 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>12.4 0.16 1.1</size></box></geometry><material><ambient>0.94 0.94 0.90 1</ambient><diffuse>0.94 0.94 0.90 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='boundary_west'>
+      <static>1</static>
+      <pose>-6.2 0.0 0.55 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'><geometry><box><size>0.16 12.4 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>0.16 12.4 1.1</size></box></geometry><material><ambient>0.94 0.94 0.90 1</ambient><diffuse>0.94 0.94 0.90 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='boundary_east'>
+      <static>1</static>
+      <pose>6.2 0.0 0.55 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'><geometry><box><size>0.16 12.4 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>0.16 12.4 1.1</size></box></geometry><material><ambient>0.94 0.94 0.90 1</ambient><diffuse>0.94 0.94 0.90 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='rectangular_wall_obstacle'>
+      <static>1</static>
+      <pose>-2.35 0.0 0.55 0 0 0</pose>
+      <link name='link'>
+        <collision name='collision'><geometry><box><size>1.8 7.0 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>1.8 7.0 1.1</size></box></geometry><material><ambient>0.95 0.60 0.20 1</ambient><diffuse>0.95 0.60 0.20 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='elliptical_obstacle'>
+      <static>1</static>
+      <pose>2.35 0.0 0 0 0 0</pose>
+      <link name='ellipse_center'>
+        <pose>0 0 0.55 0 0 0</pose>
+        <collision name='collision'><geometry><box><size>1.8 6.0 1.1</size></box></geometry></collision>
+        <visual name='visual'><geometry><box><size>1.8 6.0 1.1</size></box></geometry><material><ambient>0.56 0.67 0.92 1</ambient><diffuse>0.56 0.67 0.92 1</diffuse></material></visual>
+      </link>
+      <link name='ellipse_cap_south'>
+        <pose>0 -2.8 0.55 0 0 0</pose>
+        <collision name='collision'><geometry><cylinder><radius>1.0</radius><length>1.1</length></cylinder></geometry></collision>
+        <visual name='visual'><geometry><cylinder><radius>1.0</radius><length>1.1</length></cylinder></geometry><material><ambient>0.56 0.67 0.92 1</ambient><diffuse>0.56 0.67 0.92 1</diffuse></material></visual>
+      </link>
+      <link name='ellipse_cap_north'>
+        <pose>0 2.8 0.55 0 0 0</pose>
+        <collision name='collision'><geometry><cylinder><radius>1.0</radius><length>1.1</length></cylinder></geometry></collision>
+        <visual name='visual'><geometry><cylinder><radius>1.0</radius><length>1.1</length></cylinder></geometry><material><ambient>0.56 0.67 0.92 1</ambient><diffuse>0.56 0.67 0.92 1</diffuse></material></visual>
+      </link>
+    </model>
+
+    <model name='yellow_goal_marker_0'>
+      <static>1</static>
+      <pose>4.2 4.6 0.0125 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <visibility_flags>2</visibility_flags>
+          <geometry><cylinder><radius>0.28</radius><length>0.025</length></cylinder></geometry>
+          <material>
+            <ambient>1.0 0.86 0.0 1</ambient>
+            <diffuse>1.0 0.86 0.0 1</diffuse>
+            <specular>0.25 0.22 0.02 1</specular>
+            <emissive>0.18 0.14 0.0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='yellow_goal_marker_1'>
+      <static>1</static>
+      <pose>0.0 4.6 0.0125 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <visibility_flags>2</visibility_flags>
+          <geometry><cylinder><radius>0.28</radius><length>0.025</length></cylinder></geometry>
+          <material>
+            <ambient>1.0 0.86 0.0 1</ambient>
+            <diffuse>1.0 0.86 0.0 1</diffuse>
+            <specular>0.25 0.22 0.02 1</specular>
+            <emissive>0.18 0.14 0.0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='yellow_goal_marker_2'>
+      <static>1</static>
+      <pose>0.0 -4.6 0.0125 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <visibility_flags>2</visibility_flags>
+          <geometry><cylinder><radius>0.28</radius><length>0.025</length></cylinder></geometry>
+          <material>
+            <ambient>1.0 0.86 0.0 1</ambient>
+            <diffuse>1.0 0.86 0.0 1</diffuse>
+            <specular>0.25 0.22 0.02 1</specular>
+            <emissive>0.18 0.14 0.0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='yellow_goal_marker_3'>
+      <static>1</static>
+      <pose>-4.2 -4.6 0.0125 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <visibility_flags>2</visibility_flags>
+          <geometry><cylinder><radius>0.28</radius><length>0.025</length></cylinder></geometry>
+          <material>
+            <ambient>1.0 0.86 0.0 1</ambient>
+            <diffuse>1.0 0.86 0.0 1</diffuse>
+            <specular>0.25 0.22 0.02 1</specular>
+            <emissive>0.18 0.14 0.0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <model name='yellow_goal_marker_4'>
+      <static>1</static>
+      <pose>-4.2 4.6 0.0125 0 0 0</pose>
+      <link name='link'>
+        <visual name='visual'>
+          <cast_shadows>0</cast_shadows>
+          <visibility_flags>2</visibility_flags>
+          <geometry><cylinder><radius>0.28</radius><length>0.025</length></cylinder></geometry>
+          <material>
+            <ambient>1.0 0.86 0.0 1</ambient>
+            <diffuse>1.0 0.86 0.0 1</diffuse>
+            <specular>0.25 0.22 0.02 1</specular>
+            <emissive>0.18 0.14 0.0 1</emissive>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <gravity>0 0 -9.8</gravity>
+    <physics type='ode'>
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+    <scene>
+      <ambient>0.44 0.44 0.44 1</ambient>
+      <background>0.72 0.72 0.72 1</background>
+      <shadows>1</shadows>
+    </scene>
+    <gui fullscreen='0'>
+      <camera name='user_camera'>
+        <pose>0.0 -13.0 22.0 0 1.18 1.57</pose>
+        <view_controller>orbit</view_controller>
+        <projection_type>perspective</projection_type>
+      </camera>
+    </gui>
+  </world>
+</sdf>

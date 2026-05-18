@@ -1,0 +1,55 @@
+<launch>
+  <arg name="start_gazebo" default="true"/>
+  <arg name="gz_gui" default="true"/>
+  <arg name="rviz" default="true"/>
+  <arg name="model" default="burger"/>
+  <arg name="world_name" default="$(find robosar_emergency_response)/worlds/deform_navigation_demo.world"/>
+
+  <include if="$(arg start_gazebo)" file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(arg world_name)"/>
+    <arg name="paused" value="false"/>
+    <arg name="use_sim_time" value="true"/>
+    <arg name="gui" value="$(arg gz_gui)"/>
+    <arg name="headless" value="false"/>
+    <arg name="debug" value="false"/>
+  </include>
+
+  <node if="$(arg rviz)" name="response_group_rviz" pkg="rviz" type="rviz"
+        args="-d $(find multi_turtlebot3_simulation)/launch/multi_robot.rviz"/>
+
+  <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
+    <arg name="model" value="$(arg model)"/>
+    <arg name="tb3_name" value="tb_0"/>
+    <arg name="robot_x_pos" value="4.2"/>
+    <arg name="robot_y_pos" value="-4.6"/>
+    <arg name="robot_z_pos" value="0.0"/>
+    <arg name="robot_yaw" value="1.5708"/>
+  </include>
+
+  <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
+    <arg name="model" value="$(arg model)"/>
+    <arg name="tb3_name" value="tb_1"/>
+    <arg name="robot_x_pos" value="4.8"/>
+    <arg name="robot_y_pos" value="-4.6"/>
+    <arg name="robot_z_pos" value="0.0"/>
+    <arg name="robot_yaw" value="1.5708"/>
+  </include>
+
+  <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
+    <arg name="model" value="$(arg model)"/>
+    <arg name="tb3_name" value="tb_2"/>
+    <arg name="robot_x_pos" value="4.2"/>
+    <arg name="robot_y_pos" value="-5.2"/>
+    <arg name="robot_z_pos" value="0.0"/>
+    <arg name="robot_yaw" value="1.5708"/>
+  </include>
+
+  <include file="$(find multi_turtlebot3_simulation)/launch/one_robot.xml">
+    <arg name="model" value="$(arg model)"/>
+    <arg name="tb3_name" value="tb_3"/>
+    <arg name="robot_x_pos" value="4.8"/>
+    <arg name="robot_y_pos" value="-5.2"/>
+    <arg name="robot_z_pos" value="0.0"/>
+    <arg name="robot_yaw" value="1.5708"/>
+  </include>
+</launch>
