@@ -21,6 +21,7 @@ from launch_ros.actions import Node
 from launch_webots.environment_generator import (
     generate_random_positions_with_obstacles,
     generate_world_file,
+    normalize_transport_object_shape,
     parse_world_file_objects,
 )
 from launch_webots.robot_nodes import create_burger_nodes, create_epuck_nodes
@@ -127,6 +128,9 @@ def _build_launch(context, *args, **kwargs):
     publish_static_map = _to_bool(
         LaunchConfiguration('publish_static_map').perform(context)
     )
+    transport_object_shape = normalize_transport_object_shape(
+        LaunchConfiguration('transport_object_shape').perform(context)
+    )
     rviz = _to_bool(LaunchConfiguration('rviz').perform(context))
     apply_spawn_offset = _to_bool(
         LaunchConfiguration('apply_spawn_offset').perform(context)
@@ -142,6 +146,7 @@ def _build_launch(context, *args, **kwargs):
     static_map_path = _resolve_static_map_path(package_share, static_map)
     scene_name = _resolve_scene_name(static_map_path, sim_scene)
     task_objects = _load_scene_task_objects(scene_config, scene_name)
+    task_objects['transport_object_shape'] = transport_object_shape
 
     if random_seed_raw:
         random.seed(int(random_seed_raw))
@@ -156,6 +161,7 @@ def _build_launch(context, *args, **kwargs):
     print('  static map      |', static_map_path or '(none)')
     print('  sim scene       |', scene_name or '(none)')
     print('  publish map     |', publish_static_map)
+    print('  transport shape |', transport_object_shape)
     print('  area            | X[%.1f, %.1f] Y[%.1f, %.1f]' % (
         x_min, x_max, y_min, y_max))
     print('  apply offset    |', apply_spawn_offset)
@@ -292,6 +298,7 @@ def generate_launch_description():
         DeclareLaunchArgument('sim_scene', default_value=''),
         DeclareLaunchArgument('scene_config', default_value=''),
         DeclareLaunchArgument('publish_static_map', default_value='false'),
+        DeclareLaunchArgument('transport_object_shape', default_value='cube'),
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('apply_spawn_offset', default_value='true'),
         DeclareLaunchArgument('normalize_scan', default_value='true'),

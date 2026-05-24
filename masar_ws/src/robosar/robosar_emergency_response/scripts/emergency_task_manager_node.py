@@ -7,17 +7,23 @@ import sys
 try:
     from robosar_emergency_response.checkpoint_controller import MatrixPose
     from robosar_emergency_response.task_manager import (
+        BEHAVIOR_RETURN_HOME,
         EmergencyObjectSpec,
         ResponseTaskQueue,
         StagingDistances,
+        all_expected_tasks_done,
+        emergency_object_key,
     )
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
     from robosar_emergency_response.checkpoint_controller import MatrixPose
     from robosar_emergency_response.task_manager import (
+        BEHAVIOR_RETURN_HOME,
         EmergencyObjectSpec,
         ResponseTaskQueue,
         StagingDistances,
+        all_expected_tasks_done,
+        emergency_object_key,
     )
 
 import rospy
@@ -41,13 +47,34 @@ class EmergencyTaskManagerNode:
         self.frame_id = rospy.get_param("~frame_id", "map")
         self.wait_for_start = bool(rospy.get_param("~wait_for_start", True))
         self.started = not self.wait_for_start
+        self.initial_dispatch_delay_seconds = max(
+            0.0,
+            float(rospy.get_param("~initial_dispatch_delay_seconds", 0.0)),
+        )
+        self.enable_priority_preemption = bool(
+            rospy.get_param("~enable_priority_preemption", False)
+        )
+        self.priority_preemption_min_remaining_distance = max(
+            0.0,
+            float(rospy.get_param("~priority_preemption_min_remaining_distance", 2.0)),
+        )
+        self.first_task_seen_at = None
+        self.dispatched_once = False
         self.use_spin_placeholder = bool(rospy.get_param("~use_spin_placeholder", False))
         self.default_hold_seconds = float(rospy.get_param("~default_hold_seconds", 8.0))
-        self.response_center = MatrixPose(
-            float(rospy.get_param("~initial_response_center_x", 16.55)),
-            float(rospy.get_param("~initial_response_center_y", 8.70)),
-            0.0,
-        )
+        initial_response_x = float(rospy.get_param("~initial_response_center_x", 16.55))
+        initial_response_y = float(rospy.get_param("~initial_response_center_y", 8.70))
+        self.home_pose = MatrixPose(initial_response_x, initial_response_y, 0.0)
+        self.response_center = MatrixPose(initial_response_x, initial_response_y, 0.0)
+        self.auto_return_home = bool(rospy.get_param("~auto_return_home", True))
+        self.return_home_task_id = int(rospy.get_param("~return_home_task_id", -1000))
+        self.return_home_active = False
+        self.return_home_started = False
+        self.return_home_done = False
+        self.return_home_failed = False
+        self.seen_object_snapshot = False
+        self.expected_object_keys = set()
+        self.discovered_object_keys = set()
         self.queue = ResponseTaskQueue(
             assigned_robots=self.robot_names,
             staging_distances=StagingDistances(
@@ -169,15 +196,20 @@ class EmergencyTaskManagerNode:
         self._dispatch_if_idle()
 
     def _objects_callback(self, msg):
+        self.seen_object_snapshot = True
         for obj in msg.objects:
+            self._track_object_snapshot(obj)
             self._upsert_object_msg(obj)
         self._dispatch_if_idle()
 
     def _status_callback(self, msg):
-        self.response_center = self._matrix_pose_from_pose(msg.formation_center)
         current = self.queue.current_task()
+        if current is None and self.return_home_active:
+            self._return_home_status_callback(msg)
+            return
         if current is None or msg.active_task_id != current.task_id:
             return
+        self.response_center = self._matrix_pose_from_pose(msg.formation_center)
         if current.status != EmergencyTask.EN_ROUTE:
             return
 
@@ -218,8 +250,11 @@ class EmergencyTaskManagerNode:
     def _upsert_object_msg(self, msg):
         if not msg.discovered:
             return
+        self.discovered_object_keys.add(self._object_key_from_msg(msg))
         spec = self._object_spec_from_msg(msg)
         if self.queue.upsert_object(spec, self.response_center):
+            if self.first_task_seen_at is None:
+                self.first_task_seen_at = self._now_seconds()
             rospy.loginfo(
                 "Queued emergency task from object type=%d id=%d scene=%s",
                 msg.object_type,
@@ -230,16 +265,29 @@ class EmergencyTaskManagerNode:
     def _dispatch_if_idle(self):
         if not self.started:
             return
-        task = self.queue.dispatch_next()
-        if task is None:
-            self.mode_pub.publish(String("STOP"))
-            self._publish_state()
-            return
+        current_task = self.queue.current_task()
+        if current_task is not None:
+            task = self._preempt_active_if_allowed()
+            if task is None:
+                self._publish_state()
+                return
+        else:
+            if self._waiting_for_initial_dispatch_batch():
+                self._publish_state()
+                return
+            task = self.queue.dispatch_next()
+            if task is None:
+                if self._maybe_dispatch_return_home():
+                    return
+                self.mode_pub.publish(String("STOP"))
+                self._publish_state()
+                return
         ros_task = self._to_msg(task)
         if task.status == EmergencyTask.ACTING:
             self.mode_pub.publish(String("TASK_CONTROL"))
             self.response_task_pub.publish(ros_task)
             self.emergency_active_pub.publish(ros_task)
+            self.dispatched_once = True
             self._publish_state()
             return
         if task.status != EmergencyTask.EN_ROUTE:
@@ -247,6 +295,7 @@ class EmergencyTaskManagerNode:
         self.mode_pub.publish(String("NAV_FORMATION"))
         self.response_task_pub.publish(ros_task)
         self.emergency_active_pub.publish(ros_task)
+        self.dispatched_once = True
         self._publish_state()
         rospy.loginfo(
             "Dispatched emergency task %d type=%d object=%d staging=(%.2f, %.2f)",
@@ -257,8 +306,97 @@ class EmergencyTaskManagerNode:
             task.staging_pose.y,
         )
 
-    def _publish_state_timer(self, _event):
+    def _track_object_snapshot(self, msg):
+        key = self._object_key_from_msg(msg)
+        self.expected_object_keys.add(key)
+        if msg.discovered:
+            self.discovered_object_keys.add(key)
+
+    def _maybe_dispatch_return_home(self):
+        if not self._ready_to_return_home():
+            return False
+        self.return_home_started = True
+        self.return_home_active = True
+        task = self._home_task_msg(EmergencyTask.EN_ROUTE)
+        self.mode_pub.publish(String("NAV_FORMATION"))
+        self.response_task_pub.publish(task)
+        self.emergency_active_pub.publish(task)
         self._publish_state()
+        rospy.loginfo(
+            "All discovered emergency tasks are DONE; returning response group home to (%.2f, %.2f)",
+            self.home_pose.x,
+            self.home_pose.y,
+        )
+        return True
+
+    def _ready_to_return_home(self):
+        if not self.auto_return_home:
+            return False
+        if self.return_home_started or self.return_home_done or self.return_home_failed:
+            return False
+        if not self.seen_object_snapshot or not self.expected_object_keys:
+            return False
+        if not self.expected_object_keys.issubset(self.discovered_object_keys):
+            return False
+        return all_expected_tasks_done(self.queue.all_tasks(), self.expected_object_keys)
+
+    def _return_home_status_callback(self, msg):
+        if msg.active_task_id != self.return_home_task_id:
+            return
+        self.response_center = self._matrix_pose_from_pose(msg.formation_center)
+        if msg.state == ResponseGroupStatus.DONE:
+            self.return_home_active = False
+            self.return_home_done = True
+            self.mode_pub.publish(String("STOP"))
+            self._publish_state()
+            rospy.loginfo("Response group returned home; stopping response loop")
+        elif msg.state == ResponseGroupStatus.FAILED:
+            self.return_home_active = False
+            self.return_home_failed = True
+            self.mode_pub.publish(String("STOP"))
+            self._publish_state()
+            rospy.logwarn("Response group failed to return home: %s", msg.detail)
+
+    def _preempt_active_if_allowed(self):
+        if not self.enable_priority_preemption:
+            return None
+        task = self.queue.preempt_active_for_higher_priority(
+            group_center=self.response_center,
+            min_remaining_distance=self.priority_preemption_min_remaining_distance,
+        )
+        if task is None:
+            return None
+        rospy.loginfo(
+            "Preempted active task; dispatched higher-priority task %d type=%d object=%d",
+            task.task_id,
+            task.task_type,
+            task.object_id,
+        )
+        return task
+
+    def _publish_state_timer(self, _event):
+        if self.started and self.queue.current_task() is None and not self.return_home_active:
+            self._dispatch_if_idle()
+            return
+        self._publish_state()
+
+    def _waiting_for_initial_dispatch_batch(self):
+        if self.dispatched_once or self.first_task_seen_at is None:
+            return False
+        if self.initial_dispatch_delay_seconds <= 0.0:
+            return False
+        has_pending_task = any(
+            task.status in (ResponseTaskQueue.STATUS_NEW, ResponseTaskQueue.STATUS_DISPATCHED)
+            for task in self.queue.all_tasks()
+        )
+        if not has_pending_task:
+            return False
+        elapsed = self._now_seconds() - self.first_task_seen_at
+        return elapsed < self.initial_dispatch_delay_seconds
+
+    @staticmethod
+    def _now_seconds():
+        return rospy.Time.now().to_sec()
 
     def _publish_state(self):
         array = EmergencyTaskArray()
@@ -282,6 +420,10 @@ class EmergencyTaskManagerNode:
             has_goal_pose=bool(msg.has_goal_pose),
         )
 
+    @staticmethod
+    def _object_key_from_msg(msg):
+        return emergency_object_key(msg.object_type, msg.object_id, msg.scene_name)
+
     def _to_msg(self, task):
         msg = EmergencyTask()
         msg.header.stamp = rospy.Time.now()
@@ -303,6 +445,23 @@ class EmergencyTaskManagerNode:
         msg.hold_seconds = task.hold_seconds
         msg.behavior_type = task.behavior_type
         msg.assigned_robots = list(task.assigned_robots)
+        return msg
+
+    def _home_task_msg(self, status):
+        msg = EmergencyTask()
+        msg.header.stamp = rospy.Time.now()
+        msg.header.frame_id = self.frame_id
+        msg.task_id = self.return_home_task_id
+        msg.task_type = 0
+        msg.status = status
+        msg.object_id = -1
+        msg.scene_name = "return_home"
+        msg.precise_pose = self._pose_stamped(self.home_pose)
+        msg.staging_pose = self._pose_stamped(self.home_pose)
+        msg.goal_pose = self._pose_stamped(self.home_pose)
+        msg.has_goal_pose = True
+        msg.behavior_type = BEHAVIOR_RETURN_HOME
+        msg.assigned_robots = list(self.robot_names)
         return msg
 
     def _pose_stamped(self, pose):

@@ -32,6 +32,14 @@ except ImportError:
     NEAT_AVAILABLE = False
 
 
+def normalize_neat_output_to_signed(value, activation):
+    """Map a NEAT output node value to the signed action interval."""
+    if activation == 'sigmoid':
+        return np.clip(value, 0.0, 1.0) * 2.0 - 1.0
+    if activation == 'tanh':
+        return np.clip(value, -1.0, 1.0)
+    raise ValueError(f'不支持的输出激活函数: {activation}')
+
 class RoundFlockingPattern(MovementPattern):
     """
     使用NEAT神经网络进行环绕(Round Flocking)任务的模式节点
@@ -50,7 +58,7 @@ class RoundFlockingPattern(MovementPattern):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('genome_file', 'flocking_genome_package_gen99.pkl'),  # 基因包文件名
+                ('genome_file', 'flocking_genome_package_0.3.pkl'),  # 基因包文件名
                 ('max_linear_velocity', 0.12),  # 最大线速度 (m/s) - 差速驱动约束
                 ('max_angular_velocity', 1.0),  # 最大角速度 (rad/s) - 差速驱动约束
                 ('timer_period', 0.1),  # 控制周期（秒）
@@ -80,6 +88,7 @@ class RoundFlockingPattern(MovementPattern):
 
         # NEAT网络
         self.network = None
+        self.output_activation_names = []
         # 网络输入维度：2(位置) + 2(速度) + 2(目标相对位置) + n_lidar_rays(激光雷达)
         self.network_input_dim = 6 + self.n_lidar_rays
 
@@ -155,6 +164,10 @@ class RoundFlockingPattern(MovementPattern):
 
             genome = package['genome']
             neat_config = package['neat_config']
+            output_keys = neat_config.genome_config.output_keys
+            self.output_activation_names = [
+                genome.nodes[key].activation for key in output_keys
+            ]
 
             self.network = RecurrentNetwork.create(genome, neat_config)
             self.network.reset()
@@ -162,12 +175,6 @@ class RoundFlockingPattern(MovementPattern):
             # 更新网络输入维度
             self.network_input_dim = len(self.network.input_nodes)
 
-            self.get_logger().info(
-                f'NEAT网络加载成功 - 任务: {package.get("task_name", "unknown")}, '
-                f'适应度: {package.get("fitness", 0):.4f}, '
-                f'输入维度: {self.network_input_dim}, '
-                f'输出维度: {len(self.network.output_nodes)}'
-            )
         except FileNotFoundError:
             self.get_logger().error(f'NEAT基因组包不存在: {self.genome_package_path}')
         except Exception as e:
@@ -263,7 +270,7 @@ class RoundFlockingPattern(MovementPattern):
                 target_rel_x_global = robot_x - target_info['position']['x']
                 target_rel_y_global = robot_y - target_info['position']['y']
             else:
-                target_rel_x_global, target_rel_y_global = 0.0, 0.0
+                 target_rel_x_global, target_rel_y_global = 0.0, 0.0
             
             # 将相对位置和速度转换到机器人本体坐标系（绕z轴旋转-yaw角）
             # 这样网络看到的是：正x方向=机器人前方，正y方向=机器人左方
@@ -327,9 +334,14 @@ class RoundFlockingPattern(MovementPattern):
             # VMAS flocking任务的网络输出是全向移动的 [vx, vy]
             # 需要转换为差速驱动的 [linear, angular]
             # 
-            # NEAT输出在[0, 1]范围（sigmoid激活），映射到[-1, 1]
-            vx = output[0] * 2 - 1  # 期望的前进方向速度
-            vy = output[1] * 2 - 1  # 期望的侧向速度
+            # NEAT输出可能来自sigmoid或tanh，统一映射到[-1, 1]
+            vx = normalize_neat_output_to_signed(
+                output[0], self.output_activation_names[0]
+            )  # 期望的前进方向速度
+            vy = normalize_neat_output_to_signed(
+                output[1], self.output_activation_names[1]
+            )  # 期望的侧向速度
+
             
             # 将全向速度 (vx, vy) 转换为差速驱动 (linear, angular)
             # 计算期望移动的方向角和速度大小

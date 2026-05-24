@@ -19,7 +19,6 @@ import tf
 from apriltag_ros.msg import AprilTagDetection, AprilTagDetectionArray
 from gazebo_msgs.srv import DeleteModel, GetWorldProperties, SpawnModel
 from geometry_msgs.msg import Point, Pose, PoseStamped
-from nav_msgs.msg import OccupancyGrid
 from robosar_messages.msg import EmergencyObject, EmergencyObjectArray
 from robosar_messages.srv import agent_status
 from visualization_msgs.msg import Marker
@@ -54,28 +53,28 @@ class AprilTagSim:
         self.victim_detection_radius = rospy.get_param("~victim_detection_radius", 1.5)
         self.fire_detection_radius = rospy.get_param("~fire_detection_radius", 1.6)
         self.box_detection_radius = rospy.get_param("~box_detection_radius", 1.6)
-        self.target_zone_radius = rospy.get_param("~target_zone_radius", 0.25)
-        self.transport_goal_min_distance = rospy.get_param(
-            "~transport_goal_min_distance", 0.8
-        )
-        self.transport_goal_max_distance = rospy.get_param(
-            "~transport_goal_max_distance", 1.8
-        )
-        self.transport_goal_distance_step = rospy.get_param(
-            "~transport_goal_distance_step", 0.1
-        )
+        # AprilTagSim transport Gazebo/SDF 参数说明:
+        # target_zone_radius 仅控制目标区域圆盘的可视化半径。
+        self.target_zone_radius = rospy.get_param("~target_zone_radius", 0.45)
         self.search_robot_names = rospy.get_param(
             "~search_robot_names",
             ["agent_0", "agent_1", "agent_2", "agent_3", "agent_4"],
         )
-        self.transport_path_clearance = rospy.get_param(
-            "~transport_path_clearance", 0.18
-        )
-        self.occupancy_threshold = rospy.get_param("~occupancy_threshold", 50)
         self.spawn_gazebo_entities = rospy.get_param("~spawn_gazebo_entities", True)
-        self.box_mass = rospy.get_param("~transport_box_mass", 0.5)
-        self.box_size = rospy.get_param("~transport_box_size", 0.25)
-        self.box_friction = rospy.get_param("~transport_box_friction", 0.8)
+        # transport_box_mass 是 Gazebo 正方体箱体的质量，单位 kg；1kg 保持 TB3 可推动。
+        self.box_mass = rospy.get_param("~transport_box_mass", 1.0)
+        # transport_box_inertia 是 Gazebo 箱体主转动惯量；高于均匀立方体惯量以抑制低位接触推力造成的翘箱。
+        self.box_inertia = rospy.get_param("~transport_box_inertia", 0.5)
+        # transport_box_size 是正方体箱子的边长，同时用于碰撞和视觉尺寸，单位 m。
+        self.box_size = rospy.get_param("~transport_box_size", 0.5)
+        # transport_box_friction 是箱体碰撞面的 ODE 摩擦系数 mu/mu2。
+        self.box_friction = rospy.get_param("~transport_box_friction", 0.25)
+        # transport_box_*_decay 是 Gazebo link 速度衰减；角阻尼主要用于稳定箱体姿态。
+        self.box_linear_decay = rospy.get_param("~transport_box_linear_decay", 0.01)
+        self.box_angular_decay = rospy.get_param("~transport_box_angular_decay", 3.0)
+        # contact kd/max_vel 控制接触弹跳，避免 TB3 顶箱时把箱体数值上抬。
+        self.box_contact_kd = rospy.get_param("~transport_box_contact_kd", 5.0)
+        self.box_contact_max_vel = rospy.get_param("~transport_box_contact_max_vel", 0.2)
         self.fire_radius = rospy.get_param("~fire_radius", 0.14)
         self.fire_height = rospy.get_param("~fire_height", 0.18)
         self.victim_height = rospy.get_param("~victim_height", 1.05)
@@ -86,19 +85,6 @@ class AprilTagSim:
         self.victim_head_radius = rospy.get_param("~victim_head_radius", 0.09)
         self.victim_arm_radius = rospy.get_param("~victim_arm_radius", 0.025)
         self.victim_leg_radius = rospy.get_param("~victim_leg_radius", 0.035)
-        self.robot_spawn_exclusion_radius = rospy.get_param(
-            "~robot_spawn_exclusion_radius", 0.45
-        )
-        self.pose_adjust_search_radius = rospy.get_param(
-            "~pose_adjust_search_radius", 3.0
-        )
-        self.victim_clearance_radius = rospy.get_param("~victim_clearance_radius", 0.2)
-        self.fire_clearance_radius = rospy.get_param(
-            "~fire_clearance_radius", max(self.fire_radius + 0.06, 0.2)
-        )
-        self.box_clearance_radius = rospy.get_param(
-            "~box_clearance_radius", max(self.box_size * 0.75, 0.22)
-        )
         self.rate = rospy.Rate(self.update_rate_hz)
 
         self.agent_active_status = {}
@@ -112,27 +98,11 @@ class AprilTagSim:
             tuple(pos) for pos in self.scene_assets.get("robot_spawn_positions", [])
         ]
 
-        (
-            self.map_msg,
-            self.map_data,
-            self.scale,
-            self.origin,
-            _,
-        ) = self.get_map_info()
-
-        self.april_tag_poses = self.sanitize_scene_positions(
-            "victim", self.scene_assets.get("victims", []), self.victim_clearance_radius
-        )
-        self.fire_source_poses = self.sanitize_scene_positions(
-            "fire",
-            self.scene_assets.get("fire_sources", []),
-            self.fire_clearance_radius,
-        )
-        self.transport_object_poses = self.sanitize_scene_positions(
-            "transport box",
-            self.scene_assets.get("transport_objects", []),
-            self.box_clearance_radius,
-        )
+        self.april_tag_poses = [tuple(pose) for pose in self.scene_assets.get("victims", [])]
+        self.fire_source_poses = [tuple(pose) for pose in self.scene_assets.get("fire_sources", [])]
+        self.transport_object_poses = [
+            tuple(pose) for pose in self.scene_assets.get("transport_objects", [])
+        ]
         self.transport_goal_poses = self.resolve_transport_targets()
 
         self.victim_records = [
@@ -211,223 +181,16 @@ class AprilTagSim:
         self.scene_name = scene_name
         return scene_assets
 
-    def get_map_info(self):
-        rospy.logdebug("Waiting for /sim_map")
-        map_msg = rospy.wait_for_message("/sim_map", OccupancyGrid)
-        rospy.logdebug("Map received")
-        scale = map_msg.info.resolution
-        origin = [
-            map_msg.info.origin.position.x,
-            map_msg.info.origin.position.y,
-        ]
-        data = np.reshape(map_msg.data, (map_msg.info.height, map_msg.info.width))
-        free_space = sum(1 for cell in map_msg.data if cell >= 0)
-        area = free_space * scale * scale
-        return map_msg, data, scale, origin, area
-
     def resolve_transport_targets(self):
-        explicit_targets = self.scene_assets.get("transport_targets", [])
-        if len(explicit_targets) == len(self.transport_object_poses):
-            rospy.loginfo(
-                "Using %d explicit transport targets from scene config",
-                len(explicit_targets),
-            )
-            targets = []
-            for idx, (box_pose, target_pose) in enumerate(
-                zip(self.transport_object_poses, explicit_targets)
-            ):
-                target_pose = tuple(target_pose)
-                if self.transport_target_is_valid(box_pose, target_pose):
-                    targets.append(target_pose)
-                    continue
-
-                rospy.logwarn(
-                    "Transport target %d at (%.3f, %.3f) is not usable for box at (%.3f, %.3f); recomputing",
-                    idx,
-                    target_pose[0],
-                    target_pose[1],
-                    box_pose[0],
-                    box_pose[1],
-                )
-                targets.append(self.compute_transport_target(box_pose))
-            return targets
-
-        if explicit_targets:
+        targets = [tuple(pose) for pose in self.scene_assets.get("transport_targets", [])]
+        if len(targets) != len(self.transport_object_poses):
             rospy.logwarn(
-                "Scene '%s' defines %d transport targets for %d boxes; ignoring explicit targets",
+                "Scene '%s' defines %d transport targets for %d boxes; using configured targets as-is",
                 self.scene_name,
-                len(explicit_targets),
+                len(targets),
                 len(self.transport_object_poses),
             )
-
-        targets = []
-        for box_pose in self.transport_object_poses:
-            target_pose = self.compute_transport_target(box_pose)
-            targets.append(target_pose)
         return targets
-
-    def grid_to_world(self, gx, gy):
-        wx = self.origin[0] + (gx + 0.5) * self.scale
-        wy = self.origin[1] + (gy + 0.5) * self.scale
-        return wx, wy
-
-    def world_to_grid(self, x, y):
-        gx = int(math.floor((x - self.origin[0]) / self.scale))
-        gy = int(math.floor((y - self.origin[1]) / self.scale))
-        return gx, gy
-
-    def is_free_index(self, gx, gy):
-        if gx < 0 or gy < 0:
-            return False
-        if gy >= self.map_data.shape[0] or gx >= self.map_data.shape[1]:
-            return False
-        value = int(self.map_data[gy, gx])
-        return 0 <= value < self.occupancy_threshold
-
-    def position_has_clearance(self, pos, clearance_radius):
-        gx, gy = self.world_to_grid(pos[0], pos[1])
-        cell_radius = max(int(math.ceil(clearance_radius / self.scale)), 0)
-        for dx in range(-cell_radius, cell_radius + 1):
-            for dy in range(-cell_radius, cell_radius + 1):
-                if dx * dx + dy * dy > cell_radius * cell_radius:
-                    continue
-                if not self.is_free_index(gx + dx, gy + dy):
-                    return False
-        return True
-
-    def position_respects_spawn_exclusion(self, pos):
-        if not self.robot_spawn_positions:
-            return True
-
-        for spawn_pos in self.robot_spawn_positions:
-            if (
-                np.linalg.norm(np.array(pos) - np.array(spawn_pos))
-                < self.robot_spawn_exclusion_radius
-            ):
-                return False
-        return True
-
-    def pose_is_valid(self, pos, clearance_radius):
-        return self.position_has_clearance(
-            pos, clearance_radius
-        ) and self.position_respects_spawn_exclusion(pos)
-
-    def find_nearest_valid_pose(self, pose, clearance_radius):
-        max_search_cells = max(
-            int(math.ceil(self.pose_adjust_search_radius / max(self.scale, 1e-3))), 1
-        )
-        start_gx, start_gy = self.world_to_grid(pose[0], pose[1])
-
-        for radius in range(max_search_cells + 1):
-            for dx in range(-radius, radius + 1):
-                for dy in range(-radius, radius + 1):
-                    if max(abs(dx), abs(dy)) != radius:
-                        continue
-                    candidate = self.grid_to_world(start_gx + dx, start_gy + dy)
-                    if self.pose_is_valid(candidate, clearance_radius):
-                        return candidate
-        return None
-
-    def sanitize_scene_positions(self, label, poses, clearance_radius):
-        sanitized_poses = []
-        for idx, pose in enumerate(poses):
-            normalized_pose = tuple(pose)
-            if self.pose_is_valid(normalized_pose, clearance_radius):
-                sanitized_poses.append(normalized_pose)
-                continue
-
-            replacement = self.find_nearest_valid_pose(normalized_pose, clearance_radius)
-            if replacement is None:
-                rospy.logwarn(
-                    "Scene '%s' %s %d at (%.3f, %.3f) has poor clearance and no nearby replacement was found; keeping original pose",
-                    self.scene_name,
-                    label,
-                    idx,
-                    normalized_pose[0],
-                    normalized_pose[1],
-                )
-                sanitized_poses.append(normalized_pose)
-                continue
-
-            rospy.logwarn(
-                "Adjusted scene '%s' %s %d from (%.3f, %.3f) to (%.3f, %.3f) to keep it reachable and away from robot spawn points",
-                self.scene_name,
-                label,
-                idx,
-                normalized_pose[0],
-                normalized_pose[1],
-                replacement[0],
-                replacement[1],
-            )
-            sanitized_poses.append(replacement)
-        return sanitized_poses
-
-    def segment_is_clear(self, start, end, clearance_radius):
-        sx, sy = start
-        ex, ey = end
-        dist = math.hypot(ex - sx, ey - sy)
-        steps = max(int(math.ceil(dist / max(self.scale * 0.5, 1e-3))), 1)
-        for step_idx in range(steps + 1):
-            ratio = float(step_idx) / float(steps)
-            px = sx + (ex - sx) * ratio
-            py = sy + (ey - sy) * ratio
-            if not self.pose_is_valid((px, py), clearance_radius):
-                return False
-        return True
-
-    def transport_target_is_valid(self, box_pose, target_pose):
-        return self.pose_is_valid(
-            target_pose, self.target_zone_radius + 0.05
-        ) and self.segment_is_clear(
-            box_pose, target_pose, self.transport_path_clearance
-        )
-
-    def compute_transport_target(self, box_pose):
-        directions = [
-            (1.0, 0.0),
-            (-1.0, 0.0),
-            (0.0, 1.0),
-            (0.0, -1.0),
-        ]
-
-        search_distances = np.arange(
-            self.transport_goal_min_distance,
-            self.transport_goal_max_distance + 1e-6,
-            self.transport_goal_distance_step,
-        )
-
-        for distance in search_distances:
-            for dx, dy in directions:
-                candidate = (
-                    box_pose[0] + dx * distance,
-                    box_pose[1] + dy * distance,
-                )
-                if not self.pose_is_valid(
-                    candidate, self.target_zone_radius + 0.05
-                ):
-                    continue
-                if not self.segment_is_clear(
-                    box_pose, candidate, self.transport_path_clearance
-                ):
-                    continue
-                rospy.loginfo(
-                    "Computed straight transport target for box at (%.3f, %.3f) -> (%.3f, %.3f)",
-                    box_pose[0],
-                    box_pose[1],
-                    candidate[0],
-                    candidate[1],
-                )
-                return candidate
-
-        rospy.logwarn(
-            "No short straight transport target found for box at (%.3f, %.3f); using fallback +x offset",
-            box_pose[0],
-            box_pose[1],
-        )
-        return (
-            box_pose[0] + self.transport_goal_min_distance,
-            box_pose[1],
-        )
 
     def register_active_agent(self, agent_name):
         self.agent_active_status[agent_name] = True
@@ -477,11 +240,7 @@ class AprilTagSim:
                     "position": [trans[0], trans[1]],
                     "yaw": yaw,
                 }
-            except (
-                tf.LookupException,
-                tf.ConnectivityException,
-                tf.ExtrapolationException,
-            ) as exc:
+            except tf.Exception as exc:
                 rospy.logwarn_throttle(5.0, "Failed to get %s pose: %s", name, exc)
         return robot_pos
 
@@ -769,6 +528,14 @@ class AprilTagSim:
   <model name='{name}'>
     <static>true</static>
     <link name='link'>
+      <collision name='collision'>
+        <geometry>
+          <cylinder>
+            <radius>{radius}</radius>
+            <length>{height}</length>
+          </cylinder>
+        </geometry>
+      </collision>
       <visual name='visual'>
         <geometry>
           <cylinder>
@@ -971,14 +738,18 @@ class AprilTagSim:
       <inertial>
         <mass>{mass}</mass>
         <inertia>
-          <ixx>0.002</ixx>
-          <iyy>0.002</iyy>
-          <izz>0.002</izz>
+          <ixx>{inertia}</ixx>
+          <iyy>{inertia}</iyy>
+          <izz>{inertia}</izz>
           <ixy>0.0</ixy>
           <ixz>0.0</ixz>
           <iyz>0.0</iyz>
         </inertia>
       </inertial>
+      <velocity_decay>
+        <linear>{linear_decay}</linear>
+        <angular>{angular_decay}</angular>
+      </velocity_decay>
       <collision name='collision'>
         <geometry>
           <box>
@@ -990,8 +761,17 @@ class AprilTagSim:
             <ode>
               <mu>{friction}</mu>
               <mu2>{friction}</mu2>
+              <fdir1>1 0 0</fdir1>
             </ode>
           </friction>
+          <contact>
+            <ode>
+              <kp>50000</kp>
+              <kd>{contact_kd}</kd>
+              <min_depth>0.001</min_depth>
+              <max_vel>{contact_max_vel}</max_vel>
+            </ode>
+          </contact>
         </surface>
       </collision>
       <visual name='visual'>
@@ -1014,8 +794,13 @@ class AprilTagSim:
             y=pose[1],
             z=self.box_size * 0.5,
             mass=self.box_mass,
+            inertia=self.box_inertia,
             size=self.box_size,
             friction=self.box_friction,
+            linear_decay=self.box_linear_decay,
+            angular_decay=self.box_angular_decay,
+            contact_kd=self.box_contact_kd,
+            contact_max_vel=self.box_contact_max_vel,
         )
 
     def make_target_zone_sdf(self, model_name, pose):
@@ -1023,13 +808,13 @@ class AprilTagSim:
 <sdf version='1.6'>
   <model name='{name}'>
     <static>true</static>
-    <pose>{x} {y} 0.001 0 0 0</pose>
+    <pose>{x} {y} 0.0125 0 0 0</pose>
     <link name='link'>
       <visual name='visual'>
         <geometry>
           <cylinder>
             <radius>{radius}</radius>
-            <length>0.002</length>
+            <length>0.025</length>
           </cylinder>
         </geometry>
         <material>

@@ -23,9 +23,9 @@
     </visual>
 
     <collision>
-      <origin xyz="-0.032 0 0.070" rpy="0 0 0"/>
+      <origin xyz="-0.027 0 0.055" rpy="0 0 0"/>
       <geometry>
-        <box size="0.140 0.140 0.143"/>
+        <box size="0.130 0.120 0.110"/>
       </geometry>
     </collision>
 
@@ -151,12 +151,12 @@
     <collision>
       <origin xyz="0.015 0 -0.0065" rpy="0 0 0"/>
       <geometry>
-        <cylinder length="0.0315" radius="0.055"/>
+        <cylinder length="0.0200" radius="0.040"/>
       </geometry>
     </collision>
 
     <inertial>
-      <mass value="0.114" />
+      <mass value="0.060" />
       <origin xyz="0 0 0" />
       <inertia ixx="0.001" ixy="0.0" ixz="0.0"
                iyy="0.001" iyz="0.0"

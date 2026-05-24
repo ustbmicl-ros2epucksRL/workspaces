@@ -49,6 +49,9 @@ resolve_workspace_dir() {
 }
 
 source_ros_env() {
+  local caller_ros_master_uri="${ROS_MASTER_URI:-}"
+  local caller_gazebo_master_uri="${GAZEBO_MASTER_URI:-}"
+
   [[ -f "/opt/ros/noetic/setup.bash" ]] && source "/opt/ros/noetic/setup.bash"
 
   if [[ -f "$WORKSPACE_SETUP" ]]; then
@@ -57,6 +60,13 @@ source_ros_env() {
     source "$LEGACY_WORKSPACE_SETUP"
   else
     die "catkin setup file not found: $WORKSPACE_SETUP"
+  fi
+
+  if [[ -n "$caller_ros_master_uri" ]]; then
+    export ROS_MASTER_URI="$caller_ros_master_uri"
+  fi
+  if [[ -n "$caller_gazebo_master_uri" ]]; then
+    export GAZEBO_MASTER_URI="$caller_gazebo_master_uri"
   fi
 }
 
@@ -74,6 +84,19 @@ quote_args() {
   printf "%q " "$@"
 }
 
+ros_master_port() {
+  local uri="${ROS_MASTER_URI:-http://127.0.0.1:11311}"
+  local host_port="${uri#*://}"
+  host_port="${host_port%%/*}"
+  local port="${host_port##*:}"
+
+  if [[ "$port" =~ ^[0-9]+$ ]]; then
+    echo "$port"
+  else
+    echo "11311"
+  fi
+}
+
 start_process_group() {
   local label="$1"
   local cmd="$2"
@@ -89,6 +112,8 @@ start_process_group() {
     WORKSPACE_SETUP=$(printf "%q" "$WORKSPACE_SETUP")
     LEGACY_WORKSPACE_SETUP=$(printf "%q" "$LEGACY_WORKSPACE_SETUP")
     source_ros_env() {
+      caller_ros_master_uri=\"\${ROS_MASTER_URI:-}\"
+      caller_gazebo_master_uri=\"\${GAZEBO_MASTER_URI:-}\"
       [ -f /opt/ros/noetic/setup.bash ] && . /opt/ros/noetic/setup.bash
       if [ -f \"\$WORKSPACE_SETUP\" ]; then
         . \"\$WORKSPACE_SETUP\"
@@ -97,6 +122,12 @@ start_process_group() {
       else
         echo '[tepper-response][error] no catkin setup found' >&2
         exit 1
+      fi
+      if [ -n \"\$caller_ros_master_uri\" ]; then
+        export ROS_MASTER_URI=\"\$caller_ros_master_uri\"
+      fi
+      if [ -n \"\$caller_gazebo_master_uri\" ]; then
+        export GAZEBO_MASTER_URI=\"\$caller_gazebo_master_uri\"
       fi
     }
     source_ros_env
@@ -133,10 +164,29 @@ ensure_roscore() {
   fi
 
   echo "[tepper-response][start] launching roscore..."
-  setsid roscore &
+  setsid roscore -p "$(ros_master_port)" &
   local pid=$!
   PIDS+=("$pid")
   wait_for_roscore
+}
+
+cleanup_gui_processes() {
+  local signal="$1"
+  local pid
+
+  if [[ -n "${GUI_SCRIPT:-}" ]]; then
+    while read -r pid; do
+      [[ -z "$pid" || "$pid" == "$$" ]] && continue
+      echo "  -> SIG${signal} GUI pid $pid"
+      kill "-${signal}" "$pid" 2>/dev/null || true
+    done < <(pgrep -f "$GUI_SCRIPT" 2>/dev/null || true)
+  fi
+
+  case "$signal" in
+    INT) pkill -INT -x rviz 2>/dev/null || true ;;
+    TERM) pkill -TERM -x rviz 2>/dev/null || true ;;
+    KILL) pkill -KILL -x rviz 2>/dev/null || true ;;
+  esac
 }
 
 cleanup() {
@@ -148,12 +198,14 @@ cleanup() {
     echo "  -> SIGINT to PGID $pid"
     kill -INT -"${pid}" 2>/dev/null || true
   done
+  cleanup_gui_processes "INT"
   sleep 2
 
   for pid in "${PIDS[@]}"; do
     echo "  -> SIGTERM to PGID $pid"
     kill -TERM -"${pid}" 2>/dev/null || true
   done
+  cleanup_gui_processes "TERM"
   sleep 2
 
   # Gazebo occasionally ignores process-group shutdown; keep the same simple
@@ -172,6 +224,7 @@ cleanup() {
 
   pkill -KILL -x gzserver 2>/dev/null || true
   pkill -KILL -x gzclient 2>/dev/null || true
+  cleanup_gui_processes "KILL"
 }
 
 handle_interrupt() {
@@ -235,6 +288,11 @@ fi
 
 GAZEBO_CMD="GAZEBO_MODEL_DATABASE_URI='' ${VGLRUN_CMD}roslaunch robosar_sim_bringup robosar_sim_tepper.launch gz_gui:=${GZ_GUI} rviz:=${RVIZ}"
 OVERLAY_CMD="roslaunch robosar_emergency_response tepper_response_demo.launch $(quote_args "${OVERLAY_ARGS[@]}")"
+TRAFFIC_REMAP_ARGS=()
+for agent_index in 0 1 2 3 4; do
+  TRAFFIC_REMAP_ARGS+=("/robosar_agent_bringup_node/agent_${agent_index}/cmd_vel:=/robosar_agent_bringup_node/agent_${agent_index}/raw_cmd_vel")
+done
+TRAFFIC_CMD="rosrun robosar_controller robosar_traffic_controller_node $(quote_args "${TRAFFIC_REMAP_ARGS[@]}")"
 
 echo "[tepper-response] workspace=$WORKSPACE_DIR"
 echo "[tepper-response] TURTLEBOT3_MODEL=$MODEL"
@@ -266,7 +324,7 @@ start_process_group "tepper_sim" "$GAZEBO_CMD" 1
 start_process_group "slam" "roslaunch slam_toolbox robosar_mapping_sim_g.launch slam_node_type:=${SLAM_NODE_TYPE}" 1
 start_process_group "task_generator" "roslaunch robosar_task_generator task_generator.launch" 1
 start_process_group "mission_executive" "roslaunch robosar_navigation mission_executive.launch" 1
-start_process_group "traffic_controller" "rosrun robosar_controller robosar_traffic_controller_node" 1
+start_process_group "traffic_controller" "$TRAFFIC_CMD" 1
 start_process_group "mission_commander" "rosrun robosar_task_allocator mission_commander.py -s=true -t='high'" 1
 start_process_group "gui" "python3 $(printf "%q" "$GUI_SCRIPT")" 1
 start_process_group "response_overlay" "$OVERLAY_CMD" 1

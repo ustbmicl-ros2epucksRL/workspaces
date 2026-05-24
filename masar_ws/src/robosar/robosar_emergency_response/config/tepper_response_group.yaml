@@ -1,5 +1,7 @@
-# 第一/第二阶段 Tepper 场景响应组运行配置。
-# 本文件只用于 ROS1+Gazebo 的搜索组 + 应急组闭环，不影响第 0 阶段 demo。
+# 作用：第一/第二阶段 Tepper 大场景响应组的公共基础配置。
+# 使用范围：tepper_response_demo.launch，以及 roundflocking/transport 独立控制器 demo 的公共参数。
+# 独立控制器 demo 会在本文件之后再加载各自的 *_controller_demo.yaml 覆盖 demo 专属参数。
+# 不影响第 0 阶段 response_deform_demo.launch。
 
 # 响应组四个 TurtleBot 的命名空间。
 robot_names: [tb_0, tb_1, tb_2, tb_3]
@@ -13,19 +15,33 @@ frame_id: map
 initial_response_center_x: 16.55
 initial_response_center_y: 8.70
 
+# 全量应急对象都被发现且对应任务 DONE 后，响应组自动编队回到初始中心。
+auto_return_home: true
+return_home_task_id: -1000
+
 # 是否等待 /response_group/start 信号后才开始接任务派发。
 wait_for_start: true
+
+# 大系统首次发现任务后短暂聚合首批事件，避免先发现的低优先级目标抢跑。
+initial_dispatch_delay_seconds: 3.0
+
+# Tepper 闭环验证要求当前任务到达并执行控制器后再进入下一项；
+# 保留代码能力，但大系统默认不在 EN_ROUTE 中途换目标。
+enable_priority_preemption: false
+
+# 距当前 active staging pose 小于该距离后不再抢占，避免临门一脚反复换目标。
+priority_preemption_min_remaining_distance: 3.0
 
 # 第一阶段可设为 true：到达任务点后执行 6 秒自转占位；第二阶段设为 false 使用 checkpoint 控制器。
 use_spin_placeholder: false
 
 # victim/fire/box 到目标实体前的预备停车距离，单位为米。
-staging_distance_victim: 0.9
-staging_distance_fire: 1.1
-staging_distance_box: 0.8
+staging_distance_victim: 1.0
+staging_distance_fire: 1.0
+staging_distance_box: 1.0
 
-# 普通任务控制器默认执行时长，单位为秒；roundflocking 会优先使用该值。
-default_hold_seconds: 8.0
+# 普通任务控制器最长执行时长，单位为秒；roundflocking 会优先使用该值。
+default_hold_seconds: 20.0
 
 # 编队槽位间距和初始队形由 tepper_response_demo.launch 统一传给 DEFORM 与协调节点。
 
@@ -53,6 +69,10 @@ goal_region_center_radius: 0.95
 # 目标区域到达条件需要连续保持的时间，单位为秒。
 goal_region_hold_seconds: 0.8
 
+# transport 需要先把响应组送到箱体后方附近，再交给任务控制器完成接触/推送。
+transport_goal_region_robot_radius: 2.0
+transport_goal_region_center_radius: 1.25
+
 # 单个任务点允许导航的最长时间，超时后发布失败状态，单位为秒。
 navigation_timeout: 300.0
 
@@ -64,107 +84,89 @@ global_info_rate: 10.0
 # 速度指令新鲜度超时时间，超过该时间未收到新指令则该指令源置零，单位为秒。
 command_timeout: 0.6
 
-# 前向激光减速距离，前方障碍进入该距离后开始按比例降低前进速度，单位为米。
-wall_slowdown_distance: 0.65
-
-# 前向激光硬停止距离，前方障碍小于该距离时停止前进并向开阔侧转向，单位为米。
-wall_stop_distance: 0.30
-
-# 侧向贴墙触发距离，侧向障碍小于该距离时触发贴墙脱离转向，单位为米。
-wall_side_stop_distance: 0.30
-
-# 侧向贴墙脱离时保留的最大爬行速度，单位为米每秒。
-wall_side_crawl_speed: 0.08
-
-# 前向安全扇区角宽，单位为度。
-safety_front_angle_deg: 100.0
-
-# 左右侧安全扇区角宽，单位为度。
-safety_side_angle_deg: 90.0
-
-# 后向安全扇区角宽，用于倒车恢复时判断后方空间，单位为度。
-safety_rear_angle_deg: 90.0
-
-# 向开阔侧转向时使用的角速度，单位为弧度每秒。
-safety_escape_turn_speed: 0.55
-
-# 是否由激光安全层发布近障碍状态，供编队规划触发队形收缩。
-publish_formation_avoid: true
-
-# 触发近障碍状态的距离阈值，单位为米。
-formation_reduce_distance: 0.52
-
-# 解除近障碍状态的距离阈值，单位为米。
-formation_clear_distance: 0.70
-
-# 已知队友方向的忽略半角，避免把队友误判成障碍，单位为度。
-formation_ignore_robot_angle_deg: 24.0
-
-# 参与队友方向忽略的最大队友距离，单位为米。
-formation_ignore_robot_max_distance: 1.5
-
-# 是否启用卡滞恢复。
-stuck_recovery_enabled: true
-
-# 判定为主动前进指令的最小线速度，单位为米每秒。
-stuck_linear_command_threshold: 0.04
-
-# 判定为主动转向指令的最小角速度，单位为弧度每秒。
-stuck_angular_command_threshold: 0.25
-
-# 判定线速度几乎不动的里程计阈值，单位为米每秒。
-stuck_odom_speed_threshold: 0.015
-
-# 判定角速度几乎不动的里程计阈值，单位为弧度每秒。
-stuck_odom_angular_threshold: 0.05
-
-# 卡滞候选状态需要持续的时间，超过后进入恢复动作，单位为秒。
-stuck_seconds: 2.0
-
-# 卡滞恢复要求机器人附近存在障碍的距离阈值，单位为米。
-stuck_obstacle_distance: 0.65
-
-# 卡滞恢复倒车速度，单位为米每秒。
-recovery_reverse_speed: 0.06
-
-# 允许倒车恢复所需的最小后方空间，单位为米。
-recovery_reverse_clearance: 0.35
-
-# 第二阶段运输任务需要接触箱子，严格参考 ROS2swarm transport 的 bypass_protection 语义。
-transport_task_bypass_scan_safety: true
-
 # 速度融合节点初始行为模式。任务管理器启动前会发布 STOP。
 default_mode: STOP
 
-# 是否启用 checkpoint 控制器；false 时会使用简易目标跟踪兜底。
+# 是否启用 checkpoint 控制器；false 时 checkpoint 路径输出零速度，不再使用目标跟踪兜底。
 checkpoint_controller_enabled: true
 
+# transport 默认使用 checkpoint 控制器；可选 checkpoint/heuristic。
+transport_controller_type: checkpoint
+
+# roundflocking 默认使用 checkpoint 控制器；可选 checkpoint/heuristic。
+roundflocking_controller_type: heuristic
+
 # roundflocking checkpoint 文件，相对 assets/checkpoints 目录。
-roundflocking_checkpoint_file: roundflocking/flocking_genome_package_gen99.pkl
+roundflocking_checkpoint_file: roundflocking/flocking_genome_package_0.3.pkl
 
 # transport checkpoint 文件，相对 assets/checkpoints 目录。
-transport_checkpoint_file: transport/transport_genome_package_gen264.pkl
+transport_checkpoint_file: transport/transport_genome_package.pkl
 
-# checkpoint 控制器最大线速度，单位为米每秒。
-max_linear_velocity: 0.15
+# checkpoint / heuristic 任务控制器的最大线速度，单位为米每秒。TB3 Burger 标称上限取 0.22。
+max_linear_velocity: 0.22
 
-# checkpoint 控制器最大角速度，单位为弧度每秒。
-max_angular_velocity: 0.8
+# checkpoint / heuristic 任务控制器的最大角速度，单位为弧度每秒。TB3 Burger 标称上限取 2.84。
+max_angular_velocity: 2.84
 
-# roundflocking 默认持续时间，单位为秒；若任务消息 hold_seconds>0，会优先使用消息值。
-roundflocking_duration: 8.0
+# transport heuristic 的动作整体缩放系数，对齐 VMAS transport.HeuristicPolicy。
+transport_heuristic_speed: 0.95
+
+# Gazebo TB3 transport 物理适配层参数；只影响 VMAS 策略输出后的槽位/接触适配。
+# 前排槽位到箱体中心的距离，需接近“箱体半宽 + TB3 前向碰撞半径”以保证接触。
+transport_tb3_contact_distance: 0.31
+# 后排相对前排的纵向间距；0.22m 让后排贴近前排，同时给动态超调留出余量。
+transport_tb3_row_spacing: 0.22
+# 显式指定 slot_columns 时使用的横向槽位间距；默认自动布局不会使用该值。
+transport_tb3_lateral_spacing: 0.10
+# 自动布局的横向最大偏移；0.15m 让前排两个 TB3 分别落在箱体后表面两侧。
+transport_tb3_max_lateral_offset: 0.15
+# 箱体和 TB3 的平面几何尺寸，用于自动计算默认双列槽位。
+transport_tb3_box_width: 0.50
+transport_tb3_robot_width: 0.18
+transport_tb3_robot_gap: 0.02
+transport_tb3_box_edge_margin: 0.01
+# 槽位误差到 VMAS 全局动作的比例增益。
+transport_tb3_slot_gain: 2.5
+# 与 checkpoint/heuristic 原始动作混合的权重；0 表示接触阶段完全由 TB3 槽位适配接管，避免前排被拉回中心线。
+transport_tb3_policy_blend: 0.0
+# 槽位到位后沿推箱方向叠加的动作强度。
+transport_tb3_push_speed: 0.85
+# 进入推箱偏置前允许的纵向/横向槽位误差；横向较小可避免未贴到两侧就开始前推。
+transport_tb3_contact_tolerance: 0.08
+transport_tb3_lateral_tolerance: 0.04
+
+# roundflocking heuristic 控制器参数。
+roundflocking_heuristic_circle_radius: 0.60
+roundflocking_heuristic_normal_offset: 0.10
+roundflocking_heuristic_object_visible_range: 0.10
+roundflocking_heuristic_object_avoid_distance: 0.10
+roundflocking_heuristic_gain: 10.0
+roundflocking_heuristic_u_range: 1.0
+roundflocking_heuristic_speed: 1.0
+
+# roundflocking 默认最长持续时间，单位为秒；若任务消息 hold_seconds>0，会优先使用消息值。
+roundflocking_duration: 20.0
+
+# roundflocking 不再只按持续时间报完成；需要观察到机器人绕目标产生实际角度推进。
+roundflocking_completion_enabled: true
+roundflocking_completion_min_duration: 4.0
+roundflocking_completion_min_angle_progress: 0.45
+roundflocking_completion_max_radius: 1.2
+roundflocking_completion_required_robot_fraction: 0.5
+roundflocking_completion_required_robot_count: 0
 
 # transport 最长执行时间，单位为秒。
-transport_max_duration: 90.0
+transport_max_duration: 180.0
 
-# transport 箱子到目标区中心的完成阈值，单位为米。
-goal_threshold: 0.25
+# transport 箱体中心进入目标中心 0.15m 内才判定 transport 完成；
+# 同时保持 checkpoint 观测中的 on_goal 标志与训练配置一致。
+goal_threshold: 0.15
 
 # transport 完成判定需要连续保持的时间，单位为秒。
 transport_goal_hold_seconds: 1.0
 
-# transport 超时时是否按完成处理；打开后可保证阶段闭环不会卡在单个箱子任务。
-complete_transport_on_timeout: true
+# transport 超时时是否按完成处理；大系统必须为 false，只有箱体真的进目标区才 DONE。
+complete_transport_on_timeout: false
 
 # 第一阶段自转占位控制器持续时间，单位为秒。
 spin_duration: 6.0
@@ -178,5 +180,9 @@ n_lidar_rays: 12
 # checkpoint 观测中使用的最大激光范围，单位为米。
 max_range: 3.5
 
-# Tepper 场景坐标归一化尺度；转换公式保持 ROS2swarm 口径，只为大地图调整尺度参数。
+# transport/Tepper 大场景坐标归一化尺度；用于 transport checkpoint 观测归一化与 heuristic 坐标还原。
 world_scale: 20.0
+
+# roundflocking checkpoint 的专用坐标尺度；VMAS flocking 训练环境中目标在原点，
+# 期望环绕半径为 0.6，因此 Gazebo 物理米制坐标直接按 1:1 输入网络。
+roundflocking_world_scale: 1.0

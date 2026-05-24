@@ -1,4 +1,6 @@
-# 第 0 阶段响应组运行配置。
+# 作用：第 0 阶段 DEFORM 编队导航 demo 的响应组基础配置。
+# 使用范围：response_deform_demo.launch / run_response_deform_demo.sh。
+# 不用于 Tepper 大系统，也不用于 roundflocking/transport 独立控制器 demo。
 # 本文件由响应组协调节点和速度安全融合节点加载。
 # 编队规划器的部分参数仍在 response_plan_manager_one_run.xml 中配置。
 # 五个阶段目标点在 response_goal_sequence.yaml 中配置。
@@ -12,7 +14,8 @@ frame_id: map
 # 编队槽位间距和初始队形由 launch 统一传给 DEFORM 与协调节点。
 
 # 严格槽位到达判定半径，单位为米。
-arrival_radius: 0.30
+# DEFORM 在窄队形和安全层约束下会稳定留下约 0.7m 的槽位残差，过小会导致目标超时而不是推进下一点。
+arrival_radius: 0.80
 
 # 启用朝向判定时使用的偏航角容差，单位为弧度。
 arrival_yaw_tolerance: 0.80
@@ -27,10 +30,12 @@ use_yaw_barrier: false
 enable_goal_region_arrival: true
 
 # 目标区域判定中，每个机器人距离目标点的最大允许距离，单位为米。
-goal_region_robot_radius: 1.05
+# 槽位以编队中心为目标时，四机器人单列最大槽位半径约 1.2m；
+# 额外余量覆盖安全层临时脱离编队后的收敛残差。
+goal_region_robot_radius: 1.75
 
 # 目标区域判定中，响应组中心距离目标点的最大允许距离，单位为米。
-goal_region_center_radius: 0.65
+goal_region_center_radius: 0.85
 
 # 目标区域到达条件需要连续保持的时间，单位为秒。
 goal_region_hold_seconds: 1.0
@@ -43,72 +48,6 @@ rate: 10.0
 
 # 速度指令新鲜度超时时间，超过该时间未收到新指令则该指令源置零，单位为秒。
 command_timeout: 0.6
-
-# 前向激光减速距离，前方障碍进入该距离后开始按比例降低前进速度，单位为米。
-wall_slowdown_distance: 0.60
-
-# 前向激光硬停止距离，前方障碍小于该距离时停止前进并向开阔侧转向，单位为米。
-wall_stop_distance: 0.28
-
-# 侧向贴墙触发距离，侧向障碍小于该距离时触发贴墙脱离转向，单位为米。
-wall_side_stop_distance: 0.28
-
-# 侧向贴墙脱离时保留的最大爬行速度，单位为米每秒。
-wall_side_crawl_speed: 0.08
-
-# 前向安全扇区角宽，单位为度。
-safety_front_angle_deg: 100.0
-
-# 左右侧安全扇区角宽，单位为度。
-safety_side_angle_deg: 90.0
-
-# 后向安全扇区角宽，用于倒车恢复时判断后方空间，单位为度。
-safety_rear_angle_deg: 90.0
-
-# 向开阔侧转向时使用的角速度，单位为弧度每秒。
-safety_escape_turn_speed: 0.55
-
-# 是否由激光安全层发布近障碍状态，供编队规划触发队形收缩。
-publish_formation_avoid: true
-
-# 触发近障碍状态的距离阈值，单位为米。
-formation_reduce_distance: 0.50
-
-# 解除近障碍状态的距离阈值，单位为米；需要大于收缩触发距离以形成滞回。
-formation_clear_distance: 0.65
-
-# 已知队友方向的忽略半角，避免把队友误判成障碍，单位为度。
-formation_ignore_robot_angle_deg: 24.0
-
-# 参与队友方向忽略的最大队友距离，单位为米。
-formation_ignore_robot_max_distance: 1.5
-
-# 是否启用卡滞恢复。
-stuck_recovery_enabled: true
-
-# 判定为主动前进指令的最小线速度，单位为米每秒。
-stuck_linear_command_threshold: 0.04
-
-# 判定为主动转向指令的最小角速度，单位为弧度每秒。
-stuck_angular_command_threshold: 0.25
-
-# 判定线速度几乎不动的里程计阈值，单位为米每秒。
-stuck_odom_speed_threshold: 0.015
-
-# 判定角速度几乎不动的里程计阈值，单位为弧度每秒。
-stuck_odom_angular_threshold: 0.05
-
-# 卡滞候选状态需要持续的时间，超过后进入恢复动作，单位为秒。
-stuck_seconds: 2.0
-
-# 卡滞恢复要求机器人附近存在障碍的距离阈值，单位为米。
-stuck_obstacle_distance: 0.60
-
-# 卡滞恢复倒车速度，单位为米每秒。
-recovery_reverse_speed: 0.06
-
-# 允许倒车恢复所需的最小后方空间，单位为米。
-recovery_reverse_clearance: 0.35
 
 # 速度融合节点初始行为模式。导航编队模式使用编队规划速度指令。
 default_mode: NAV_FORMATION

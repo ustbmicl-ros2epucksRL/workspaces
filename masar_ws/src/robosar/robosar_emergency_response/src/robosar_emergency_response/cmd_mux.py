@@ -1,4 +1,4 @@
-"""Pure command selection for response-group velocity muxing."""
+"""Pure command selection and LiDAR safety logic for response robots."""
 
 from __future__ import annotations
 
@@ -20,12 +20,22 @@ class Twist2D:
 
 
 @dataclass(frozen=True)
-class ScanSectorRanges:
-    front: float | None = None
-    left: float | None = None
-    right: float | None = None
-    rear: float | None = None
-    all_min: float | None = None
+class PotentialFieldDecision:
+    avoid_needed: bool
+    command: Twist2D
+    min_range: float | None = None
+    open_angle: float | None = None
+    open_range: float | None = None
+    obstacle_count: int = 0
+
+
+@dataclass(frozen=True)
+class RangeExclusion:
+    bearing: float
+    center_distance: float
+    radius: float
+    extra_half_angle: float = 0.0
+    range_padding: float = 0.03
 
 
 ZERO_TWIST = Twist2D(0.0, 0.0)
@@ -35,50 +45,17 @@ def _fresh(last_time: float | None, now: float, timeout: float) -> bool:
     return last_time is not None and (now - last_time) <= timeout
 
 
-def _apply_safety(
-    command: Twist2D,
-    safety_min_range: float | None,
-    stop_distance: float,
-    slowdown_distance: float,
-) -> Twist2D:
-    if safety_min_range is None:
-        return command
-    if safety_min_range <= stop_distance:
-        return Twist2D(0.0, command.angular_z)
-    if safety_min_range < slowdown_distance and slowdown_distance > stop_distance:
-        scale = (safety_min_range - stop_distance) / (slowdown_distance - stop_distance)
-        return Twist2D(command.linear_x * max(0.0, min(1.0, scale)), command.angular_z)
-    return command
-
-
-def min_range_in_front(
-    ranges: Sequence[float],
-    angle_min: float,
-    angle_increment: float,
-    front_angle: float,
-) -> float | None:
-    half_angle = abs(front_angle) / 2.0
-    values = []
-    for index, value in enumerate(ranges):
-        if not math.isfinite(value) or value <= 0.0:
-            continue
-        angle = _normalize_angle(angle_min + index * angle_increment)
-        if abs(angle) <= half_angle:
-            values.append(value)
-    return min(values) if values else None
-
-
-def min_valid_range(ranges: Sequence[float]) -> float | None:
-    values = [value for value in ranges if math.isfinite(value) and value > 0.0]
-    return min(values) if values else None
-
-
 def _normalize_angle(angle: float) -> float:
     while angle > math.pi:
         angle -= 2.0 * math.pi
     while angle < -math.pi:
         angle += 2.0 * math.pi
     return angle
+
+
+def min_valid_range(ranges: Sequence[float]) -> float | None:
+    values = [value for value in ranges if math.isfinite(value) and value > 0.0]
+    return min(values) if values else None
 
 
 def min_range_excluding_angles(
@@ -92,33 +69,7 @@ def min_range_excluding_angles(
     for index, value in enumerate(ranges):
         if not math.isfinite(value) or value <= 0.0:
             continue
-        angle = angle_min + index * angle_increment
-        if any(
-            abs(_normalize_angle(angle - excluded_angle)) <= excluded_half_angle
-            for excluded_angle in excluded_angles
-        ):
-            continue
-        values.append(value)
-    return min(values) if values else None
-
-
-def min_range_in_sector(
-    ranges: Sequence[float],
-    angle_min: float,
-    angle_increment: float,
-    center_angle: float,
-    half_angle: float,
-    excluded_angles: Sequence[float] | None = None,
-    excluded_half_angle: float = 0.0,
-) -> float | None:
-    excluded_angles = excluded_angles or []
-    values = []
-    for index, value in enumerate(ranges):
-        if not math.isfinite(value) or value <= 0.0:
-            continue
         angle = _normalize_angle(angle_min + index * angle_increment)
-        if abs(_normalize_angle(angle - center_angle)) > abs(half_angle):
-            continue
         if any(
             abs(_normalize_angle(angle - excluded_angle)) <= excluded_half_angle
             for excluded_angle in excluded_angles
@@ -128,157 +79,209 @@ def min_range_in_sector(
     return min(values) if values else None
 
 
-def scan_sector_ranges(
+def _range_excluded(angle: float, excluded_angles: Sequence[float], excluded_half_angle: float) -> bool:
+    return any(
+        abs(_normalize_angle(angle - excluded_angle)) <= excluded_half_angle
+        for excluded_angle in excluded_angles
+    )
+
+
+def _range_excluded_by_distance(
+    value: float,
+    angle: float,
+    range_exclusions: Sequence[RangeExclusion],
+) -> bool:
+    if not math.isfinite(value) or value <= 0.0:
+        return False
+
+    for exclusion in range_exclusions:
+        center_distance = float(exclusion.center_distance)
+        radius = max(0.0, float(exclusion.radius))
+        if center_distance <= 0.0 or radius <= 0.0:
+            continue
+
+        angular_radius = math.asin(min(1.0, radius / max(center_distance, 1e-6)))
+        half_angle = min(math.pi, angular_radius + abs(float(exclusion.extra_half_angle)))
+        if abs(_normalize_angle(angle - exclusion.bearing)) > half_angle:
+            continue
+
+        padding = max(0.0, float(exclusion.range_padding))
+        min_distance = max(0.0, center_distance - radius - padding)
+        max_distance = center_distance + radius + padding
+        if min_distance <= value <= max_distance:
+            return True
+
+    return False
+
+
+def _range_inside_self_footprint(value: float, self_filter_radius: float) -> bool:
+    if not math.isfinite(value) or value <= 0.0:
+        return False
+    return value <= max(0.0, float(self_filter_radius))
+
+
+def expand_excluded_angle_window(
+    center_angle: float,
+    angular_radius: float,
+    excluded_half_angle: float,
+) -> list[float]:
+    half_angle = abs(float(excluded_half_angle))
+    radius = abs(float(angular_radius))
+    if half_angle <= 0.0 or radius <= half_angle:
+        return [_normalize_angle(center_angle)]
+
+    spacing = max(half_angle * 1.8, 1e-6)
+    segments = max(1, int(math.ceil((2.0 * radius) / spacing)))
+    return [
+        _normalize_angle(center_angle - radius + (2.0 * radius * index / segments))
+        for index in range(segments + 1)
+    ]
+
+
+def _adjust_range(value: float, min_range: float, max_range: float) -> float:
+    if not math.isfinite(value) or value <= 0.0:
+        return max_range
+    if value < min_range:
+        return 0.0
+    if value > max_range:
+        return max_range
+    return float(value)
+
+
+def _twist_from_field_vector(
+    vector_x: float,
+    vector_y: float,
+    max_translational_velocity: float,
+    max_rotational_velocity: float,
+) -> Twist2D:
+    if not math.isfinite(vector_x) or not math.isfinite(vector_y):
+        return ZERO_TWIST
+    norm = math.hypot(vector_x, vector_y)
+    if norm <= 1e-9:
+        return ZERO_TWIST
+
+    unit_x = vector_x / norm
+    unit_y = vector_y / norm
+    linear = float(max_translational_velocity) * unit_x
+    angular = float(max_rotational_velocity) * math.asin(max(-1.0, min(1.0, unit_y)))
+    angular = max(-abs(float(max_rotational_velocity)), min(abs(float(max_rotational_velocity)), angular))
+    return Twist2D(float(linear), float(angular))
+
+
+def potential_field_safety(
     ranges: Sequence[float],
     angle_min: float,
     angle_increment: float,
-    front_angle: float,
-    side_angle: float,
-    rear_angle: float,
+    max_range: float,
+    min_range: float,
+    front_attraction: float,
+    threshold: int,
+    max_translational_velocity: float,
+    max_rotational_velocity: float,
     excluded_angles: Sequence[float] | None = None,
     excluded_half_angle: float = 0.0,
-) -> ScanSectorRanges:
+    range_exclusions: Sequence[RangeExclusion] | None = None,
+    self_filter_radius: float = 0.0,
+) -> PotentialFieldDecision:
+    """Compute ROS2swarm-style potential-field avoidance from LiDAR samples.
+
+    Teammate bearings can be excluded before both obstacle counting and field
+    vector construction, so nearby formation partners do not trigger avoidance.
+    """
+    if max_range <= 0.0 or not ranges:
+        return PotentialFieldDecision(False, ZERO_TWIST)
+
     excluded_angles = excluded_angles or []
-    return ScanSectorRanges(
-        front=min_range_in_sector(
-            ranges,
-            angle_min,
-            angle_increment,
-            center_angle=0.0,
-            half_angle=front_angle / 2.0,
-            excluded_angles=excluded_angles,
-            excluded_half_angle=excluded_half_angle,
+    range_exclusions = range_exclusions or []
+    adjusted_ranges: list[float] = []
+    visible_ranges: list[float] = []
+    angles: list[float] = []
+    obstacle_count = 0
+    open_angle = None
+    open_range = None
+
+    for index, value in enumerate(ranges):
+        angle = _normalize_angle(angle_min + index * angle_increment)
+        excluded = _range_inside_self_footprint(value, self_filter_radius)
+        excluded = excluded or _range_excluded(angle, excluded_angles, excluded_half_angle)
+        excluded = excluded or _range_excluded_by_distance(value, angle, range_exclusions)
+        adjusted = max_range if excluded else _adjust_range(value, min_range, max_range)
+        adjusted_ranges.append(adjusted)
+        angles.append(angle)
+
+        if excluded:
+            continue
+        if math.isfinite(value) and value > 0.0:
+            visible_ranges.append(float(value))
+        if 0.0 < adjusted < max_range:
+            obstacle_count += 1
+        if adjusted <= 0.0:
+            continue
+        if open_range is None or adjusted > open_range or (
+            math.isclose(adjusted, open_range)
+            and open_angle is not None
+            and abs(angle) < abs(open_angle)
+        ):
+            open_range = adjusted
+            open_angle = angle
+
+    vector_x = float(front_attraction)
+    vector_y = 0.0
+    for adjusted, angle in zip(adjusted_ranges, angles):
+        if adjusted >= max_range:
+            continue
+        weight = 1.0 - (adjusted / max_range)
+        if weight <= 0.0:
+            continue
+        vector_x -= weight * math.cos(angle)
+        vector_y -= weight * math.sin(angle)
+
+    return PotentialFieldDecision(
+        avoid_needed=obstacle_count > int(threshold),
+        command=_twist_from_field_vector(
+            vector_x,
+            vector_y,
+            max_translational_velocity=max_translational_velocity,
+            max_rotational_velocity=max_rotational_velocity,
         ),
-        left=min_range_in_sector(
-            ranges,
-            angle_min,
-            angle_increment,
-            center_angle=math.pi / 2.0,
-            half_angle=side_angle / 2.0,
-            excluded_angles=excluded_angles,
-            excluded_half_angle=excluded_half_angle,
-        ),
-        right=min_range_in_sector(
-            ranges,
-            angle_min,
-            angle_increment,
-            center_angle=-math.pi / 2.0,
-            half_angle=side_angle / 2.0,
-            excluded_angles=excluded_angles,
-            excluded_half_angle=excluded_half_angle,
-        ),
-        rear=min_range_in_sector(
-            ranges,
-            angle_min,
-            angle_increment,
-            center_angle=math.pi,
-            half_angle=rear_angle / 2.0,
-            excluded_angles=excluded_angles,
-            excluded_half_angle=excluded_half_angle,
-        ),
-        all_min=min_range_excluding_angles(
-            ranges,
-            angle_min,
-            angle_increment,
-            excluded_angles,
-            excluded_half_angle,
-        )
-        if excluded_angles
-        else min_valid_range(ranges),
+        min_range=min_valid_range(visible_ranges),
+        open_angle=open_angle,
+        open_range=open_range,
+        obstacle_count=obstacle_count,
     )
 
 
-def _open_side_turn(left_range: float | None, right_range: float | None, speed: float) -> float:
-    left_clearance = left_range if left_range is not None else float("inf")
-    right_clearance = right_range if right_range is not None else float("inf")
-    return abs(speed) if left_clearance >= right_clearance else -abs(speed)
-
-
-def _scale_forward(command: Twist2D, scale: float) -> Twist2D:
-    if command.linear_x <= 0.0:
+def apply_potential_field_safety(command: Twist2D, decision: PotentialFieldDecision | None) -> Twist2D:
+    if decision is None or not decision.avoid_needed:
         return command
-    return Twist2D(command.linear_x * max(0.0, min(1.0, scale)), command.angular_z)
-
-
-def apply_scan_safety(
-    command: Twist2D,
-    sectors: ScanSectorRanges | None,
-    stop_distance: float,
-    slowdown_distance: float,
-    escape_turn_speed: float,
-    side_stop_distance: float = 0.0,
-    side_crawl_speed: float = 0.08,
-) -> Twist2D:
-    if sectors is None:
-        return command
-
-    if sectors.front is not None and sectors.front <= stop_distance:
-        return Twist2D(0.0, _open_side_turn(sectors.left, sectors.right, escape_turn_speed))
-
-    safe = command
+    if abs(command.linear_x) <= 1e-3:
+        return Twist2D(0.0, command.angular_z)
+    if decision.min_range is not None and decision.min_range < 0.20 and command.linear_x > 0.0:
+        return Twist2D(min(0.0, decision.command.linear_x), decision.command.angular_z)
     if (
-        sectors.front is not None
-        and sectors.front < slowdown_distance
-        and slowdown_distance > stop_distance
+        decision.min_range is not None
+        and decision.min_range >= 0.22
+        and command.linear_x > 0.0
     ):
-        scale = (sectors.front - stop_distance) / (slowdown_distance - stop_distance)
-        safe = _scale_forward(safe, scale)
-
-    side_ranges = [value for value in (sectors.left, sectors.right) if value is not None]
-    if side_stop_distance > 0.0 and side_ranges and min(side_ranges) <= side_stop_distance:
-        turn = _open_side_turn(sectors.left, sectors.right, escape_turn_speed)
-        if safe.linear_x > 0.0:
-            safe = Twist2D(min(safe.linear_x, max(0.0, side_crawl_speed)), turn)
+        crawl_speed = min(abs(command.linear_x), 0.06)
+        if decision.command.linear_x > 0.0:
+            crawl_speed = min(crawl_speed, decision.command.linear_x)
         else:
-            safe = Twist2D(safe.linear_x, turn)
+            crawl_speed = max(0.0, crawl_speed)
+        if crawl_speed > 0.0:
+            return Twist2D(crawl_speed, decision.command.angular_z)
+    return decision.command
 
-    return safe
 
-
-def is_stuck_candidate(
-    raw_command: Twist2D,
-    sectors: ScanSectorRanges | None,
-    linear_speed: float,
-    angular_speed: float,
-    linear_command_threshold: float,
-    angular_command_threshold: float,
-    linear_speed_threshold: float,
-    angular_speed_threshold: float,
-    obstacle_distance: float,
+def should_bypass_transport_safety(
+    mode: str,
+    active_task_type: int,
+    box_task_type: int,
+    bypass_enabled: bool,
 ) -> bool:
-    if sectors is None:
+    if not (mode == MODE_TASK_CONTROL and int(active_task_type) == int(box_task_type)):
         return False
-
-    near_obstacle = (
-        sectors.all_min is not None and sectors.all_min <= obstacle_distance
-    )
-    if not near_obstacle:
-        return False
-
-    commanded_forward = raw_command.linear_x >= linear_command_threshold
-    commanded_turn = abs(raw_command.angular_z) >= angular_command_threshold
-    linear_stalled = linear_speed <= linear_speed_threshold
-    angular_stalled = angular_speed <= angular_speed_threshold
-
-    return linear_stalled and (
-        commanded_forward or (commanded_turn and angular_stalled)
-    )
-
-
-def apply_stuck_recovery(
-    command: Twist2D,
-    sectors: ScanSectorRanges | None,
-    is_stuck: bool,
-    reverse_speed: float,
-    reverse_clearance: float,
-    escape_turn_speed: float,
-) -> Twist2D:
-    if not is_stuck or sectors is None:
-        return command
-    turn = _open_side_turn(sectors.left, sectors.right, escape_turn_speed)
-    rear_clear = sectors.rear is None or sectors.rear >= reverse_clearance
-    linear = -abs(reverse_speed) if rear_clear else 0.0
-    return Twist2D(linear, turn)
+    return bool(bypass_enabled)
 
 
 def hysteresis_avoid_state(
@@ -303,16 +306,11 @@ def select_command(
     last_deform_time: float | None,
     last_task_time: float | None,
     command_timeout: float,
-    safety_min_range: float | None = None,
-    stop_distance: float = 0.25,
-    slowdown_distance: float = 0.55,
 ) -> Twist2D:
     if mode in (MODE_STOP, MODE_FAILED):
         return ZERO_TWIST
     if mode == MODE_NAV_FORMATION:
-        command = deform_cmd if _fresh(last_deform_time, now, command_timeout) else ZERO_TWIST
-    elif mode == MODE_TASK_CONTROL:
-        command = task_cmd if _fresh(last_task_time, now, command_timeout) else ZERO_TWIST
-    else:
-        command = ZERO_TWIST
-    return _apply_safety(command, safety_min_range, stop_distance, slowdown_distance)
+        return deform_cmd if _fresh(last_deform_time, now, command_timeout) else ZERO_TWIST
+    if mode == MODE_TASK_CONTROL:
+        return task_cmd if _fresh(last_task_time, now, command_timeout) else ZERO_TWIST
+    return ZERO_TWIST

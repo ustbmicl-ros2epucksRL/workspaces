@@ -52,7 +52,7 @@ class NavigationPattern(MovementPattern):
         self.declare_parameters(
             namespace='',
             parameters=[
-                ('genome_file', 'navigation_genome_package_gen49.pkl'),  # 基因包文件名
+                ('genome_file', 'navigation_genome_package.pkl'),  # 基因包文件名
                 ('max_linear_velocity', 0.12),  # 最大线速度 (m/s) - 差速驱动约束
                 ('max_angular_velocity', 1.0),  # 最大角速度 (rad/s) - 差速驱动约束
                 ('timer_period', 0.1),  # 控制周期（秒）
@@ -388,4 +388,3 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
-

@@ -20,6 +20,9 @@ except ImportError:  # pragma: no cover - exercised on machines without neat-pyt
     NEAT_AVAILABLE = False
 
 
+VMAS_FLOCKING_LIDAR_MAX_RANGE = 0.2
+
+
 @dataclass(frozen=True)
 class MatrixPose:
     x: float
@@ -94,30 +97,26 @@ def build_roundflocking_observation(
     max_range: float,
     world_scale: float,
 ) -> List[float]:
-    """Build the 6+N observation vector used by ROS2swarm roundflocking."""
-    yaw = yaw_from_orientation_matrix(robot.orientation)
-    target_rel_global_x = robot.pose.x - target.x
-    target_rel_global_y = robot.pose.y - target.y
-    target_rel_x, target_rel_y = rotate_global_to_body(
-        target_rel_global_x,
-        target_rel_global_y,
-        yaw,
-    )
-    robot_vx_body, robot_vy_body = rotate_global_to_body(
+    """Build the 6+N VMAS flocking observation vector.
+
+    The checkpoint was trained with the target at the origin, so Gazebo
+    positions are translated into the target-centered frame before scaling.
+    """
+    scale = max(float(world_scale), 1e-6)
+    robot_to_target_x = robot.pose.x - target.x
+    robot_to_target_y = robot.pose.y - target.y
+    observation = [
+        robot_to_target_x / scale,
+        robot_to_target_y / scale,
         robot.velocity_x,
         robot.velocity_y,
-        yaw,
-    )
-    scale = max(float(world_scale), 1e-6)
-    observation = [
-        robot.pose.x / scale,
-        robot.pose.y / scale,
-        robot_vx_body,
-        robot_vy_body,
-        target_rel_x / scale,
-        target_rel_y / scale,
+        robot_to_target_x / scale,
+        robot_to_target_y / scale,
     ]
-    observation.extend(sample_lidar_midpoints(lidar_ranges, n_lidar_rays, max_range))
+    observation.extend(
+        min(value / scale, VMAS_FLOCKING_LIDAR_MAX_RANGE)
+        for value in sample_lidar_midpoints(lidar_ranges, n_lidar_rays, max_range)
+    )
     return observation
 
 
@@ -174,6 +173,60 @@ def build_transport_observation(
     ]
 
 
+def build_transport_vmas_observation(
+    robot: RobotInfo,
+    box: SceneObjectInfo,
+    target: SceneObjectInfo,
+    world_scale: float,
+    goal_threshold: float,
+) -> List[float]:
+    """Build the 11D observation used by multi-agent-neat VMAS transport.
+
+    VMAS transport has holonomic agents and does not include robot heading in
+    the observation, so positions, velocities, and package vectors stay in the
+    global frame.  ``world_scale`` maps Gazebo metre coordinates into the VMAS
+    coordinate range without changing the field order learned by checkpoints.
+    """
+    scale = max(float(world_scale), 1e-6)
+    box_to_target_x = box.x - target.x
+    box_to_target_y = box.y - target.y
+    robot_to_box_x = box.x - robot.pose.x
+    robot_to_box_y = box.y - robot.pose.y
+    distance_to_target = math.hypot(box_to_target_x, box_to_target_y)
+    on_goal = 1.0 if distance_to_target < goal_threshold else 0.0
+    return [
+        robot.pose.x / scale,
+        robot.pose.y / scale,
+        robot.velocity_x,
+        robot.velocity_y,
+        box_to_target_x / scale,
+        box_to_target_y / scale,
+        robot_to_box_x / scale,
+        robot_to_box_y / scale,
+        box.velocity_x,
+        box.velocity_y,
+        on_goal,
+    ]
+
+
+def _twist_from_body_action(
+    action: tuple[float, float],
+    max_linear_velocity: float,
+    max_angular_velocity: float,
+    speed_scale: float = 1.0,
+) -> Twist2D:
+    speed = min(1.0, math.hypot(action[0], action[1])) * max(0.0, min(1.0, speed_scale))
+    if speed <= 1e-6:
+        return Twist2D()
+
+    angle = math.atan2(action[1], action[0])
+    linear = 0.0
+    if abs(angle) < math.pi / 2.0:
+        linear = max_linear_velocity * math.cos(angle) * speed
+    angular = max_angular_velocity * max(-1.0, min(1.0, angle / (math.pi / 2.0)))
+    return Twist2D(float(linear), float(angular))
+
+
 def differential_twist_from_omni_output(
     output: Sequence[float],
     max_linear_velocity: float,
@@ -191,6 +244,71 @@ def differential_twist_from_omni_output(
         linear = 0.0
     angular = max_angular_velocity * max(-1.0, min(1.0, angle / (math.pi / 2.0)))
     return Twist2D(float(linear), float(angular))
+
+
+def global_action_to_twist(
+    action: Sequence[float],
+    robot_yaw: float,
+    max_linear_velocity: float,
+    max_angular_velocity: float,
+    speed_scale: float = 1.0,
+) -> Twist2D:
+    """Map a VMAS global 2D action vector into a TurtleBot Twist."""
+    if len(action) < 2:
+        raise ValueError("VMAS action must have at least 2 values")
+    action_x = float(action[0])
+    action_y = float(action[1])
+    body_action = rotate_global_to_body(action_x, action_y, robot_yaw)
+    return _twist_from_body_action(
+        body_action,
+        max_linear_velocity=max_linear_velocity,
+        max_angular_velocity=max_angular_velocity,
+        speed_scale=speed_scale,
+    )
+
+
+def vmas_output_to_global_action(output: Sequence[float]) -> tuple[float, float]:
+    """Map sigmoid checkpoint outputs into the VMAS global action range."""
+    if len(output) < 2:
+        raise ValueError("VMAS network output must have at least 2 values")
+    return (
+        float(output[0]) * 2.0 - 1.0,
+        float(output[1]) * 2.0 - 1.0,
+    )
+
+
+def vmas_global_action_to_twist(
+    output: Sequence[float],
+    robot_yaw: float,
+    max_linear_velocity: float,
+    max_angular_velocity: float,
+) -> Twist2D:
+    """Map multi-agent-neat VMAS checkpoint output into a TurtleBot Twist.
+
+    The checkpoints were trained against VMAS Holonomic agents. Their sigmoid
+    outputs are normalized action components that map to a global 2D action
+    vector in [-1, 1], not to differential-drive linear/angular limits.
+    """
+    return global_action_to_twist(
+        vmas_output_to_global_action(output),
+        robot_yaw=robot_yaw,
+        max_linear_velocity=max_linear_velocity,
+        max_angular_velocity=max_angular_velocity,
+    )
+
+
+def transport_twist_from_vmas_network_output(
+    output: Sequence[float],
+    robot_yaw: float,
+    max_linear_velocity: float,
+    max_angular_velocity: float,
+) -> Twist2D:
+    return vmas_global_action_to_twist(
+        output,
+        robot_yaw=robot_yaw,
+        max_linear_velocity=max_linear_velocity,
+        max_angular_velocity=max_angular_velocity,
+    )
 
 
 def direct_twist_from_network_output(

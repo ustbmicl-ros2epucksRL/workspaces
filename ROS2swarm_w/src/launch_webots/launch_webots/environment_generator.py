@@ -14,6 +14,16 @@ PEDESTRIAN_PROTO_URL = (
     'https://raw.githubusercontent.com/cyberbotics/webots/'
     '{version}/projects/humans/pedestrian/protos/Pedestrian.proto'
 )
+DEFAULT_ROBOT_ROTATION = '0 0 1 3.1415'
+DEFAULT_TRANSPORT_OBJECT_SHAPE = 'cube'
+TRANSPORT_OBJECT_SHAPES = (
+    'cube',
+    'cylinder',
+    'triangular_prism',
+)
+TRANSPORT_OBJECT_SIZE = 0.25
+TRANSPORT_OBJECT_MASS = 0.5
+TRANSPORT_OBJECT_Z = 0.05
 
 
 def parse_world_file_objects(world_file_path: str) -> list:
@@ -275,7 +285,7 @@ def generate_epuck_robot(name: str, x: float, y: float, z: float = 0.0) -> str:
     """
     return f'''DEF {name} E-puck {{
   translation {x} {y} {z}
-  rotation 0 0 1 3.1415
+  rotation {DEFAULT_ROBOT_ROTATION}
   controller "<extern>"
   supervisor TRUE
   name "{name}"
@@ -309,6 +319,7 @@ def generate_burger_robot(name: str, x: float, y: float, z: float = 0.0) -> str:
     """生成TurtleBot3 Burger机器人的VRML定义"""
     return f'''DEF {name} TurtleBot3Burger {{
   translation {x} {y} {z}
+  rotation {DEFAULT_ROBOT_ROTATION}
   controller "<extern>"
   supervisor TRUE
   name "{name}"
@@ -328,17 +339,41 @@ def generate_burger_robot(name: str, x: float, y: float, z: float = 0.0) -> str:
 '''
 
 
-def generate_transport_box(name: str, x: float, y: float, z: float = 0.05, size: float = 0.25) -> str:
-    """生成运输任务的箱子（橙色可推动）"""
+def normalize_transport_object_shape(shape: str | None) -> str:
+    """标准化运输物体形状配置。"""
+    if shape is None or str(shape).strip() == '':
+        return DEFAULT_TRANSPORT_OBJECT_SHAPE
+
+    normalized = str(shape).strip().lower()
+    if normalized not in TRANSPORT_OBJECT_SHAPES:
+        raise ValueError(
+            f'不支持的 transport_object_shape: {shape}; '
+            f'可选值: {", ".join(TRANSPORT_OBJECT_SHAPES)}'
+        )
+    return normalized
+
+
+def _transport_object_appearance() -> str:
+    return '''PBRAppearance {
+        baseColor 0.8 0.5 0.2
+        roughness 0.5
+        metalness 0
+      }'''
+
+
+def _transport_object_physics(mass: float) -> str:
+    return f'''Physics {{
+    density -1
+    mass {mass}
+  }}'''
+
+
+def _generate_cube_transport_box(name: str, x: float, y: float, z: float, size: float, mass: float) -> str:
     return f'''DEF {name} Solid {{
   translation {x} {y} {z}
   children [
     Shape {{
-      appearance PBRAppearance {{
-        baseColor 0.8 0.5 0.2
-        roughness 0.5
-        metalness 0
-      }}
+      appearance {_transport_object_appearance()}
       geometry Box {{
         size {size} {size} {size}
       }}
@@ -348,12 +383,101 @@ def generate_transport_box(name: str, x: float, y: float, z: float = 0.05, size:
   boundingObject Box {{
     size {size} {size} {size}
   }}
-  physics Physics {{
-    density -1
-    mass 0.5
-  }}
+  physics {_transport_object_physics(mass)}
 }}
 '''
+
+
+def _generate_cylinder_transport_box(name: str, x: float, y: float, z: float, size: float, mass: float) -> str:
+    radius = size / 2.0
+    return f'''DEF {name} Solid {{
+  translation {x} {y} {z}
+  children [
+    Shape {{
+      appearance {_transport_object_appearance()}
+      geometry Cylinder {{
+        radius {radius}
+        height {size}
+      }}
+    }}
+  ]
+  name "{name}"
+  boundingObject Cylinder {{
+    radius {radius}
+    height {size}
+  }}
+  physics {_transport_object_physics(mass)}
+}}
+'''
+
+
+def _generate_triangular_prism_transport_box(
+    name: str,
+    x: float,
+    y: float,
+    z: float,
+    size: float,
+    mass: float,
+) -> str:
+    half_base = size / 2.0
+    half_depth = size / 2.0
+    half_height = size / 2.0
+    return f'''DEF {name} Solid {{
+  translation {x} {y} {z}
+  children [
+    Shape {{
+      appearance {_transport_object_appearance()}
+      geometry DEF {name}_mesh IndexedFaceSet {{
+        coord Coordinate {{
+          point [
+            {-half_base} {-half_depth} {-half_height}
+            {half_base} {-half_depth} {-half_height}
+            0 {-half_depth} {half_height}
+            {-half_base} {half_depth} {-half_height}
+            {half_base} {half_depth} {-half_height}
+            0 {half_depth} {half_height}
+          ]
+        }}
+        coordIndex [
+          0 1 2 -1
+          3 5 4 -1
+          0 2 5 3 -1
+          1 4 5 2 -1
+          0 3 4 1 -1
+        ]
+      }}
+    }}
+  ]
+  name "{name}"
+  boundingObject Group {{
+    children [
+      Shape {{
+        geometry USE {name}_mesh
+      }}
+    ]
+  }}
+  physics {_transport_object_physics(mass)}
+}}
+'''
+
+
+def generate_transport_box(
+    name: str,
+    x: float,
+    y: float,
+    z: float = TRANSPORT_OBJECT_Z,
+    size: float = TRANSPORT_OBJECT_SIZE,
+    mass: float = TRANSPORT_OBJECT_MASS,
+    shape: str = DEFAULT_TRANSPORT_OBJECT_SHAPE,
+) -> str:
+    """生成运输任务的可推动物体。"""
+    normalized_shape = normalize_transport_object_shape(shape)
+
+    if normalized_shape == 'cube':
+        return _generate_cube_transport_box(name, x, y, z, size, mass)
+    if normalized_shape == 'cylinder':
+        return _generate_cylinder_transport_box(name, x, y, z, size, mass)
+    return _generate_triangular_prism_transport_box(name, x, y, z, size, mass)
 
 
 def generate_victim(name: str, x: float, y: float, z: float = 0.0) -> str:
@@ -590,6 +714,12 @@ def generate_world_file(
         output_content = _ensure_pedestrian_proto_import(output_content)
     if not output_content.endswith('\n'):
         output_content += '\n'
+
+    transport_object_shape = DEFAULT_TRANSPORT_OBJECT_SHAPE
+    if task_objects:
+        transport_object_shape = normalize_transport_object_shape(
+            task_objects.get('transport_object_shape')
+        )
     
     if task_objects:
         if 'victims' in task_objects and task_objects['victims']:
@@ -604,7 +734,12 @@ def generate_world_file(
 
         if 'transport_boxes' in task_objects and task_objects['transport_boxes']:
             for i, (x, y) in enumerate(task_objects['transport_boxes']):
-                output_content += generate_transport_box(f'transport_box_{i}', x, y)
+                output_content += generate_transport_box(
+                    f'transport_box_{i}',
+                    x,
+                    y,
+                    shape=transport_object_shape,
+                )
                 output_content += "\n"
 
         if 'transport_targets' in task_objects and task_objects['transport_targets']:
@@ -614,7 +749,12 @@ def generate_world_file(
 
         if 'transport_box' in task_objects and task_objects['transport_box']:
             x, y = task_objects['transport_box']
-            output_content += generate_transport_box('transport_box', x, y)
+            output_content += generate_transport_box(
+                'transport_box',
+                x,
+                y,
+                shape=transport_object_shape,
+            )
             output_content += "\n"
         
         if 'target_zone' in task_objects and task_objects['target_zone']:

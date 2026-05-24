@@ -648,8 +648,8 @@ run_tepper_response_demo.sh
 已有 checkpoint 资源：
 
 ```text
-src/robosar/robosar_emergency_response/assets/checkpoints/roundflocking/flocking_genome_package_gen99.pkl
-src/robosar/robosar_emergency_response/assets/checkpoints/transport/transport_genome_package_gen264.pkl
+src/robosar/robosar_emergency_response/assets/checkpoints/roundflocking/flocking_genome_package_0.3.pkl
+src/robosar/robosar_emergency_response/assets/checkpoints/transport/transport_genome_package.pkl
 ```
 
 ## 13. 风险与约束

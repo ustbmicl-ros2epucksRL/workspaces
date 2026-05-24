@@ -81,8 +81,14 @@ private:
     Eigen::Vector2d global_goal;
     std::vector<double> x_ref, u_ref;
     std::vector<double> vel;
+    std::vector<Eigen::Vector2d> other_positions_;
 
     double dist_thresh{};
+    bool stall_fallback_enabled{false};
+    double stall_fallback_goal_distance{0.35};
+    double stall_fallback_linear_epsilon{0.015};
+    double fallback_other_clearance{0.4};
+    double fallback_repulsion_gain{1.0};
 
     enum COST_FUNCTION_TYPE
     {

@@ -1,6 +1,7 @@
 <launch>
   <arg name="model" default="burger"/>
   <arg name="response_group_config" default="$(find robosar_emergency_response)/config/tepper_response_group.yaml"/>
+  <arg name="safety_config" default="$(find robosar_emergency_response)/config/response_safety.yaml"/>
   <arg name="use_spin_placeholder" default="false"/>
   <arg name="frm_type" default="3"/>
   <arg name="max_frm_type" default="3"/>
@@ -26,7 +27,6 @@
   <include file="$(find robosar_emergency_response)/launch/response_group_gazebo.launch">
     <arg name="start_gazebo" value="false"/>
     <arg name="gz_gui" value="false"/>
-    <arg name="rviz" value="false"/>
     <arg name="model" value="$(arg model)"/>
     <arg name="tb_0_x" value="$(arg tb_0_x)"/>
     <arg name="tb_0_y" value="$(arg tb_0_y)"/>
@@ -45,7 +45,12 @@
   <include file="$(find robosar_emergency_response)/launch/response_group_deform.launch">
     <arg name="frm_type" value="$(arg frm_type)"/>
     <arg name="max_frm_type" value="$(arg max_frm_type)"/>
+    <arg name="other_num_in_opti" value="2"/>
     <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="formation_min_type" value="1"/>
+    <arg name="formation_reduce_robot_fraction" value="0.25"/>
+    <arg name="avoid_obs_distance_threshold" value="0.05"/>
+    <arg name="timeout_reassignment_enabled" value="false"/>
   </include>
 
   <node pkg="robosar_emergency_response" type="emergency_task_manager_node.py"
@@ -57,6 +62,23 @@
   <node pkg="robosar_emergency_response" type="deform_dispatch_bridge_node.py"
         name="deform_dispatch_bridge_node" output="screen"/>
 
+  <node pkg="robosar_emergency_response" type="dynamic_obstacle_cloud_node.py"
+        name="dynamic_obstacle_cloud_node" output="screen">
+    <rosparam file="$(arg response_group_config)" command="load"/>
+    <param name="map_topic" value="/map"/>
+    <param name="cloud_topic" value="/response_group/dynamic_obstacle_cloud"/>
+    <param name="frame_id" value="world"/>
+    <rosparam param="obstacle_prefixes">[agent_]</rosparam>
+    <param name="obstacle_radius" value="0.35"/>
+    <param name="obstacle_z" value="0.20"/>
+    <param name="samples_per_obstacle" value="16"/>
+    <param name="include_static_map" value="true"/>
+    <param name="map_occupied_threshold" value="50"/>
+    <param name="map_stride" value="1"/>
+    <rosparam param="map_clear_model_prefixes">[agent_, tb_]</rosparam>
+    <param name="map_clear_model_radius" value="0.70"/>
+  </node>
+
   <node pkg="robosar_emergency_response" type="response_group_coordinator_node.py"
         name="response_group_coordinator_node" output="screen">
     <rosparam file="$(arg response_group_config)" command="load"/>
@@ -67,6 +89,22 @@
   <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"
         name="response_cmd_mux_node" output="screen">
     <rosparam file="$(arg response_group_config)" command="load"/>
+    <rosparam file="$(arg safety_config)" command="load"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="agent_cmd_safety_node.py"
+        name="agent_cmd_safety_node" output="screen">
+    <rosparam param="agent_names">[agent_0, agent_1, agent_2, agent_3, agent_4]</rosparam>
+    <rosparam param="response_robot_names">[tb_0, tb_1, tb_2, tb_3]</rosparam>
+    <param name="dynamic_obstacle_trigger_distance" value="1.60"/>
+    <param name="dynamic_obstacle_stop_distance" value="0.95"/>
+    <param name="dynamic_obstacle_reverse_velocity" value="0.16"/>
+    <param name="hardware_protection_layer_max_range" value="0.85"/>
+    <param name="hardware_protection_layer_min_range" value="0.02"/>
+    <param name="hardware_protection_layer_front_attraction" value="0.35"/>
+    <param name="hardware_protection_layer_threshold" value="0"/>
+    <param name="max_translational_velocity" value="0.12"/>
+    <param name="max_rotational_velocity" value="1.2"/>
   </node>
 
   <node pkg="robosar_emergency_response" type="response_global_info_node.py"

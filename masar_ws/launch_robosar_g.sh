@@ -131,6 +131,25 @@ start_roscore() {
   wait_for_roscore
 }
 
+cleanup_gui_processes() {
+  local signal="$1"
+  local pid
+
+  if [[ -n "${GUI_SCRIPT:-}" ]]; then
+    while read -r pid; do
+      [[ -z "$pid" || "$pid" == "$$" ]] && continue
+      echo "  -> SIG${signal} GUI pid $pid"
+      kill "-${signal}" "$pid" 2>/dev/null || true
+    done < <(pgrep -f "$GUI_SCRIPT" 2>/dev/null || true)
+  fi
+
+  case "$signal" in
+    INT) pkill -INT -x rviz 2>/dev/null || true ;;
+    TERM) pkill -TERM -x rviz 2>/dev/null || true ;;
+    KILL) pkill -KILL -x rviz 2>/dev/null || true ;;
+  esac
+}
+
 cleanup() {
   local pid
   echo
@@ -140,12 +159,14 @@ cleanup() {
     echo "  -> SIGINT to PGID $pid"
     kill -INT -"${pid}" 2>/dev/null || true
   done
+  cleanup_gui_processes "INT"
   sleep 2
 
   for pid in "${PIDS[@]}"; do
     echo "  -> SIGTERM to PGID $pid"
     kill -TERM -"${pid}" 2>/dev/null || true
   done
+  cleanup_gui_processes "TERM"
   sleep 2
 
   echo "  -> Gazebo targeted shutdown (gzserver/gzclient)"
@@ -163,6 +184,7 @@ cleanup() {
 
   pkill -KILL -x gzserver 2>/dev/null || true
   pkill -KILL -x gzclient 2>/dev/null || true
+  cleanup_gui_processes "KILL"
 }
 
 handle_interrupt() {

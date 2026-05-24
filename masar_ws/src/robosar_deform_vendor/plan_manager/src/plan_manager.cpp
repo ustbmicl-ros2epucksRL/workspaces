@@ -15,9 +15,9 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     tb_id = fixed_id;
     if (formation_max_num < 1 || formation_max_num > fixed_num)
         formation_max_num = fixed_num;
-    if (start_frm_type < 1 || start_frm_type > formation_max_num)
+    formation_min_type = std::max(1, std::min(formation_min_type, formation_max_num));
+    if (start_frm_type < formation_min_type || start_frm_type > formation_max_num)
         start_frm_type = formation_max_num;
-    formation_min_type = 1;
 
     grid_map_.reset(new GridMap);
     grid_map_->initMap(nh_pri_);
@@ -147,7 +147,7 @@ PlanManager::~PlanManager() {
 
 void PlanManager::timeoutCallback(const ros::TimerEvent&) {
 
-    if(tb_id != leader_id)
+    if(tb_id != leader_id || !timeout_reassignment_enabled)
         return;
 
     if (is_timeout) {
@@ -188,9 +188,10 @@ void PlanManager::updateAvoidModeCallback(const ros::TimerEvent&) {
     if(tb_id != leader_id) 
         return;
 
-    // the weight of number in avoid mode
-    double in_avoid_weight = 0.2;
-    int in_avoid_num_th = std::max(1, static_cast<int>(std::ceil(in_avoid_weight * fixed_num)));
+    int in_avoid_num_th = std::max(
+        1,
+        static_cast<int>(std::ceil(std::max(0.0, formation_reduce_robot_fraction) * fixed_num)));
+    in_avoid_num_th = std::min(fixed_num, in_avoid_num_th);
 
     int avoid_sum = 0;
     for (int i = 0; i < is_avoid_obs.size(); i++) {
@@ -204,7 +205,7 @@ void PlanManager::updateAvoidModeCallback(const ros::TimerEvent&) {
 
     if (sustained_pressure) {
         
-        if(formation_type > 1) {
+        if(formation_type > formation_min_type) {
             formation_type -= 1;
             setDesiredShape(formation_type);
             do_allocation=true;
@@ -411,7 +412,7 @@ void PlanManager::trajPlanning() {
 
     double esdf_dist = grid_map_->getDistance(tb_states_[tb_id].pos);
 
-    if(esdf_dist<0.15)
+    if(avoid_obs_distance_threshold > 0.0 && esdf_dist < avoid_obs_distance_threshold)
     {
        changeFRMExecState(AVOID_OBS);
       return;
@@ -536,7 +537,7 @@ bool PlanManager::isDirectGoalApproachSafe(const Eigen::Vector2d& goal) {
 }
 
 Eigen::Vector2d PlanManager::getApproachGoal() const {
-    return approach_center_goal ? global_goal : global_goal + swarm_des_origin[tb_id];
+    return approach_center_goal ? global_goal : global_goal + swarm_des[tb_id];
 }
 
 Eigen::Vector2d PlanManager::sanitizeControllerGoal(const Eigen::Vector2d& goal) const {
@@ -572,6 +573,36 @@ Eigen::Vector2d PlanManager::sanitizeControllerGoal(const Eigen::Vector2d& goal)
     }
 
     return sanitized;
+}
+
+double PlanManager::normalizeFormationYaw(double yaw) const {
+    while (yaw > M_PI) {
+        yaw -= 2.0 * M_PI;
+    }
+    while (yaw < -M_PI) {
+        yaw += 2.0 * M_PI;
+    }
+    return yaw;
+}
+
+double PlanManager::snapFormationYawForCorridor(double yaw) const {
+    if (!formation_corridor_yaw_snap_enabled) {
+        return normalizeFormationYaw(yaw);
+    }
+
+    const double free_width = find_region_->getWidth();
+    if (!std::isfinite(free_width) || free_width > formation_corridor_yaw_snap_max_width) {
+        return normalizeFormationYaw(yaw);
+    }
+
+    const double axis = M_PI / 2.0;
+    const double snapped = std::round(yaw / axis) * axis;
+    const double error = normalizeFormationYaw(yaw - snapped);
+    if (std::abs(error) > std::max(0.0, formation_corridor_yaw_snap_tolerance)) {
+        return normalizeFormationYaw(yaw);
+    }
+
+    return normalizeFormationYaw(snapped);
 }
 
 bool PlanManager::conditionHeld(ros::Time& since, bool condition, double hold_time) const {
@@ -703,7 +734,7 @@ void PlanManager::isReduceFRM() {
     const double free_width = find_region_->getWidth();
     if (free_width < formation_width) {
         int cur_type = std::floor(free_width / formation_interval) + 1;
-        cur_type = std::max(1, std::min(cur_type, formation_type - 1));
+        cur_type = std::max(formation_min_type, std::min(cur_type, formation_type - 1));
         std::cout << "[formation reconfiguration] current shape:" << cur_type<<std::endl;
 
         if (cur_type == formation_type) {
@@ -774,7 +805,7 @@ void PlanManager::isExtendFRM() {
     // double min = all_width[fixed_id];
 
     // ROS_WARN("min width:%f",min);
-    int new_type = std::floor(min / formation_interval) + 1;
+    int new_type = std::max(formation_min_type, static_cast<int>(std::floor(min / formation_interval) + 1));
 
     // new_formation greater than current_formation
     if (new_type > formation_type) {
@@ -830,15 +861,9 @@ void PlanManager::rotateAndShareFRM() {
     tb_center_ /= fixed_num;
     auto diff_ = local_goal - tb_center_;
     double yaw = atan2(diff_.y(), diff_.x());
-    double yaw_e = yaw - formation_yaw;
+    yaw = snapFormationYawForCorridor(yaw);
+    double yaw_e = normalizeFormationYaw(yaw - formation_yaw);
     
-    //yaw \in [-M_PI, M_PI]
-    if (yaw_e > M_PI)
-        yaw_e -= 2*M_PI;
-    else if (yaw_e < -M_PI)
-        yaw_e += 2 * M_PI;
-
-
     if (first_start) {
         do_allocation = true;
         first_start = false;
@@ -908,28 +933,153 @@ void PlanManager::updateFRMInfo(const plan_manager::RotationVecConstPtr &msg) {
     tb_global_goal = getApproachGoal();
 }
 
+void PlanManager::applyFormationSeparation(Eigen::Vector2d& pos) const {
+    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
+        return std::isfinite(value.x()) && std::isfinite(value.y());
+    };
+
+    const double clearance = std::max(0.0, formation_min_robot_clearance);
+    const double gain = std::max(0.0, formation_min_robot_clearance_gain);
+    if (clearance <= 1e-3 || gain <= 1e-6 || tb_id < 0 || tb_id >= fixed_num) {
+        return;
+    }
+
+    const Eigen::Vector2d current_pos = tb_states_[tb_id].pos;
+    if (!is_finite_vec(current_pos)) {
+        return;
+    }
+
+    Eigen::Vector2d separation(0.0, 0.0);
+    for (int i = 0; i < fixed_num; i++) {
+        if (i == tb_id || !is_finite_vec(tb_states_[i].pos)) {
+            continue;
+        }
+
+        Eigen::Vector2d away = current_pos - tb_states_[i].pos;
+        double distance = away.norm();
+        if (!std::isfinite(distance) || distance >= clearance) {
+            continue;
+        }
+
+        if (distance < 1e-4) {
+            away = swarm_des[tb_id] - swarm_des[i];
+            distance = away.norm();
+        }
+        if (!is_finite_vec(away) || distance < 1e-4) {
+            away = tb_states_[tb_id].orient_vec;
+            distance = away.norm();
+        }
+        if (!is_finite_vec(away) || distance < 1e-4) {
+            away = Eigen::Vector2d(1.0, 0.0);
+            distance = 1.0;
+        }
+
+        separation += away.normalized() * (clearance - std::max(0.0, distance));
+    }
+
+    const double separation_norm = separation.norm();
+    if (!std::isfinite(separation_norm) || separation_norm < 1e-4) {
+        return;
+    }
+
+    const double max_shift = clearance;
+    if (separation_norm > max_shift && max_shift > 1e-3) {
+        separation = separation / separation_norm * max_shift;
+    }
+
+    pos += gain * separation;
+    ROS_WARN_THROTTLE(1.0,
+                      "Formation separation adjusted local goal for tb %d by %.2f m.",
+                      fixed_id,
+                      (gain * separation).norm());
+}
+
+void PlanManager::preserveLocalGoalProgress(Eigen::Vector2d& pos, const Eigen::Vector2d& local_path_goal) const {
+    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
+        return std::isfinite(value.x()) && std::isfinite(value.y());
+    };
+
+    const double min_progress = std::max(0.0, formation_min_local_goal_progress);
+    if (min_progress <= 1e-3 || tb_id < 0 || tb_id >= fixed_num) {
+        return;
+    }
+
+    const Eigen::Vector2d current_pos = tb_states_[tb_id].pos;
+    if (!is_finite_vec(current_pos) || !is_finite_vec(pos) || !is_finite_vec(local_path_goal)) {
+        return;
+    }
+
+    const double final_dist = (tb_global_goal - current_pos).norm();
+    if (!std::isfinite(final_dist) || final_dist <= std::max(approach_goal_dist, min_progress + 0.20)) {
+        return;
+    }
+
+    Eigen::Vector2d path_delta = local_path_goal - current_pos;
+    const double path_dist = path_delta.norm();
+    if (!std::isfinite(path_dist) || path_dist <= min_progress) {
+        return;
+    }
+
+    Eigen::Vector2d consensus_delta = pos - current_pos;
+    const double consensus_dist = consensus_delta.norm();
+    if (std::isfinite(consensus_dist) && consensus_dist >= min_progress) {
+        return;
+    }
+
+    const Eigen::Vector2d path_dir = path_delta / path_dist;
+    Eigen::Vector2d lateral(0.0, 0.0);
+    if (is_finite_vec(consensus_delta)) {
+        lateral = consensus_delta - path_dir * consensus_delta.dot(path_dir);
+        const double lateral_norm = lateral.norm();
+        if (std::isfinite(lateral_norm) && lateral_norm > min_progress) {
+            lateral = lateral / lateral_norm * min_progress;
+        }
+    }
+
+    pos = current_pos + path_dir * min_progress + lateral;
+    ROS_WARN_THROTTLE(1.0,
+                      "Consensus local goal for tb %d collapsed to %.2f m while %.2f m from slot; preserving %.2f m path progress.",
+                      fixed_id,
+                      std::isfinite(consensus_dist) ? consensus_dist : 0.0,
+                      final_dist,
+                      min_progress);
+}
+
 void PlanManager::FRMConsensus(Eigen::Vector2d& pos) {
+    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
+        return std::isfinite(value.x()) && std::isfinite(value.y());
+    };
+
+    const Eigen::Vector2d local_path_goal = pos;
     Eigen::Vector2d vec(0.0, 0.0);
+    int neighbor_count = 0;
 
     for (int i = 0; i < fixed_num; i++) {
-        if (i == tb_id)
+        if (i == tb_id) {
             continue;
+        }
+        if (!is_finite_vec(tb_states_[i].pos) || !is_finite_vec(swarm_des[tb_id]) || !is_finite_vec(swarm_des[i])) {
+            continue;
+        }
         vec += tb_states_[i].pos + (swarm_des[tb_id] - swarm_des[i]);
+        neighbor_count++;
+    }
+
+    if (neighbor_count <= 0) {
+        return;
     }
 
     double local_goal_weight = std::max(0.1, formation_consensus_local_goal_weight);
-    const int avoid_sum = std::accumulate(is_avoid_obs.begin(), is_avoid_obs.end(), 0);
-    if (avoid_sum > 0 && formation_type <= 1) {
-        local_goal_weight = std::max(local_goal_weight, narrow_corridor_local_goal_weight);
-        ROS_WARN_THROTTLE(1.0,
-                          "narrow corridor local-goal tracking for tb %d with weight %.2f.",
-                          fixed_id,
-                          local_goal_weight);
-    }
 
-    vec += local_goal_weight * pos;
-    vec /= (fixed_num - 1 + local_goal_weight);
+    if (is_finite_vec(pos)) {
+        vec += local_goal_weight * pos;
+        vec /= (neighbor_count + local_goal_weight);
+    } else {
+        vec /= neighbor_count;
+    }
     pos = vec;
+    applyFormationSeparation(pos);
+    preserveLocalGoalProgress(pos, local_path_goal);
 }
 
 // it is find Point from static path
@@ -1171,6 +1321,18 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
     }
     std::swap(frm_pos[0], frm_pos[lid]);
 
+    // The response navigation goals represent the formation centroid. Keeping
+    // legacy leader-centered slots pushes every follower to one side of a
+    // corridor and can complete while the group center is still offset.
+    Eigen::Vector2d centroid(0.0, 0.0);
+    for (const auto& pos : frm_pos) {
+        centroid += pos;
+    }
+    centroid /= static_cast<double>(frm_pos.size());
+    for (int i = 0; i < frm_pos.size(); i++) {
+        frm_pos[i] -= centroid;
+    }
+
     // show formation info 
     bool show_frm_pos = false;
     if (show_frm_pos) {
@@ -1337,12 +1499,21 @@ void PlanManager::readParameters() {
     nh_pri_.param("plan_manager/center_local_goal_in_corridor", center_local_goal_in_corridor, true);
     nh_pri_.param("plan_manager/corridor_centering_max_width", corridor_centering_max_width, 2.4);
     nh_pri_.param("plan_manager/corridor_centering_max_shift", corridor_centering_max_shift, 0.45);
+    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_enabled", formation_corridor_yaw_snap_enabled, true);
+    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_max_width", formation_corridor_yaw_snap_max_width, 2.4);
+    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_tolerance", formation_corridor_yaw_snap_tolerance, 0.70);
     nh_pri_.param("plan_manager/formation_consensus_local_goal_weight", formation_consensus_local_goal_weight, 1.0);
-    nh_pri_.param("plan_manager/narrow_corridor_local_goal_weight", narrow_corridor_local_goal_weight, 3.0);
+    nh_pri_.param("plan_manager/formation_min_robot_clearance", formation_min_robot_clearance, 0.4);
+    nh_pri_.param("plan_manager/formation_min_robot_clearance_gain", formation_min_robot_clearance_gain, 1.0);
+    nh_pri_.param("plan_manager/formation_min_local_goal_progress", formation_min_local_goal_progress, 0.30);
+    nh_pri_.param("plan_manager/formation_min_type", formation_min_type, 1);
+    nh_pri_.param("plan_manager/formation_reduce_robot_fraction", formation_reduce_robot_fraction, 0.2);
+    nh_pri_.param("plan_manager/avoid_obs_distance_threshold", avoid_obs_distance_threshold, 0.15);
     nh_pri_.param("plan_manager/formation_reduce_hold_time", formation_reduce_hold_time, 1.0);
     nh_pri_.param("plan_manager/formation_expand_hold_time", formation_expand_hold_time, 3.0);
     nh_pri_.param("plan_manager/formation_expansion_cooldown", formation_expansion_cooldown, 8.0);
     nh_pri_.param("plan_manager/reassignment_cooldown", reassignment_cooldown, 8.0);
+    nh_pri_.param("plan_manager/timeout_reassignment_enabled", timeout_reassignment_enabled, true);
     nh_pri_.param("plan_manager/frm_type", start_frm_type, -1);
     nh_pri_.param("plan_manager/max_frm_type", formation_max_num, fixed_num);
     nh_pri_.param("task_type", task_type, -1);

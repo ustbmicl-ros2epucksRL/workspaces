@@ -6,7 +6,7 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/navigation/目录下查找）
-    genome_file: 'navigation_genome_package_gen49.pkl'
+    genome_file: 'navigation_genome_package.pkl'
     
     # ===== 速度限制 (基于 TurtleBot3 Burger 参数) =====
     # TurtleBot3 Burger 物理参数:
@@ -33,4 +33,3 @@
     
     # ===== 观测归一化配置 =====
     world_scale: 1.75
-

@@ -12,9 +12,9 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/roundflocking/目录下查找）
-    # 可指定文件名如: 'flocking_genome_package_gen99.pkl'
-    # 留空则使用默认: 'flocking_genome_package_gen99.pkl'
-    genome_file: 'flocking_genome_package_gen99.pkl'
+    # 可指定文件名如: 'flocking_genome_package_0.3.pkl' 或 'flocking_genome_package_0.6.pkl'
+    # 留空则使用默认: 'flocking_genome_package_0.3.pkl'
+    genome_file: 'flocking_genome_package_0.3.pkl'
     
     # ===== 速度限制 =====
     max_linear_velocity: 0.15    # 最大线速度 (m/s)
@@ -30,4 +30,3 @@
     # 基于 RobotisLds01 激光雷达 (360 束)
     n_lidar_rays: 12   # 采样区间数 (将360°分为12个区间，每个30°)
     max_range: 3.5     # 使用的最大探测范围 (m)
-

@@ -61,6 +61,7 @@ class HardwareProtectionLayer(AbstractPattern):
         # 当前的传感器角度和距离（用于避障）
         self.current_angles = None
         self.current_ranges = None
+        self.has_received_drive_command = False
         
         # 订阅传感器数据（range_data 话题）
         self.range_data_subscription = self.create_subscription(
@@ -130,6 +131,7 @@ class HardwareProtectionLayer(AbstractPattern):
         如果需要避障则发布避障方向的 Twist 消息，否则发布原来的消息。
         """
         self.get_logger().debug('heard: "%s"' % msg)
+        self.has_received_drive_command = True
 
         # 计算是否需要避障和避障方向
         [adjust, direction] = self.vector_calc()
@@ -153,8 +155,11 @@ class HardwareProtectionLayer(AbstractPattern):
         # 更新当前传感器的距离和角度数据
         self.current_ranges = msg.ranges
         self.angles = msg.angles
-        
+
         self.get_logger().debug('heard: "%s"' % msg)
+
+        if not self.has_received_drive_command:
+            return
 
         [adjust, direction] = self.vector_calc()
         

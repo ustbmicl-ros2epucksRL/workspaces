@@ -74,11 +74,23 @@ def generate_deform_slots(
         leader_pos = ((rows - 1) * interval, (one_row_num // 2) * interval)
         leader_index = (rows - 1) * one_row_num + (one_row_num // 2)
 
-    centered = [
+    leader_centered = [
         FormationSlot(x=pos[0] - leader_pos[0], y=pos[1] - leader_pos[1])
         for pos in positions
     ]
-    centered[0], centered[leader_index] = centered[leader_index], centered[0]
+    leader_centered[0], leader_centered[leader_index] = (
+        leader_centered[leader_index],
+        leader_centered[0],
+    )
+
+    # The response demo goal sequence marks the group target, not just the
+    # leader target. Recenter slots so the formation centroid tracks that goal.
+    centroid_x = sum(slot.x for slot in leader_centered) / len(leader_centered)
+    centroid_y = sum(slot.y for slot in leader_centered) / len(leader_centered)
+    centered = [
+        FormationSlot(x=slot.x - centroid_x, y=slot.y - centroid_y)
+        for slot in leader_centered
+    ]
     return centered
 
 
@@ -119,4 +131,3 @@ def formation_center(poses: Iterable[Pose2D]) -> Pose2D:
         y=sum(pose.y for pose in poses) / len(poses),
         yaw=0.0,
     )
-

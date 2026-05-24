@@ -1,0 +1,18 @@
+# roundflocking 独立控制器 demo 专用参数。
+# launch 会先加载 tepper_response_group.yaml 作为公共基础参数，再加载本文件覆盖 demo 专属项。
+
+# response_task_fixture_node 发布的任务类型和目标位置。
+task_kind: roundflocking
+target_x: 0.0
+target_y: 0.0
+target_yaw: 0.0
+hold_seconds: 3600.0
+
+# response_task_controller_node 使用的 roundflocking 控制器类型、坐标尺度与持续时间。可选 checkpoint/heuristic。
+roundflocking_controller_type: heuristic
+roundflocking_world_scale: 1.0
+roundflocking_duration: 3600.0
+roundflocking_completion_enabled: false
+
+# response_cmd_mux_node 在独立 demo 中直接采用任务控制命令。
+default_mode: TASK_CONTROL

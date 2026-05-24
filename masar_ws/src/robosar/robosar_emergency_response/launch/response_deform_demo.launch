@@ -5,6 +5,7 @@
   <arg name="world_name" default="$(find robosar_emergency_response)/worlds/deform_navigation_demo.world"/>
   <arg name="goal_sequence_file" default="$(find robosar_emergency_response)/config/response_goal_sequence.yaml"/>
   <arg name="response_group_config" default="$(find robosar_emergency_response)/config/response_group.yaml"/>
+  <arg name="safety_config" default="$(find robosar_emergency_response)/config/response_safety.yaml"/>
   <arg name="wait_for_start" default="true"/>
   <arg name="start_delay" default="1.0"/>
   <arg name="frm_type" default="3"/>
@@ -49,5 +50,6 @@
   <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"
         name="response_cmd_mux_node" output="screen">
     <rosparam file="$(arg response_group_config)" command="load"/>
+    <rosparam file="$(arg safety_config)" command="load"/>
   </node>
 </launch>

@@ -3,7 +3,7 @@
 向已运行的 Webots 仿真中动态添加机器人并启动行为模式
 
 使用场景：
-  1. 先通过 start_webots.launch.py 或 create_enviroment_fast.launch.py 启动仿真
+  1. 先通过 start_webots.launch.py 或 create_enviroment.launch.py 启动仿真
   2. 再用本文件追加机器人（异构群体 / 热插拔）
 
 流程：

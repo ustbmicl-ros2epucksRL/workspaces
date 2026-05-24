@@ -31,8 +31,8 @@
           <surface>
             <friction>
               <ode>
-                <mu>100</mu>
-                <mu2>50</mu2>
+                <mu>0.9</mu>
+                <mu2>0.9</mu2>
               </ode>
               <torsional>
                 <ode/>
@@ -2658,7 +2658,7 @@
     </model>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>-0.280586 7.58984 31.2638 -0 1.1858 -0.298478</pose>
+        <pose>9.37 8.55 34.0 3.14159 1.57079 3.14159</pose>
         <view_controller>ortho</view_controller>
         <projection_type>orthographic</projection_type>
       </camera>

@@ -10,9 +10,9 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/transport/目录下查找）
-    # 可指定文件名如: 'transport_genome_package_gen299.pkl'
-    # 留空则使用默认: 'transport_genome_package_gen299.pkl'
-    genome_file: 'transport_genome_package_gen278.pkl'
+    # 可指定文件名如: 'transport_genome_package.pkl'
+    # 留空则使用默认: 'transport_genome_package.pkl'
+    genome_file: 'transport_genome_package.pkl'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
     # E-puck v2 物理参数:
@@ -41,7 +41,7 @@
     # ===== 任务完成判断配置 =====
     # 判断包裹是否在目标上的距离阈值（米）
     # 计算方式：包裹中心到目标中心的距离 < goal_threshold 则认为完成任务
-    goal_threshold: 0.15  # 任务完成判断阈值 (m)
+    goal_threshold: 0.22  # 任务完成判断阈值 (m)
     
     # ===== 观测归一化配置 =====
     # NEAT网络在VMAS环境训练时使用的坐标范围为 [-1, 1]

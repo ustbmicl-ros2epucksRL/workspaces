@@ -6,8 +6,8 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/navigation/目录下查找）
-    # 可指定文件名如: 'navigation_genome_package_gen49.pkl'
-    genome_file: 'navigation_genome_package_gen49.pkl'
+    # 可指定文件名如: 'navigation_genome_package.pkl'
+    genome_file: 'navigation_genome_package.pkl'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
     # E-puck v2 物理参数:
@@ -55,4 +55,3 @@
     # Webots仿真场景大小为 3.5x3.5，坐标范围为 [-1.75, 1.75]
     # world_scale用于将世界坐标归一化到网络期望的输入范围
     world_scale: 1.75  # 归一化因子: 实际坐标 / world_scale -> [-1, 1]
-

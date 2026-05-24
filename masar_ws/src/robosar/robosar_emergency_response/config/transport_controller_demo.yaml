@@ -1,0 +1,22 @@
+# transport 独立控制器 demo 专用参数。
+# launch 会先加载 tepper_response_group.yaml 作为公共基础参数，再加载本文件覆盖 demo 专属项。
+
+# response_task_fixture_node 发布的箱体初始位姿和目标区域中心。
+task_kind: transport
+box_x: -0.5
+box_y: 0.0
+box_yaw: 0.0
+goal_x: 1.25
+goal_y: 0.0
+goal_yaw: 0.0
+
+# response_task_controller_node 使用的 VMAS/Gazebo 坐标归一化尺度和 transport demo 限时。
+# TB3 推箱槽位/接触参数在 tepper_response_group.yaml 的 transport_tb3_* 段统一配置；
+# 若只想调独立 demo，可在本文件用同名参数覆盖。
+world_scale: 1.75
+transport_controller_type: checkpoint
+transport_max_duration: 600.0
+complete_transport_on_timeout: false
+
+# response_cmd_mux_node 在 transport demo 中直接采用任务控制命令；BOX 绕过安全仲裁由 response_safety.yaml 统一配置。
+default_mode: TASK_CONTROL

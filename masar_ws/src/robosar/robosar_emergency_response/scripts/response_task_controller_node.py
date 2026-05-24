@@ -2,7 +2,6 @@
 """Run phase-1/2 emergency task controllers through /tb_i/task_cmd_vel."""
 
 import json
-import math
 import os
 from pathlib import Path
 import sys
@@ -12,13 +11,26 @@ try:
     from robosar_emergency_response.checkpoint_controller import (
         NeatNetworkFactory,
         build_roundflocking_observation,
-        build_transport_observation,
+        build_transport_vmas_observation,
         clamp_observation,
-        differential_twist_from_omni_output,
-        direct_twist_from_network_output,
+        global_action_to_twist,
         object_info_from_global_info,
         robot_info_from_global_info,
-        rotate_global_to_body,
+        vmas_output_to_global_action,
+        vmas_global_action_to_twist,
+    )
+    from robosar_emergency_response.roundflocking_heuristic import (
+        RoundflockingHeuristicConfig,
+        roundflocking_heuristic_twist_from_observation,
+    )
+    from robosar_emergency_response.task_completion import RoundflockingCompletionMonitor
+    from robosar_emergency_response.transport_heuristic import (
+        TransportHeuristicConfig,
+        transport_heuristic_global_action_from_observation,
+    )
+    from robosar_emergency_response.transport_tb3_adapter import (
+        TransportTb3AdapterConfig,
+        adapt_transport_action_for_tb3,
     )
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
@@ -26,13 +38,26 @@ except ImportError:
     from robosar_emergency_response.checkpoint_controller import (
         NeatNetworkFactory,
         build_roundflocking_observation,
-        build_transport_observation,
+        build_transport_vmas_observation,
         clamp_observation,
-        differential_twist_from_omni_output,
-        direct_twist_from_network_output,
+        global_action_to_twist,
         object_info_from_global_info,
         robot_info_from_global_info,
-        rotate_global_to_body,
+        vmas_output_to_global_action,
+        vmas_global_action_to_twist,
+    )
+    from robosar_emergency_response.roundflocking_heuristic import (
+        RoundflockingHeuristicConfig,
+        roundflocking_heuristic_twist_from_observation,
+    )
+    from robosar_emergency_response.task_completion import RoundflockingCompletionMonitor
+    from robosar_emergency_response.transport_heuristic import (
+        TransportHeuristicConfig,
+        transport_heuristic_global_action_from_observation,
+    )
+    from robosar_emergency_response.transport_tb3_adapter import (
+        TransportTb3AdapterConfig,
+        adapt_transport_action_for_tb3,
     )
 
 import rospy
@@ -60,31 +85,111 @@ class ResponseTaskControllerNode:
         self.transport_max_duration = float(rospy.get_param("~transport_max_duration", 90.0))
         self.transport_goal_hold_seconds = float(rospy.get_param("~transport_goal_hold_seconds", 1.0))
         self.complete_transport_on_timeout = bool(
-            rospy.get_param("~complete_transport_on_timeout", True)
+            rospy.get_param("~complete_transport_on_timeout", False)
+        )
+        self.roundflocking_completion_enabled = bool(
+            rospy.get_param("~roundflocking_completion_enabled", True)
+        )
+        self.roundflocking_completion_min_duration = float(
+            rospy.get_param("~roundflocking_completion_min_duration", 4.0)
+        )
+        self.roundflocking_completion_min_angle_progress = float(
+            rospy.get_param("~roundflocking_completion_min_angle_progress", 0.45)
+        )
+        self.roundflocking_completion_max_radius = float(
+            rospy.get_param("~roundflocking_completion_max_radius", 1.2)
+        )
+        self.roundflocking_completion_required_robot_fraction = float(
+            rospy.get_param("~roundflocking_completion_required_robot_fraction", 0.5)
+        )
+        self.roundflocking_completion_required_robot_count = int(
+            rospy.get_param("~roundflocking_completion_required_robot_count", 0)
         )
         self.spin_duration = float(rospy.get_param("~spin_duration", 6.0))
         self.spin_angular_velocity = float(rospy.get_param("~spin_angular_velocity", 0.6))
         self.n_lidar_rays = int(rospy.get_param("~n_lidar_rays", 12))
         self.max_range = float(rospy.get_param("~max_range", 3.5))
         self.world_scale = float(rospy.get_param("~world_scale", 20.0))
-        self.goal_threshold = float(rospy.get_param("~goal_threshold", 0.25))
-        self.max_linear_velocity = float(rospy.get_param("~max_linear_velocity", 0.15))
-        self.max_angular_velocity = float(rospy.get_param("~max_angular_velocity", 0.8))
+        # roundflocking 的 VMAS 训练场景以目标为原点，0.3 为期望环绕半径；
+        # 因此它不应复用 transport/Tepper 大地图的坐标缩放。
+        self.roundflocking_world_scale = float(
+            rospy.get_param("~roundflocking_world_scale", 1.0)
+        )
+        # 通用目标判定半径；transport 完成判定也使用这个阈值。
+        self.goal_threshold = float(rospy.get_param("~goal_threshold", 0.15))
+        self.max_linear_velocity = float(rospy.get_param("~max_linear_velocity", 0.22))
+        self.max_angular_velocity = float(rospy.get_param("~max_angular_velocity", 2.84))
+        self.roundflocking_controller_type = str(
+            rospy.get_param("~roundflocking_controller_type", "heuristic")
+        ).strip().lower()
+        self.roundflocking_heuristic_config = RoundflockingHeuristicConfig(
+            circle_radius=float(rospy.get_param("~roundflocking_heuristic_circle_radius", 0.60)),
+            normal_offset=float(rospy.get_param("~roundflocking_heuristic_normal_offset", 0.10)),
+            object_visible_range=float(
+                rospy.get_param("~roundflocking_heuristic_object_visible_range", 0.10)
+            ),
+            object_avoid_distance=float(
+                rospy.get_param("~roundflocking_heuristic_object_avoid_distance", 0.10)
+            ),
+            gain=float(rospy.get_param("~roundflocking_heuristic_gain", 10.0)),
+            u_range=float(rospy.get_param("~roundflocking_heuristic_u_range", 1.0)),
+            speed=float(rospy.get_param("~roundflocking_heuristic_speed", 1.0)),
+        )
+        self.transport_controller_type = str(
+            rospy.get_param("~transport_controller_type", "checkpoint")
+        ).strip().lower()
+        # transport heuristic 参数与 multi-agent-neat / VMAS 训练口径保持一致。
+        self.transport_heuristic_config = TransportHeuristicConfig(
+            lookahead=float(rospy.get_param("~transport_heuristic_lookahead", 0.0)),
+            start_vel_dist_from_target_ratio=float(
+                rospy.get_param("~transport_heuristic_start_vel_dist_from_target_ratio", 0.5)
+            ),
+            start_vel_behind_ratio=float(
+                rospy.get_param("~transport_heuristic_start_vel_behind_ratio", 0.5)
+            ),
+            start_vel_mag=float(rospy.get_param("~transport_heuristic_start_vel_mag", 1.0)),
+            hit_vel_mag=float(rospy.get_param("~transport_heuristic_hit_vel_mag", 1.0)),
+            # transport heuristic 完全保持 VMAS transport.HeuristicPolicy 的策略常量。
+            package_radius=float(
+                rospy.get_param("~transport_heuristic_package_radius", 0.15 / 2.0)
+            ),
+            agent_radius=float(rospy.get_param("~transport_heuristic_agent_radius", -0.02)),
+            speed=float(rospy.get_param("~transport_heuristic_speed", 0.95)),
+            u_range=float(rospy.get_param("~transport_heuristic_u_range", 1.0)),
+        )
+        self.transport_tb3_adapter_config = TransportTb3AdapterConfig(
+            enabled=bool(rospy.get_param("~transport_tb3_adapter_enabled", True)),
+            slot_columns=int(rospy.get_param("~transport_tb3_slot_columns", 0)),
+            contact_distance=float(rospy.get_param("~transport_tb3_contact_distance", 0.31)),
+            row_spacing=float(rospy.get_param("~transport_tb3_row_spacing", 0.22)),
+            lateral_spacing=float(rospy.get_param("~transport_tb3_lateral_spacing", 0.10)),
+            max_lateral_offset=float(rospy.get_param("~transport_tb3_max_lateral_offset", 0.15)),
+            box_width=float(rospy.get_param("~transport_tb3_box_width", 0.50)),
+            robot_width=float(rospy.get_param("~transport_tb3_robot_width", 0.18)),
+            robot_gap=float(rospy.get_param("~transport_tb3_robot_gap", 0.02)),
+            box_edge_margin=float(rospy.get_param("~transport_tb3_box_edge_margin", 0.01)),
+            slot_gain=float(rospy.get_param("~transport_tb3_slot_gain", 2.5)),
+            policy_blend=float(rospy.get_param("~transport_tb3_policy_blend", 0.0)),
+            push_speed=float(rospy.get_param("~transport_tb3_push_speed", 0.85)),
+            contact_tolerance=float(rospy.get_param("~transport_tb3_contact_tolerance", 0.08)),
+            lateral_tolerance=float(rospy.get_param("~transport_tb3_lateral_tolerance", 0.04)),
+        )
 
         self.round_factory = self._load_factory(
             rospy.get_param(
                 "~roundflocking_checkpoint_file",
-                "roundflocking/flocking_genome_package_gen99.pkl",
+                "roundflocking/flocking_genome_package_0.3.pkl",
             )
         )
         self.transport_factory = self._load_factory(
             rospy.get_param(
                 "~transport_checkpoint_file",
-                "transport/transport_genome_package_gen264.pkl",
+                "transport/transport_genome_package.pkl",
             )
         )
         self.round_networks = self._create_networks(self.round_factory)
         self.transport_networks = self._create_networks(self.transport_factory)
+        self.roundflocking_completion = self._new_roundflocking_completion_monitor()
 
         self.command_pubs = {
             name: rospy.Publisher("/{}/task_cmd_vel".format(name), Twist, queue_size=10)
@@ -167,11 +272,22 @@ class ResponseTaskControllerNode:
             except Exception:
                 pass
 
+    def _new_roundflocking_completion_monitor(self):
+        return RoundflockingCompletionMonitor(
+            robot_names=self.robot_names,
+            min_duration=self.roundflocking_completion_min_duration,
+            min_angle_progress=self.roundflocking_completion_min_angle_progress,
+            max_radius=self.roundflocking_completion_max_radius,
+            required_robot_fraction=self.roundflocking_completion_required_robot_fraction,
+            required_robot_count=self.roundflocking_completion_required_robot_count,
+        )
+
     def _mode_callback(self, msg):
         self.mode = msg.data
         if self.mode != "TASK_CONTROL":
             self.task_started_at = None
             self.transport_on_goal_since = None
+            self.roundflocking_completion.reset()
             self._publish_zero_all()
 
     def _task_callback(self, msg):
@@ -180,6 +296,7 @@ class ResponseTaskControllerNode:
             self.current_task_id = msg.task_id
             self.task_started_at = None
             self.transport_on_goal_since = None
+            self.roundflocking_completion.reset()
             self._reset_networks()
 
     def _global_info_callback(self, msg):
@@ -228,7 +345,37 @@ class ResponseTaskControllerNode:
         duration = float(task.hold_seconds) if task.hold_seconds > 0.0 else self.roundflocking_duration
         if task.behavior_type == "TASK_SPIN_6S_PLACEHOLDER":
             duration = self.spin_duration
-        return EmergencyTask.DONE if elapsed >= duration else None
+            return EmergencyTask.DONE if elapsed >= duration else None
+
+        if not self.roundflocking_completion_enabled:
+            return EmergencyTask.DONE if elapsed >= duration else None
+
+        evidence = self.roundflocking_completion.update(self.global_info, now, elapsed)
+        if evidence.complete:
+            rospy.loginfo(
+                "Roundflocking completion evidence task=%d robots=%d/%d progress=%s",
+                task.task_id,
+                evidence.completed_robot_count,
+                evidence.required_robot_count,
+                {
+                    name: round(progress, 3)
+                    for name, progress in evidence.progress_by_robot.items()
+                },
+            )
+            return EmergencyTask.DONE
+        if elapsed >= duration:
+            rospy.logwarn(
+                "Roundflocking task %d timed out without orbit evidence: robots=%d/%d progress=%s",
+                task.task_id,
+                evidence.completed_robot_count,
+                evidence.required_robot_count,
+                {
+                    name: round(progress, 3)
+                    for name, progress in evidence.progress_by_robot.items()
+                },
+            )
+            return EmergencyTask.FAILED
+        return None
 
     def _transport_on_goal(self, now):
         if self.global_info is None:
@@ -267,20 +414,36 @@ class ResponseTaskControllerNode:
             lidar_ranges=self.scan_ranges.get(robot_name, [self.max_range] * 360),
             n_lidar_rays=self.n_lidar_rays,
             max_range=self.max_range,
-            world_scale=self.world_scale,
+            world_scale=self.roundflocking_world_scale,
         )
+        if self.roundflocking_controller_type == "heuristic":
+            return roundflocking_heuristic_twist_from_observation(
+                observation,
+                robot_yaw=robot.pose.yaw,
+                max_linear_velocity=self.max_linear_velocity,
+                max_angular_velocity=self.max_angular_velocity,
+                config=self.roundflocking_heuristic_config,
+            )
+        if self.roundflocking_controller_type != "checkpoint":
+            rospy.logwarn_throttle(
+                2.0,
+                "Unsupported roundflocking_controller_type '%s'",
+                self.roundflocking_controller_type,
+            )
+            return Twist2D()
         network = self.round_networks.get(robot_name)
         if network is not None and self.round_factory is not None:
             try:
                 output = network.activate(clamp_observation(observation, self.round_factory.input_dim))
-                return differential_twist_from_omni_output(
+                return vmas_global_action_to_twist(
                     output,
+                    robot.pose.yaw,
                     self.max_linear_velocity,
                     self.max_angular_velocity,
                 )
             except Exception as exc:
                 rospy.logwarn_throttle(2.0, "Roundflocking checkpoint inference failed: %s", exc)
-        return self._fallback_go_to(robot, target.x, target.y)
+        return Twist2D()
 
     def _transport_command(self, robot_name):
         robot = robot_info_from_global_info(self.global_info, robot_name)
@@ -288,7 +451,34 @@ class ResponseTaskControllerNode:
         target = object_info_from_global_info(self.global_info, "target_zone")
         if robot is None or box is None or target is None:
             return Twist2D()
-        observation = build_transport_observation(
+        robot_index = self.robot_names.index(robot_name)
+        if self.transport_controller_type == "heuristic":
+            observation = build_transport_vmas_observation(
+                robot=robot,
+                box=box,
+                target=target,
+                world_scale=self.world_scale,
+                goal_threshold=self.goal_threshold,
+            )
+            global_action = transport_heuristic_global_action_from_observation(
+                observation,
+                config=self.transport_heuristic_config,
+            )
+            global_action = adapt_transport_action_for_tb3(
+                policy_action=global_action,
+                robot_position=(robot.pose.x, robot.pose.y),
+                box_position=(box.x, box.y),
+                target_position=(target.x, target.y),
+                robot_index=robot_index,
+                config=self.transport_tb3_adapter_config,
+            )
+            return global_action_to_twist(
+                global_action,
+                robot_yaw=robot.pose.yaw,
+                max_linear_velocity=self.max_linear_velocity,
+                max_angular_velocity=self.max_angular_velocity,
+            )
+        observation = build_transport_vmas_observation(
             robot=robot,
             box=box,
             target=target,
@@ -299,26 +489,24 @@ class ResponseTaskControllerNode:
         if network is not None and self.transport_factory is not None:
             try:
                 output = network.activate(clamp_observation(observation, self.transport_factory.input_dim))
-                return direct_twist_from_network_output(
-                    output,
-                    self.max_linear_velocity,
-                    self.max_angular_velocity,
+                global_action = vmas_output_to_global_action(output)
+                global_action = adapt_transport_action_for_tb3(
+                    policy_action=global_action,
+                    robot_position=(robot.pose.x, robot.pose.y),
+                    box_position=(box.x, box.y),
+                    target_position=(target.x, target.y),
+                    robot_index=robot_index,
+                    config=self.transport_tb3_adapter_config,
+                )
+                return global_action_to_twist(
+                    global_action,
+                    robot_yaw=robot.pose.yaw,
+                    max_linear_velocity=self.max_linear_velocity,
+                    max_angular_velocity=self.max_angular_velocity,
                 )
             except Exception as exc:
                 rospy.logwarn_throttle(2.0, "Transport checkpoint inference failed: %s", exc)
-        return self._fallback_go_to(robot, box.x, box.y)
-
-    def _fallback_go_to(self, robot, target_x, target_y):
-        dx = target_x - robot.pose.x
-        dy = target_y - robot.pose.y
-        body_x, body_y = rotate_global_to_body(dx, dy, robot.pose.yaw)
-        desired_angle = math.atan2(body_y, body_x)
-        distance = math.hypot(body_x, body_y)
-        angular = max(-self.max_angular_velocity, min(self.max_angular_velocity, desired_angle))
-        linear = self.max_linear_velocity * min(1.0, distance)
-        if abs(desired_angle) > 1.2:
-            linear = 0.0
-        return Twist2D(linear, angular)
+        return Twist2D()
 
     def _publish_result(self, status):
         if self.active_task is None or self.active_task.task_id in self.reported_task_ids:

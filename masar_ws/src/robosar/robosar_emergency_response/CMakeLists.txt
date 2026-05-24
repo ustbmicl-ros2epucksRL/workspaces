@@ -34,11 +34,16 @@ catkin_install_python(PROGRAMS
   scripts/response_cmd_mux_node.py
   scripts/response_global_info_node.py
   scripts/response_task_controller_node.py
+  scripts/response_task_fixture_node.py
+  scripts/response_collision_debug_node.py
+  scripts/dynamic_obstacle_cloud_node.py
+  scripts/agent_cmd_safety_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
 install(PROGRAMS
   scripts/run_response_deform_demo.sh
+  scripts/run_response_controller_demo.sh
   scripts/start_response_tasks.sh
   scripts/run_tepper_response_demo.sh
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}

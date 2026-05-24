@@ -23,6 +23,25 @@ STATUS_FAILED = 6
 BEHAVIOR_ROUNDFLOCKING = "TASK_ROUNDFLOCKING"
 BEHAVIOR_TRANSPORT = "TASK_TRANSPORT"
 BEHAVIOR_SPIN = "TASK_SPIN_6S_PLACEHOLDER"
+BEHAVIOR_RETURN_HOME = "NAV_RETURN_HOME"
+
+
+def emergency_object_key(object_type: int, object_id: int, scene_name: str) -> tuple[int, int, str]:
+    return int(object_type), int(object_id), str(scene_name)
+
+
+def all_expected_tasks_done(
+    tasks: Iterable["ManagedTask"],
+    expected_keys: Iterable[tuple[int, int, str]],
+) -> bool:
+    expected = set(expected_keys)
+    if not expected:
+        return False
+    task_by_key = {task.key: task for task in tasks}
+    return all(
+        key in task_by_key and task_by_key[key].status == STATUS_DONE
+        for key in expected
+    )
 
 
 @dataclass(frozen=True)
@@ -70,7 +89,7 @@ class ManagedTask:
 
     @property
     def key(self) -> tuple[int, int, str]:
-        return self.task_type, self.object_id, self.scene_name
+        return emergency_object_key(self.task_type, self.object_id, self.scene_name)
 
 
 def behavior_for_task_type(task_type: int, use_spin_placeholder: bool = False) -> str:
@@ -163,7 +182,7 @@ class ResponseTaskQueue:
     ) -> bool:
         if not obj.discovered:
             return False
-        key = (obj.object_type, obj.object_id, obj.scene_name)
+        key = emergency_object_key(obj.object_type, obj.object_id, obj.scene_name)
         if key in self._tasks:
             return False
 
@@ -200,7 +219,7 @@ class ResponseTaskQueue:
 
     def dispatch_next(self) -> ManagedTask | None:
         if self._active_task_id is not None:
-            return self.current_task()
+            return None
         candidates = [
             task
             for task in self._tasks.values()
@@ -216,6 +235,40 @@ class ResponseTaskQueue:
         self._tasks[task.key] = task
         self._active_task_id = task.task_id
         return task
+
+    def preempt_active_for_higher_priority(
+        self,
+        group_center: MatrixPose,
+        min_remaining_distance: float,
+    ) -> ManagedTask | None:
+        current = self.current_task()
+        if current is None or current.status != STATUS_EN_ROUTE:
+            return None
+        remaining = math.hypot(
+            current.staging_pose.x - group_center.x,
+            current.staging_pose.y - group_center.y,
+        )
+        if remaining <= float(min_remaining_distance):
+            return None
+
+        current_priority = priority_for_task_type(current.task_type)
+        candidates = [
+            task
+            for task in self._tasks.values()
+            if task.status in (STATUS_NEW, STATUS_DISPATCHED)
+            and priority_for_task_type(task.task_type) < current_priority
+            and math.hypot(
+                task.staging_pose.x - group_center.x,
+                task.staging_pose.y - group_center.y,
+            )
+            < remaining
+        ]
+        if not candidates:
+            return None
+
+        self._tasks[current.key] = replace(current, status=STATUS_DISPATCHED)
+        self._active_task_id = None
+        return self.dispatch_next()
 
     def current_task(self) -> ManagedTask | None:
         if self._active_task_id is None:

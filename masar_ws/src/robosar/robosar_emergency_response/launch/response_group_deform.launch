@@ -5,6 +5,19 @@
   <arg name="other_num_in_opti" default="2"/>
   <arg name="formation_interval" default="0.8"/>
   <arg name="leader_id" default="0"/>
+  <arg name="formation_consensus_local_goal_weight" default="1.0"/>
+  <arg name="formation_corridor_yaw_snap_enabled" default="true"/>
+  <arg name="formation_corridor_yaw_snap_tolerance" default="0.70"/>
+  <arg name="formation_min_robot_clearance" default="0.4"/>
+  <arg name="formation_min_robot_clearance_gain" default="1.0"/>
+  <arg name="formation_min_local_goal_progress" default="0.30"/>
+  <arg name="formation_min_type" default="1"/>
+  <arg name="formation_reduce_robot_fraction" default="0.2"/>
+  <arg name="avoid_obs_distance_threshold" default="0.15"/>
+  <arg name="timeout_reassignment_enabled" default="true"/>
+  <arg name="controller_stall_fallback_enabled" default="true"/>
+  <arg name="controller_stall_fallback_goal_distance" default="0.35"/>
+  <arg name="controller_stall_fallback_linear_epsilon" default="0.015"/>
 
   <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
     <arg name="tb_id" value="0"/>
@@ -14,6 +27,19 @@
     <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
     <arg name="formation_interval" value="$(arg formation_interval)"/>
     <arg name="leader_id" value="$(arg leader_id)"/>
+    <arg name="formation_consensus_local_goal_weight" value="$(arg formation_consensus_local_goal_weight)"/>
+    <arg name="formation_corridor_yaw_snap_enabled" value="$(arg formation_corridor_yaw_snap_enabled)"/>
+    <arg name="formation_corridor_yaw_snap_tolerance" value="$(arg formation_corridor_yaw_snap_tolerance)"/>
+    <arg name="formation_min_robot_clearance" value="$(arg formation_min_robot_clearance)"/>
+    <arg name="formation_min_robot_clearance_gain" value="$(arg formation_min_robot_clearance_gain)"/>
+    <arg name="formation_min_local_goal_progress" value="$(arg formation_min_local_goal_progress)"/>
+    <arg name="formation_min_type" value="$(arg formation_min_type)"/>
+    <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
+    <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
+    <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
+    <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
+    <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
   </include>
 
   <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
@@ -24,6 +50,19 @@
     <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
     <arg name="formation_interval" value="$(arg formation_interval)"/>
     <arg name="leader_id" value="$(arg leader_id)"/>
+    <arg name="formation_consensus_local_goal_weight" value="$(arg formation_consensus_local_goal_weight)"/>
+    <arg name="formation_corridor_yaw_snap_enabled" value="$(arg formation_corridor_yaw_snap_enabled)"/>
+    <arg name="formation_corridor_yaw_snap_tolerance" value="$(arg formation_corridor_yaw_snap_tolerance)"/>
+    <arg name="formation_min_robot_clearance" value="$(arg formation_min_robot_clearance)"/>
+    <arg name="formation_min_robot_clearance_gain" value="$(arg formation_min_robot_clearance_gain)"/>
+    <arg name="formation_min_local_goal_progress" value="$(arg formation_min_local_goal_progress)"/>
+    <arg name="formation_min_type" value="$(arg formation_min_type)"/>
+    <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
+    <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
+    <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
+    <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
+    <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
   </include>
 
   <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
@@ -34,6 +73,19 @@
     <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
     <arg name="formation_interval" value="$(arg formation_interval)"/>
     <arg name="leader_id" value="$(arg leader_id)"/>
+    <arg name="formation_consensus_local_goal_weight" value="$(arg formation_consensus_local_goal_weight)"/>
+    <arg name="formation_corridor_yaw_snap_enabled" value="$(arg formation_corridor_yaw_snap_enabled)"/>
+    <arg name="formation_corridor_yaw_snap_tolerance" value="$(arg formation_corridor_yaw_snap_tolerance)"/>
+    <arg name="formation_min_robot_clearance" value="$(arg formation_min_robot_clearance)"/>
+    <arg name="formation_min_robot_clearance_gain" value="$(arg formation_min_robot_clearance_gain)"/>
+    <arg name="formation_min_local_goal_progress" value="$(arg formation_min_local_goal_progress)"/>
+    <arg name="formation_min_type" value="$(arg formation_min_type)"/>
+    <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
+    <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
+    <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
+    <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
+    <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
   </include>
 
   <include file="$(find robosar_emergency_response)/launch/response_plan_manager_one_run.xml">
@@ -44,5 +96,18 @@
     <arg name="other_num_in_opti" value="$(arg other_num_in_opti)"/>
     <arg name="formation_interval" value="$(arg formation_interval)"/>
     <arg name="leader_id" value="$(arg leader_id)"/>
+    <arg name="formation_consensus_local_goal_weight" value="$(arg formation_consensus_local_goal_weight)"/>
+    <arg name="formation_corridor_yaw_snap_enabled" value="$(arg formation_corridor_yaw_snap_enabled)"/>
+    <arg name="formation_corridor_yaw_snap_tolerance" value="$(arg formation_corridor_yaw_snap_tolerance)"/>
+    <arg name="formation_min_robot_clearance" value="$(arg formation_min_robot_clearance)"/>
+    <arg name="formation_min_robot_clearance_gain" value="$(arg formation_min_robot_clearance_gain)"/>
+    <arg name="formation_min_local_goal_progress" value="$(arg formation_min_local_goal_progress)"/>
+    <arg name="formation_min_type" value="$(arg formation_min_type)"/>
+    <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
+    <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
+    <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
+    <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
+    <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
   </include>
 </launch>

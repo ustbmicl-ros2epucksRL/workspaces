@@ -13,6 +13,29 @@
   <arg name="formation_interval" default="0.8"/>
   <!-- 领航机器人编号。 -->
   <arg name="leader_id" default="0"/>
+  <!-- 普通编队一致性中局部路径目标的权重。 -->
+  <arg name="formation_consensus_local_goal_weight" default="1.0"/>
+  <!-- 窄走廊中将队形朝向吸附到地图主轴，避免局部目标微偏导致整列斜插墙面。 -->
+  <arg name="formation_corridor_yaw_snap_enabled" default="true"/>
+  <arg name="formation_corridor_yaw_snap_tolerance" default="0.70"/>
+  <!-- 队友过近时对局部目标施加轻量分离偏置的最小距离。 -->
+  <arg name="formation_min_robot_clearance" default="0.4"/>
+  <!-- 队友过近分离偏置增益。 -->
+  <arg name="formation_min_robot_clearance_gain" default="1.0"/>
+  <!-- consensus 把局部目标压到脚边但仍远离最终槽位时保留的最小路径进展距离。 -->
+  <arg name="formation_min_local_goal_progress" default="0.30"/>
+  <!-- 允许收缩到的最小队形类型。默认保持 DEFORM 原行为，可由 Tepper 大系统单独收紧。 -->
+  <arg name="formation_min_type" default="1"/>
+  <!-- 触发队形收缩所需的近障碍机器人比例。 -->
+  <arg name="formation_reduce_robot_fraction" default="0.2"/>
+  <!-- DEFORM 内部 ESDF 避障状态触发距离。 -->
+  <arg name="avoid_obs_distance_threshold" default="0.15"/>
+  <!-- 是否启用 DEFORM 超时重分配。 -->
+  <arg name="timeout_reassignment_enabled" default="true"/>
+  <!-- NMPC 在局部目标明显未到但输出近零速时是否切到纯跟踪兜底。 -->
+  <arg name="controller_stall_fallback_enabled" default="true"/>
+  <arg name="controller_stall_fallback_goal_distance" default="0.35"/>
+  <arg name="controller_stall_fallback_linear_epsilon" default="0.015"/>
   <!-- 当前机器人用于构建局部障碍地图的深度图话题。 -->
   <arg name="depth_topic" default="/tb_$(arg tb_id)/camera/depth/image_filter"/>
   <!-- 四机器人初始与期望队形槽位配置文件。 -->
@@ -29,6 +52,8 @@
     <remap from="~cmd_vel" to="/tb_$(arg tb_id)/deform_cmd_vel"/>
     <!-- 当前机器人里程计输入。 -->
     <remap from="~grid_map/odom" to="/tb_$(arg tb_id)/odom"/>
+    <!-- 搜索组机器人等动态障碍从 Gazebo 位姿注入到 DEFORM 局部地图。 -->
+    <remap from="~grid_map/cloud" to="/response_group/dynamic_obstacle_cloud"/>
     <!-- 当前阶段不使用该位姿输入，保留占位映射。 -->
     <remap from="~grid_map/pose" to="/pose_unused"/>
     <!-- 当前机器人深度图输入。 -->
@@ -38,8 +63,8 @@
     <param name="plan_manager/forward_distance" value="1.3"/>
     <!-- 距离最终目标较近时切入直接接近目标的距离阈值，单位为米。 -->
     <param name="plan_manager/approach_goal_distance" value="2.0"/>
-    <!-- 接近目标阶段是否以目标中心为所有机器人最终接近点。 -->
-    <param name="plan_manager/approach_center_goal" value="true"/>
+    <!-- 接近目标阶段继续使用槽位目标，避免多机器人挤到同一中心点。 -->
+    <param name="plan_manager/approach_center_goal" value="false"/>
     <!-- 是否发布编队规划器内部的距离场避障状态；阶段0由激光安全层统一发布。 -->
     <param name="plan_manager/publish_esdf_avoid_state" value="false"/>
     <!-- 是否在检测到走廊时将局部目标轻微推向通道中心。 -->
@@ -48,16 +73,26 @@
     <param name="plan_manager/corridor_centering_max_width" value="2.4"/>
     <!-- 单次通道居中允许修正局部目标的最大位移，单位为米。 -->
     <param name="plan_manager/corridor_centering_max_shift" value="0.5"/>
+    <!-- 窄走廊中把队形 yaw 吸附到最近的 90 度轴线，保持队形沿走廊中线展开。 -->
+    <param name="plan_manager/formation_corridor_yaw_snap_enabled" value="$(arg formation_corridor_yaw_snap_enabled)"/>
+    <param name="plan_manager/formation_corridor_yaw_snap_max_width" value="2.4"/>
+    <param name="plan_manager/formation_corridor_yaw_snap_tolerance" value="$(arg formation_corridor_yaw_snap_tolerance)"/>
     <!-- 普通编队一致性中局部路径目标的权重。 -->
-    <param name="plan_manager/formation_consensus_local_goal_weight" value="1.0"/>
-    <!-- 单列且存在近障碍压力时局部路径目标的权重；越大越优先沿可通行路径走。 -->
-    <param name="plan_manager/narrow_corridor_local_goal_weight" value="3.6"/>
+    <param name="plan_manager/formation_consensus_local_goal_weight" value="$(arg formation_consensus_local_goal_weight)"/>
+    <!-- 队友过近时只修正局部目标，不让激光安全层把队友当障碍。 -->
+    <param name="plan_manager/formation_min_robot_clearance" value="$(arg formation_min_robot_clearance)"/>
+    <param name="plan_manager/formation_min_robot_clearance_gain" value="$(arg formation_min_robot_clearance_gain)"/>
+    <param name="plan_manager/formation_min_local_goal_progress" value="$(arg formation_min_local_goal_progress)"/>
+    <param name="plan_manager/formation_min_type" value="$(arg formation_min_type)"/>
+    <param name="plan_manager/formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
+    <param name="plan_manager/avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
+    <param name="plan_manager/timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
     <!-- 近障碍或窄通道信号需要连续保持多久才触发队形收缩，单位为秒。 -->
     <param name="plan_manager/formation_reduce_hold_time" value="0.6"/>
     <!-- 清晰通道信号需要连续保持多久才允许队形扩展，单位为秒。 -->
-    <param name="plan_manager/formation_expand_hold_time" value="1.5"/>
+    <param name="plan_manager/formation_expand_hold_time" value="6.0"/>
     <!-- 队形刚收缩后禁止立即扩展的冷却时间，单位为秒。 -->
-    <param name="plan_manager/formation_expansion_cooldown" value="4.0"/>
+    <param name="plan_manager/formation_expansion_cooldown" value="12.0"/>
     <!-- 超时重分配槽位的冷却时间，单位为秒。 -->
     <param name="plan_manager/reassignment_cooldown" value="5.0"/>
     <!-- 编队规划器避障安全距离，单位为米。 -->
@@ -98,6 +133,9 @@
     <param name="controller/tb_num" value="$(arg tb_num)"/>
     <!-- 控制器纳入考虑的邻近队友数量。 -->
     <param name="controller/other_num_in_opti" value="$(arg other_num_in_opti)"/>
+    <param name="controller/stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
+    <param name="controller/stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
+    <param name="controller/stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
     <!-- 里程计或深度图短暂丢失时允许等待的最长时间，单位为秒。 -->
     <param name="grid_map/odom_depth_timeout" value="8.0"/>
 

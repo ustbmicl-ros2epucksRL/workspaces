@@ -35,6 +35,11 @@ TrajectoryOptimizer::TrajectoryOptimizer() {
 
 TrajectoryOptimizer::TrajectoryOptimizer(ros::NodeHandle &nh_) {
     nh_.param("optimization/goal_distance_thresh", dist_thresh, -1.0);
+    nh_.param("controller/stall_fallback_enabled", stall_fallback_enabled, false);
+    nh_.param("controller/stall_fallback_goal_distance", stall_fallback_goal_distance, 0.35);
+    nh_.param("controller/stall_fallback_linear_epsilon", stall_fallback_linear_epsilon, 0.015);
+    nh_.param("controller/fallback_other_clearance", fallback_other_clearance, 0.4);
+    nh_.param("controller/fallback_repulsion_gain", fallback_repulsion_gain, 1.0);
     state = Eigen::Vector3d::Zero();
     goal = Eigen::Vector2d::Zero();
     global_goal = Eigen::Vector2d::Zero();
@@ -122,6 +127,12 @@ void TrajectoryOptimizer::updateOtherOdom(Eigen::Vector2d pos, int id) {
     if (!isFiniteVector(pos)) {
         return;
     }
+    if (id >= 0) {
+        if (static_cast<std::size_t>(id) >= other_positions_.size()) {
+            other_positions_.resize(static_cast<std::size_t>(id) + 1, Eigen::Vector2d(500.0, 500.0));
+        }
+        other_positions_[id] = pos;
+    }
     try {
         nmpc_->setOthersState(pos,id);
     } catch (casadi::CasadiException& e) {
@@ -168,6 +179,19 @@ bool TrajectoryOptimizer::run() {
             if (!isFiniteVector(vel, 2)) {
                 ROS_WARN_THROTTLE(1.0, "NMPC returned invalid velocity, using fallback controller.");
                 vel = fallbackVelocity();
+            } else if (stall_fallback_enabled) {
+                const Eigen::Vector2d local_delta = goal - tb_pos;
+                const double local_goal_dist = local_delta.norm();
+                if (std::isfinite(local_goal_dist) &&
+                    local_goal_dist > stall_fallback_goal_distance &&
+                    std::abs(vel[0]) < stall_fallback_linear_epsilon) {
+                    ROS_WARN_THROTTLE(
+                        1.0,
+                        "NMPC returned near-zero linear velocity %.3f while local goal is %.2fm away; using fallback controller.",
+                        vel[0],
+                        local_goal_dist);
+                    vel = fallbackVelocity();
+                }
             }
         }
         catch (casadi::CasadiException& e) {
@@ -209,10 +233,44 @@ std::vector<double> TrajectoryOptimizer::fallbackVelocity() const {
     }
 
     const double dist = delta.norm();
-    const double desired_yaw = std::atan2(delta.y(), delta.x());
+    Eigen::Vector2d desired_direction = delta / dist;
+    Eigen::Vector2d repulsion = Eigen::Vector2d::Zero();
+    const double clearance = std::max(0.0, fallback_other_clearance);
+
+    if (clearance > 1e-3) {
+        for (const auto& other_position : other_positions_) {
+            if (!std::isfinite(other_position.x()) || !std::isfinite(other_position.y())) {
+                continue;
+            }
+            Eigen::Vector2d away = tb_pos - other_position;
+            const double other_dist = away.norm();
+            if (!std::isfinite(other_dist) || other_dist >= clearance) {
+                continue;
+            }
+            if (other_dist < 1e-3) {
+                away = Eigen::Vector2d(-desired_direction.y(), desired_direction.x());
+            } else {
+                away /= other_dist;
+            }
+            repulsion += away * ((clearance - std::max(other_dist, 0.0)) / clearance);
+        }
+    }
+
+    if (repulsion.norm() > 1e-6) {
+        const double gain = std::max(0.0, fallback_repulsion_gain);
+        Eigen::Vector2d combined = desired_direction + gain * repulsion;
+        if (combined.norm() > 1e-6) {
+            desired_direction = combined.normalized();
+        }
+    }
+
+    const double desired_yaw = std::atan2(desired_direction.y(), desired_direction.x());
     const double yaw_error = normalizeAngle(desired_yaw - state.z());
 
     double linear = clampValue(0.45 * dist, 0.02, 0.12);
+    if (repulsion.norm() > 1e-6) {
+        linear = std::min(linear, 0.08);
+    }
     if (std::abs(yaw_error) > 1.2) {
         linear = 0.0;
     } else if (std::abs(yaw_error) > 0.6) {

@@ -16,9 +16,9 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/transport/目录下查找）
-    # 可指定文件名如: 'transport_genome_package_gen264.pkl'
-    # 留空则使用默认: 'transport_genome_package_gen264.pkl'
-    genome_file: 'transport_genome_package_gen264.pkl'
+    # 可指定文件名如: 'transport_genome_package.pkl'
+    # 留空则使用默认: 'transport_genome_package.pkl'
+    genome_file: 'transport_genome_package.pkl'
     
     # ===== 速度限制 =====
     max_linear_velocity: 0.15    # 最大线速度 (m/s)
@@ -35,4 +35,3 @@
     # 判断包裹是否在目标上的距离阈值（米）
     # 计算方式：包裹中心到目标中心的距离 < goal_threshold 则认为完成任务
     goal_threshold: 0.15  # 任务完成判断阈值 (m)
-

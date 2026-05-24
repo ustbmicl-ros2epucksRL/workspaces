@@ -56,6 +56,22 @@ class ResponseGroupCoordinatorNode:
             center_radius=float(rospy.get_param("~goal_region_center_radius", 0.65)),
             hold_seconds=float(rospy.get_param("~goal_region_hold_seconds", 1.0)),
         )
+        self.transport_goal_region_barrier = GoalRegionBarrier(
+            self.robot_names,
+            robot_radius=float(
+                rospy.get_param(
+                    "~transport_goal_region_robot_radius",
+                    rospy.get_param("~goal_region_robot_radius", 1.05),
+                )
+            ),
+            center_radius=float(
+                rospy.get_param(
+                    "~transport_goal_region_center_radius",
+                    rospy.get_param("~goal_region_center_radius", 0.65),
+                )
+            ),
+            hold_seconds=float(rospy.get_param("~goal_region_hold_seconds", 1.0)),
+        )
         self.robot_states = {}
         self.active_goal = None
         self.active_goal_id = -1
@@ -108,6 +124,7 @@ class ResponseGroupCoordinatorNode:
         self.goal_started_at = rospy.Time.now()
         self.barrier.reset()
         self.goal_region_barrier.reset()
+        self.transport_goal_region_barrier.reset()
         self._done_goal_ids.discard(self.active_goal_id)
         self.deform_reached = {name: False for name in self.robot_names}
         rospy.loginfo("Coordinator accepted response task %s", self.active_goal_id)
@@ -132,6 +149,7 @@ class ResponseGroupCoordinatorNode:
             self.barrier.set_slots(self.slots)
             self.barrier.reset()
             self.goal_region_barrier.reset()
+            self.transport_goal_region_barrier.reset()
             self.deform_reached = {name: False for name in self.robot_names}
 
     def _odom_callback(self, msg, robot_name):
@@ -174,12 +192,17 @@ class ResponseGroupCoordinatorNode:
             robot_states=self.robot_states,
             now=now.to_sec(),
             remap_ids=self.remap_ids,
-            slot_rotation_yaw=0.0,
+            slot_rotation_yaw=self.formation_yaw,
         )
         status.formation_center = self._pose_stamped(result.center)
         status.target_pose = self._pose_stamped(self.active_goal)
         self.slot_marker_pub.publish(self._slot_markers(result.targets))
-        goal_region_result = self.goal_region_barrier.evaluate(
+        goal_region_barrier = (
+            self.transport_goal_region_barrier
+            if self.active_task_type == EmergencyTask.BOX
+            else self.goal_region_barrier
+        )
+        goal_region_result = goal_region_barrier.evaluate(
             goal=self.active_goal,
             robot_states=self.robot_states,
             now=now.to_sec(),
@@ -188,7 +211,9 @@ class ResponseGroupCoordinatorNode:
         deform_reached_and_inside = result.all_inside and all(
             self.deform_reached.get(name, False) for name in self.robot_names
         )
-        if deform_reached_and_inside:
+        slot_goal_region_inside = goal_region_result.all_inside
+        slot_goal_region_arrived = goal_region_result.arrived
+        if deform_reached_and_inside and slot_goal_region_arrived:
             status.state = ResponseGroupStatus.DONE
             status.detail = "deform_reached"
         elif self.enable_goal_region_arrival and goal_region_result.arrived:
@@ -202,12 +227,15 @@ class ResponseGroupCoordinatorNode:
         elif self.goal_started_at and (now - self.goal_started_at).to_sec() > self.navigation_timeout:
             status.state = ResponseGroupStatus.FAILED
             status.detail = "navigation_timeout"
-        elif result.arrived:
+        elif result.arrived and slot_goal_region_arrived:
             status.state = ResponseGroupStatus.DONE
             status.detail = "arrived"
         else:
             status.state = ResponseGroupStatus.NAVIGATING
-            status.detail = "max_slot_error={:.3f}".format(result.max_distance)
+            status.detail = "max_slot_error={:.3f} center_dist={:.3f}".format(
+                result.max_distance,
+                goal_region_result.center_distance,
+            )
 
         self.status_pub.publish(status)
         self.state_marker_pub.publish(self._state_marker(status))

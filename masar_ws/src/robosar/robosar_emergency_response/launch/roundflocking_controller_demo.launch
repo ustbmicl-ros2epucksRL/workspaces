@@ -1,0 +1,60 @@
+<launch>
+  <arg name="model" default="burger"/>
+  <arg name="gz_gui" default="true"/>
+  <arg name="rviz" default="true"/>
+  <arg name="controller" default="checkpoint"/>
+  <arg name="common_response_group_config" default="$(find robosar_emergency_response)/config/tepper_response_group.yaml"/>
+  <arg name="demo_response_config" default="$(find robosar_emergency_response)/config/roundflocking_controller_demo.yaml"/>
+  <arg name="safety_config" default="$(find robosar_emergency_response)/config/response_safety.yaml"/>
+
+  <param name="/use_sim_time" value="true"/>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="roundflocking_demo_map_to_world"
+        args="0 0 0 0 0 0 1 map world"/>
+
+  <include file="$(find robosar_emergency_response)/launch/response_group_gazebo.launch">
+    <arg name="start_gazebo" value="true"/>
+    <arg name="gz_gui" value="$(arg gz_gui)"/>
+    <arg name="rviz" value="$(arg rviz)"/>
+    <arg name="model" value="$(arg model)"/>
+    <arg name="world_name" value="$(find robosar_emergency_response)/worlds/roundflocking_controller_demo.world"/>
+    <arg name="tb_0_x" value="1.15"/>
+    <arg name="tb_0_y" value="0.00"/>
+    <arg name="tb_0_yaw" value="3.1416"/>
+    <arg name="tb_1_x" value="0.00"/>
+    <arg name="tb_1_y" value="1.15"/>
+    <arg name="tb_1_yaw" value="-1.5708"/>
+    <arg name="tb_2_x" value="-1.15"/>
+    <arg name="tb_2_y" value="0.00"/>
+    <arg name="tb_2_yaw" value="0.0"/>
+    <arg name="tb_3_x" value="0.00"/>
+    <arg name="tb_3_y" value="-1.15"/>
+    <arg name="tb_3_yaw" value="1.5708"/>
+  </include>
+
+  <node pkg="robosar_emergency_response" type="response_task_fixture_node.py"
+        name="roundflocking_task_fixture_node" output="screen">
+    <rosparam file="$(arg common_response_group_config)" command="load"/>
+    <rosparam file="$(arg demo_response_config)" command="load"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_global_info_node.py"
+        name="roundflocking_global_info_node" output="screen">
+    <rosparam file="$(arg common_response_group_config)" command="load"/>
+    <rosparam file="$(arg demo_response_config)" command="load"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_task_controller_node.py"
+        name="roundflocking_task_controller_node" output="screen">
+    <rosparam file="$(arg common_response_group_config)" command="load"/>
+    <rosparam file="$(arg demo_response_config)" command="load"/>
+    <param name="roundflocking_controller_type" value="$(arg controller)"/>
+  </node>
+
+  <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"
+        name="roundflocking_cmd_mux_node" output="screen">
+    <rosparam file="$(arg common_response_group_config)" command="load"/>
+    <rosparam file="$(arg demo_response_config)" command="load"/>
+    <rosparam file="$(arg safety_config)" command="load"/>
+  </node>
+</launch>

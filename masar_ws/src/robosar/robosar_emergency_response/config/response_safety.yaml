@@ -1,0 +1,51 @@
+# 作用：响应组速度融合节点的安全层公共参数。
+# 使用范围：response_cmd_mux_node.py；由第 0 阶段 demo、Tepper 大场景、roundflocking/transport 独立 demo 的 cmd_mux 节点加载。
+# 本文件只控制安全仲裁、近障碍编队收缩信号和 transport 是否绕过安全仲裁；不控制 DEFORM/任务控制器本身。
+
+# ROS2swarm hardware_protection_layer 风格的力场避障检测距离，单位为米。
+# DEFORM 走廊导航需要比 burger 默认值更早接管，避免后车贴墙后才触发。
+hardware_protection_layer_max_range: 0.35
+
+# 低于该距离的激光点视作近场盲区/自反射，不参与斥力计算，单位为米。
+hardware_protection_layer_min_range: 0.08
+
+# 力场中沿机器人前方的吸引项，数值越大越不容易被侧向障碍过度拉偏。
+hardware_protection_layer_front_attraction: 1.0
+
+# 小于 max_range 的有效激光点数量超过该阈值时，才用避障命令替换原命令。
+hardware_protection_layer_threshold: 4
+
+# 落在机器人自身足迹内的扫描点视为模型/雷达自反射，不作为外部障碍。
+hardware_protection_layer_self_filter_radius: 0.08
+
+# 安全层生成避障命令时使用的最大线速度，单位为米每秒。
+max_translational_velocity: 0.12  #TB3最大 0.22
+
+# 安全层生成避障/恢复转向命令时使用的最大角速度，单位为弧度每秒。
+max_rotational_velocity: 1.00  #TB3最大 2.84
+
+# 是否向 DEFORM 编队规划器发布 /tb_i/is_avoid 近障碍状态。
+publish_formation_avoid: true
+
+# 触发近障碍状态的真实最近激光距离阈值，单位为米。
+formation_reduce_distance: 0.62
+
+# 解除近障碍状态的真实最近激光距离阈值，单位为米；大于收缩阈值形成滞回。
+formation_clear_distance: 0.82
+
+# NAV_FORMATION 中已知响应组队友方向的忽略半角，避免把编队近距离队友误判成障碍，单位为度。
+formation_ignore_robot_angle_deg: 24.0
+
+# 参与队友方向忽略的最大队友距离，单位为米；搜索组机器人不在此白名单内。
+formation_ignore_robot_max_distance: 1.5
+
+# 队友在激光雷达中占据角宽的近似半径，近距离队友会按该半径展开过滤角窗，单位为米。
+formation_ignore_robot_radius: 0.25
+
+# transport 推箱子需要接触箱体；BOX 任务默认直接采用控制器速度，绕过 LiDAR 与动态位姿安全仲裁。
+transport_task_bypass_safety: true
+
+# 搜索组机器人可能因模型尺寸/激光高度没有形成近距离 scan 点；用 Gazebo 位姿补充动态避障。
+dynamic_obstacle_trigger_distance: 0.65
+dynamic_obstacle_stop_distance: 0.35
+dynamic_obstacle_reverse_velocity: 0.08

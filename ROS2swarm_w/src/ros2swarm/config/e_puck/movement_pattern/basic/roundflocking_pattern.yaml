@@ -12,9 +12,9 @@
     
     # ===== NEAT 神经网络配置 =====
     # 基因包文件名（在checkpoints/roundflocking/目录下查找）
-    # 可指定文件名如: 'flocking_genome_package_gen99.pkl'
-    # 留空则使用默认: 'flocking_genome_package_gen99.pkl'
-    genome_file: 'flocking_genome_package_gen99.pkl'
+    # 可指定文件名如: 'flocking_genome_package_0.3.pkl' 或 'flocking_genome_package_0.6.pkl'
+    # 留空则使用默认: 'flocking_genome_package_0.3.pkl'  #####0.6版本仍未完整适配（这个包含tanh的激活函数）
+    genome_file: 'flocking_genome_package_0.3.pkl'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
     # E-puck v2 物理参数:
