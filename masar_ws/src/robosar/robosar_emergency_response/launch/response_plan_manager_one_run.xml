@@ -32,6 +32,14 @@
   <arg name="avoid_obs_distance_threshold" default="0.15"/>
   <!-- 是否启用 DEFORM 超时重分配。 -->
   <arg name="timeout_reassignment_enabled" default="true"/>
+  <!-- 是否启用在线槽位重分配；用于运行中按当前相对位置重新匹配机器人与槽位。 -->
+  <arg name="slot_reassignment_enabled" default="true"/>
+  <!-- 在线槽位重分配的检查/应用冷却时间，单位为秒，避免槽位频繁来回切换。 -->
+  <arg name="slot_reassignment_cooldown" default="2.0"/>
+  <!-- 触发在线槽位重分配所需的最小绝对代价收益，单位近似为平方米。 -->
+  <arg name="slot_reassignment_min_cost_improvement" default="0.08"/>
+  <!-- 触发在线槽位重分配所需的最小相对代价收益。 -->
+  <arg name="slot_reassignment_min_cost_improvement_ratio" default="0.10"/>
   <!-- NMPC 在局部目标明显未到但输出近零速时是否切到纯跟踪兜底。 -->
   <arg name="controller_stall_fallback_enabled" default="true"/>
   <arg name="controller_stall_fallback_goal_distance" default="0.35"/>
@@ -95,6 +103,14 @@
     <param name="plan_manager/formation_expansion_cooldown" value="12.0"/>
     <!-- 超时重分配槽位的冷却时间，单位为秒。 -->
     <param name="plan_manager/reassignment_cooldown" value="5.0"/>
+    <!-- 在线槽位重分配开关。 -->
+    <param name="plan_manager/slot_reassignment_enabled" value="$(arg slot_reassignment_enabled)"/>
+    <!-- 在线槽位重分配检查/应用冷却时间，单位为秒。 -->
+    <param name="plan_manager/slot_reassignment_cooldown" value="$(arg slot_reassignment_cooldown)"/>
+    <!-- 在线槽位重分配所需最小绝对代价收益。 -->
+    <param name="plan_manager/slot_reassignment_min_cost_improvement" value="$(arg slot_reassignment_min_cost_improvement)"/>
+    <!-- 在线槽位重分配所需最小相对代价收益。 -->
+    <param name="plan_manager/slot_reassignment_min_cost_improvement_ratio" value="$(arg slot_reassignment_min_cost_improvement_ratio)"/>
     <!-- 编队规划器避障安全距离，单位为米。 -->
     <param name="plan_manager/obs_clearance" value="0.35"/>
     <!-- 路径优化器避障安全距离，单位为米。 -->

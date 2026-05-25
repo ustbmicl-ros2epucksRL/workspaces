@@ -145,6 +145,8 @@ private:
     void updateFRMInfo(const plan_manager::RotationVecConstPtr& msg) ;
     void FRMConsensus(Eigen::Vector2d& pos);
     void taskAllocation();
+    bool computeTaskAllocation(std::vector<int>& next_realloc, double& current_cost, double& proposed_cost);
+    bool applyTaskAllocation(bool force, const char* reason);
     void FRMBias(double& e);
     void calcDesireAngularVel(double& w,const Eigen::Vector2d& goal);
     void calcDesireLinearVel(double& v,const Eigen::Vector2d& goal);
@@ -240,12 +242,18 @@ private:
     double formation_expand_hold_time;
     double formation_expansion_cooldown;
     double reassignment_cooldown;
+    bool slot_reassignment_enabled;
+    double slot_reassignment_cooldown;
+    double slot_reassignment_min_cost_improvement;
+    double slot_reassignment_min_cost_improvement_ratio;
     bool timeout_reassignment_enabled;
     ros::Time avoid_reduce_since_;
     ros::Time width_reduce_since_;
     ros::Time expand_clear_since_;
     ros::Time last_formation_reduce_time_;
     ros::Time last_reassignment_time_;
+    ros::Time last_slot_reassignment_check_time_;
+    ros::Time last_slot_reassignment_apply_time_;
 
     bool has_odom;
     bool has_goal;

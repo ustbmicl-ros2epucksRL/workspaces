@@ -5,10 +5,10 @@
 # 编队规划器的部分参数仍在 response_plan_manager_one_run.xml 中配置。
 # 五个阶段目标点在 response_goal_sequence.yaml 中配置。
 
-# 响应组四个机器人的命名空间。
+# 响应组四个机器人的命名空间；用于订阅 /tb_i/odom、发布 /tb_i/cmd_vel 并生成编队槽位。
 robot_names: [tb_0, tb_1, tb_2, tb_3]
 
-# 状态、目标和可视化标记使用的全局坐标系。
+# 状态、目标和可视化标记使用的全局坐标系；第 0 阶段 demo 中 map 与 Gazebo world 静态对齐。
 frame_id: map
 
 # 编队槽位间距和初始队形由 launch 统一传给 DEFORM 与协调节点。
@@ -43,11 +43,11 @@ goal_region_hold_seconds: 1.0
 # 单个目标点允许导航的最长时间，超时后发布失败状态，单位为秒。
 navigation_timeout: 180.0
 
-# 协调节点和速度融合节点的定时更新频率，单位为赫兹。
+# response_group_coordinator_node 和 response_cmd_mux_node 的定时更新频率，单位为赫兹。
 rate: 10.0
 
 # 速度指令新鲜度超时时间，超过该时间未收到新指令则该指令源置零，单位为秒。
 command_timeout: 0.6
 
-# 速度融合节点初始行为模式。导航编队模式使用编队规划速度指令。
+# response_cmd_mux_node 的初始行为模式；NAV_FORMATION 表示优先采用 /tb_i/deform_cmd_vel 编队导航指令。
 default_mode: NAV_FORMATION

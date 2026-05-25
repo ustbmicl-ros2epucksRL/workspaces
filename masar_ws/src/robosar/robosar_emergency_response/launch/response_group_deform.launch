@@ -15,6 +15,10 @@
   <arg name="formation_reduce_robot_fraction" default="0.2"/>
   <arg name="avoid_obs_distance_threshold" default="0.15"/>
   <arg name="timeout_reassignment_enabled" default="true"/>
+  <arg name="slot_reassignment_enabled" default="true"/>
+  <arg name="slot_reassignment_cooldown" default="2.0"/>
+  <arg name="slot_reassignment_min_cost_improvement" default="0.08"/>
+  <arg name="slot_reassignment_min_cost_improvement_ratio" default="0.10"/>
   <arg name="controller_stall_fallback_enabled" default="true"/>
   <arg name="controller_stall_fallback_goal_distance" default="0.35"/>
   <arg name="controller_stall_fallback_linear_epsilon" default="0.015"/>
@@ -37,6 +41,10 @@
     <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
     <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
     <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="slot_reassignment_enabled" value="$(arg slot_reassignment_enabled)"/>
+    <arg name="slot_reassignment_cooldown" value="$(arg slot_reassignment_cooldown)"/>
+    <arg name="slot_reassignment_min_cost_improvement" value="$(arg slot_reassignment_min_cost_improvement)"/>
+    <arg name="slot_reassignment_min_cost_improvement_ratio" value="$(arg slot_reassignment_min_cost_improvement_ratio)"/>
     <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
     <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
     <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
@@ -60,6 +68,10 @@
     <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
     <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
     <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="slot_reassignment_enabled" value="$(arg slot_reassignment_enabled)"/>
+    <arg name="slot_reassignment_cooldown" value="$(arg slot_reassignment_cooldown)"/>
+    <arg name="slot_reassignment_min_cost_improvement" value="$(arg slot_reassignment_min_cost_improvement)"/>
+    <arg name="slot_reassignment_min_cost_improvement_ratio" value="$(arg slot_reassignment_min_cost_improvement_ratio)"/>
     <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
     <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
     <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
@@ -83,6 +95,10 @@
     <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
     <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
     <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="slot_reassignment_enabled" value="$(arg slot_reassignment_enabled)"/>
+    <arg name="slot_reassignment_cooldown" value="$(arg slot_reassignment_cooldown)"/>
+    <arg name="slot_reassignment_min_cost_improvement" value="$(arg slot_reassignment_min_cost_improvement)"/>
+    <arg name="slot_reassignment_min_cost_improvement_ratio" value="$(arg slot_reassignment_min_cost_improvement_ratio)"/>
     <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
     <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
     <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
@@ -106,6 +122,10 @@
     <arg name="formation_reduce_robot_fraction" value="$(arg formation_reduce_robot_fraction)"/>
     <arg name="avoid_obs_distance_threshold" value="$(arg avoid_obs_distance_threshold)"/>
     <arg name="timeout_reassignment_enabled" value="$(arg timeout_reassignment_enabled)"/>
+    <arg name="slot_reassignment_enabled" value="$(arg slot_reassignment_enabled)"/>
+    <arg name="slot_reassignment_cooldown" value="$(arg slot_reassignment_cooldown)"/>
+    <arg name="slot_reassignment_min_cost_improvement" value="$(arg slot_reassignment_min_cost_improvement)"/>
+    <arg name="slot_reassignment_min_cost_improvement_ratio" value="$(arg slot_reassignment_min_cost_improvement_ratio)"/>
     <arg name="controller_stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
     <arg name="controller_stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
     <arg name="controller_stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>

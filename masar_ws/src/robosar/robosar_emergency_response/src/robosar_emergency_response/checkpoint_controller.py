@@ -64,6 +64,15 @@ def rotate_global_to_body(x: float, y: float, yaw: float) -> tuple[float, float]
     )
 
 
+def rotate_body_to_global(x: float, y: float, yaw: float) -> tuple[float, float]:
+    cos_yaw = math.cos(yaw)
+    sin_yaw = math.sin(yaw)
+    return (
+        cos_yaw * x - sin_yaw * y,
+        sin_yaw * x + cos_yaw * y,
+    )
+
+
 def sample_lidar_midpoints(
     ranges: Sequence[float],
     n_lidar_rays: int,
@@ -97,24 +106,36 @@ def build_roundflocking_observation(
     max_range: float,
     world_scale: float,
 ) -> List[float]:
-    """Build the 6+N VMAS flocking observation vector.
+    """Build the ROS2swarm roundflocking observation vector.
 
-    The checkpoint was trained with the target at the origin, so Gazebo
-    positions are translated into the target-centered frame before scaling.
+    ROS2swarm feeds absolute robot position in the first two slots, then
+    robot-frame velocity and robot-frame target-relative position. LiDAR
+    distances are clipped to the VMAS flocking sensor cap, not divided by the
+    coordinate scale.
     """
     scale = max(float(world_scale), 1e-6)
     robot_to_target_x = robot.pose.x - target.x
     robot_to_target_y = robot.pose.y - target.y
-    observation = [
-        robot_to_target_x / scale,
-        robot_to_target_y / scale,
+    target_rel_x, target_rel_y = rotate_global_to_body(
+        robot_to_target_x,
+        robot_to_target_y,
+        robot.pose.yaw,
+    )
+    robot_vx, robot_vy = rotate_global_to_body(
         robot.velocity_x,
         robot.velocity_y,
-        robot_to_target_x / scale,
-        robot_to_target_y / scale,
+        robot.pose.yaw,
+    )
+    observation = [
+        robot.pose.x / scale,
+        robot.pose.y / scale,
+        robot_vx,
+        robot_vy,
+        target_rel_x / scale,
+        target_rel_y / scale,
     ]
     observation.extend(
-        min(value / scale, VMAS_FLOCKING_LIDAR_MAX_RANGE)
+        min(value, VMAS_FLOCKING_LIDAR_MAX_RANGE)
         for value in sample_lidar_midpoints(lidar_ranges, n_lidar_rays, max_range)
     )
     return observation
@@ -227,14 +248,38 @@ def _twist_from_body_action(
     return Twist2D(float(linear), float(angular))
 
 
+def neat_output_to_signed(value: float, activation: str = "sigmoid") -> float:
+    activation_name = str(activation or "sigmoid").strip().lower()
+    if activation_name == "sigmoid":
+        return max(0.0, min(1.0, float(value))) * 2.0 - 1.0
+    if activation_name == "tanh":
+        return max(-1.0, min(1.0, float(value)))
+    raise ValueError("Unsupported NEAT output activation '{}'".format(activation))
+
+
+def signed_outputs_from_neat(
+    output: Sequence[float],
+    output_activations: Sequence[str] | None = None,
+) -> tuple[float, float]:
+    if len(output) < 2:
+        raise ValueError("NEAT network output must have at least 2 values")
+    activations = list(output_activations or ["sigmoid", "sigmoid"])
+    if len(activations) < 2:
+        activations.extend(["sigmoid"] * (2 - len(activations)))
+    return (
+        neat_output_to_signed(float(output[0]), activations[0]),
+        neat_output_to_signed(float(output[1]), activations[1]),
+    )
+
+
 def differential_twist_from_omni_output(
     output: Sequence[float],
     max_linear_velocity: float,
     max_angular_velocity: float,
+    output_activations: Sequence[str] | None = None,
 ) -> Twist2D:
     """Convert ROS2swarm roundflocking [vx, vy] output to differential drive."""
-    vx = float(output[0]) * 2.0 - 1.0
-    vy = float(output[1]) * 2.0 - 1.0
+    vx, vy = signed_outputs_from_neat(output, output_activations)
     speed = math.hypot(vx, vy)
     angle = math.atan2(vy, vx)
 
@@ -267,14 +312,29 @@ def global_action_to_twist(
     )
 
 
-def vmas_output_to_global_action(output: Sequence[float]) -> tuple[float, float]:
+def vmas_output_to_global_action(
+    output: Sequence[float],
+    output_activations: Sequence[str] | None = None,
+) -> tuple[float, float]:
     """Map sigmoid checkpoint outputs into the VMAS global action range."""
-    if len(output) < 2:
-        raise ValueError("VMAS network output must have at least 2 values")
-    return (
-        float(output[0]) * 2.0 - 1.0,
-        float(output[1]) * 2.0 - 1.0,
-    )
+    return signed_outputs_from_neat(output, output_activations)
+
+
+def direct_transport_output_to_global_action(
+    output: Sequence[float],
+    robot_yaw: float,
+    output_activations: Sequence[str] | None = None,
+) -> tuple[float, float]:
+    """Project a ROS2swarm direct-drive transport output into a global 2D intent.
+
+    ROS2swarm transport checkpoints publish direct differential-drive commands.
+    The Gazebo TB3 contact adapter consumes a VMAS-like global intent only as a
+    blendable policy hint, so we reconstruct the local "go forward while
+    steering left/right" direction before rotating it back to the world frame.
+    """
+    linear_value, angular_value = signed_outputs_from_neat(output, output_activations)
+    body_action = (linear_value, angular_value)
+    return rotate_body_to_global(body_action[0], body_action[1], robot_yaw)
 
 
 def vmas_global_action_to_twist(
@@ -315,10 +375,12 @@ def direct_twist_from_network_output(
     output: Sequence[float],
     max_linear_velocity: float,
     max_angular_velocity: float,
+    output_activations: Sequence[str] | None = None,
 ) -> Twist2D:
     """Map ROS2swarm transport sigmoid outputs directly into Twist limits."""
-    linear = (float(output[0]) * 2.0 - 1.0) * max_linear_velocity
-    angular = (float(output[1]) * 2.0 - 1.0) * max_angular_velocity
+    linear_value, angular_value = signed_outputs_from_neat(output, output_activations)
+    linear = linear_value * max_linear_velocity
+    angular = angular_value * max_angular_velocity
     return Twist2D(float(linear), float(angular))
 
 
@@ -384,6 +446,11 @@ class NeatNetworkFactory:
     @property
     def input_dim(self) -> int:
         return len(self.neat_config.genome_config.input_keys)
+
+    @property
+    def output_activations(self) -> list[str]:
+        output_keys = self.neat_config.genome_config.output_keys
+        return [self.genome.nodes[key].activation for key in output_keys]
 
 
 def clamp_observation(observation: Iterable[float], expected_dim: int) -> List[float]:

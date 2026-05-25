@@ -36,13 +36,13 @@
 
     <model name='robosar_fire_1'>
       <static>1</static>
-      <pose>0 0 0.18 0 0 0</pose>
+      <pose>0 0 0.1 0 0 0</pose>
       <link name='link'>
         <collision name='collision'>
-          <geometry><cylinder><radius>0.18</radius><length>0.36</length></cylinder></geometry>
+          <geometry><cylinder><radius>0.1</radius><length>0.2</length></cylinder></geometry>
         </collision>
         <visual name='visual'>
-          <geometry><cylinder><radius>0.18</radius><length>0.36</length></cylinder></geometry>
+          <geometry><cylinder><radius>0.1</radius><length>0.2</length></cylinder></geometry>
           <material>
             <ambient>1.0 0.20 0.04 1</ambient>
             <diffuse>1.0 0.20 0.04 1</diffuse>

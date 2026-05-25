@@ -25,7 +25,7 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     aster_->initGridMap(grid_map_,Eigen::Vector2d(80,80));
     find_region_.reset(new FindMaxFreeRegion);
     find_region_->initMapandMaxGap(grid_map_, (formation_max_num - 1) * formation_interval + formation_interval);
-    path_opti_.reset(new PathOptimizer); 
+    path_opti_.reset(new PathOptimizer);
     path_opti_->setGridMapandObsClearance(grid_map_,obs_clearance);
     traj_opt_.reset(new TrajectoryOptimizer(nh_pri_));
     ot_cli_.reset(new OT_Transfer);
@@ -45,7 +45,7 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     for (int i = 0; i < fixed_num; i++) {
 
         realloc_[i] = i;
-        
+
         if(i != tb_id) {
             other_idx.push_back(i);
         }
@@ -85,7 +85,7 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
         });
 
     path_point_pub = nh_.advertise<geometry_msgs::Point>("/path_point_sharing", 1);
-    path_point_sub = nh_.subscribe<geometry_msgs::Point>("/path_point_sharing", 1, &PlanManager::setPathPoint, this); 
+    path_point_sub = nh_.subscribe<geometry_msgs::Point>("/path_point_sharing", 1, &PlanManager::setPathPoint, this);
 
     frm_info_pub = nh_.advertise<plan_manager::RotationVec>("/formation_info", 1);
     frm_info_sub = nh_.subscribe("/formation_info", 4, &PlanManager::updateFRMInfo, this);
@@ -100,24 +100,24 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     exec_state_= FORMATION_EXEC_STATE::WAIT_ODOM_OR_TARGET;
 
     // sorted the distance between other robot and current robot, used to reduce traj constraints
-    updateOtherTimer = nh_.createTimer(ros::Duration(0.4), &PlanManager::updateOtherCallback, this, false, false); 
+    updateOtherTimer = nh_.createTimer(ros::Duration(0.4), &PlanManager::updateOtherCallback, this, false, false);
 
     //If many robots enter obstacle avoidance mode, shrink the formation.
     avoidModeTimer = nh_.createTimer(ros::Duration(2.0), &PlanManager::updateAvoidModeCallback, this, false, false);
-    
+
     timeoutTimer = nh_.createTimer(ros::Duration(2.0), &PlanManager::timeoutCallback, this, false, false);
 
     if (task_type == TASK_TYPE::NAVIGATION) {
-        if (tb_id == leader_id) 
+        if (fixed_id == leader_id)
             ROS_WARN("Task type is navigation");
         formation_type = start_frm_type; // fixed_num : the widthest formation, 1 : the narrowest formation
         setDesiredShape(formation_type);
     } else if ( task_type ==  TASK_TYPE::DEFORM) {
-        if (tb_id == leader_id) 
+        if (fixed_id == leader_id)
             ROS_WARN("Task type is deform");
         for (int i = 1; i <= swarm_des_origin.size(); i++) {
-            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/x", swarm_des_origin[i - 1][0], -1.0);                  
-            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/y", swarm_des_origin[i - 1][1], -1.0);                  
+            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/x", swarm_des_origin[i - 1][0], -1.0);
+            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/y", swarm_des_origin[i - 1][1], -1.0);
         }
     } else {
         ROS_ERROR("task_type invalid");
@@ -140,14 +140,16 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     expand_clear_since_ = ros::Time(0);
     last_formation_reduce_time_ = ros::Time(0);
     last_reassignment_time_ = ros::Time(0);
-} 
+    last_slot_reassignment_check_time_ = ros::Time(0);
+    last_slot_reassignment_apply_time_ = ros::Time(0);
+}
 
 PlanManager::~PlanManager() {
 }
 
 void PlanManager::timeoutCallback(const ros::TimerEvent&) {
 
-    if(tb_id != leader_id || !timeout_reassignment_enabled)
+    if(fixed_id != leader_id || !timeout_reassignment_enabled)
         return;
 
     if (is_timeout) {
@@ -171,13 +173,13 @@ void PlanManager::timeoutCallback(const ros::TimerEvent&) {
     // When the formation gets "stuck" during navigation
     double cur_linear_vel = tb_states_[0].vel[0];
     double cur_angular_vel = tb_states_[0].vel[1];
-    
+
     double linear_vel_th = 0.05;
     double angular_vel_th = 0.07;
 
     // ROS_WARN("Timeout true test, frm bias: %.2f, cur_lin_vel: %.2f, cur_ang_vel: %.2f ", cur_bias, cur_linear_vel, cur_angular_vel);
-    if (cur_bias > 0.6 && 
-        cur_linear_vel < linear_vel_th && 
+    if (cur_bias > 0.6 &&
+        cur_linear_vel < linear_vel_th &&
         abs(cur_angular_vel) < angular_vel_th ) {
         is_timeout = true;
     }
@@ -185,7 +187,7 @@ void PlanManager::timeoutCallback(const ros::TimerEvent&) {
 
 void PlanManager::updateAvoidModeCallback(const ros::TimerEvent&) {
 
-    if(tb_id != leader_id) 
+    if(fixed_id != leader_id)
         return;
 
     int in_avoid_num_th = std::max(
@@ -204,7 +206,7 @@ void PlanManager::updateAvoidModeCallback(const ros::TimerEvent&) {
         formation_reduce_hold_time);
 
     if (sustained_pressure) {
-        
+
         if(formation_type > formation_min_type) {
             formation_type -= 1;
             setDesiredShape(formation_type);
@@ -247,14 +249,14 @@ void PlanManager::execCallback(const ros::TimerEvent &) {
             updateOtherTimer.start();
             avoidModeTimer.start();
             timeoutTimer.start();
-            
+
             changeFRMExecState(FRM_KEEP);
             break;
         }
 
         case FORMATION_EXEC_STATE::FRM_KEEP:
         {
-            
+
             if (task_type == TASK_TYPE::NAVIGATION) {
                 double dist_to_rotated_goal=((swarm_des[tb_id]+global_goal)-tb_states_[tb_id].pos).norm();
                 tb_global_goal=getApproachGoal();
@@ -308,7 +310,7 @@ void PlanManager::execCallback(const ros::TimerEvent &) {
 
             double esdf_dist=grid_map_->getDistance(tb_states_[tb_id].pos);
             // std::cout<<"avoid current dist="<<esdf_dist<<std::endl;
-            if (esdf_dist < 0.35) 
+            if (esdf_dist < 0.35)
             {
                 if (publish_esdf_avoid_state) {
                     is_avoid_obs_pub_.publish(temp_avoid_mode);
@@ -387,7 +389,7 @@ void PlanManager::updateOtherCallback(const ros::TimerEvent&) {
     }
 
     for(int i = 0; i < other_num_to_opti; i++) {
-        
+
         traj_opt_->updateOtherOdom(pq.top(), i);
         pq.pop();
     }
@@ -396,7 +398,7 @@ void PlanManager::updateOtherCallback(const ros::TimerEvent&) {
 
 void PlanManager::trajPlanningDeform() {
 
-        if(tb_id == leader_id) {
+        if(fixed_id == leader_id) {
             rotateAndShareDeform();
         }
 
@@ -430,7 +432,7 @@ void PlanManager::trajPlanning() {
         Eigen::Vector2d temp_pt=global_goal+swarm_des[tb_id];
         to_vis_->showGlobalGoal(temp_pt);
 
-        if (tb_id == leader_id) {
+            if (fixed_id == leader_id) {
 
             // ROS_WARN("leader robot: %d, current width:%f",fixed_id, find_region_->getWidth());
 
@@ -497,7 +499,7 @@ bool PlanManager::trajController(Eigen::Vector2d goal) {
 
     // show predict traj
     to_vis_->showPath(traj_opt_->getState());
-    
+
     return reach_goal;
 }
 
@@ -626,7 +628,7 @@ void PlanManager::markFormationReduced() {
 }
 
 void PlanManager::pathPlanning(const ros::TimerEvent&) {
-    if(tb_id != leader_id) {
+    if(fixed_id != leader_id) {
         path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, leader_path_point);
     } else {
         path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, tb_global_goal);
@@ -635,7 +637,7 @@ void PlanManager::pathPlanning(const ros::TimerEvent&) {
     if (path_.empty()) {
         ROS_WARN_THROTTLE(1.0, "A* returned an empty path; using current pose and target as fallback path.");
         path_.push_back(tb_states_[tb_id].pos);
-        path_.push_back(tb_id != leader_id ? leader_path_point : tb_global_goal);
+        path_.push_back(fixed_id != leader_id ? leader_path_point : tb_global_goal);
     }
 
     const std::vector<Eigen::Vector2d> astar_fallback_path = path_;
@@ -648,7 +650,7 @@ void PlanManager::pathPlanning(const ros::TimerEvent&) {
 
     to_vis_->showAstarLists(path_);
 
-    if(leader_id == tb_id) {
+    if(fixed_id == leader_id) {
         double perception_range = 5.5;
         findPointInPath(perception_range, leader_path_point);
         geometry_msgs::Point tmp_pt;
@@ -685,11 +687,11 @@ bool PlanManager::widthHandle(const Eigen::Vector2d& start_pt, Eigen::Vector2d& 
         to_vis_->showWidthLineOther(other_line);
 
         if(find_region_->getWidth() < 0.1) {
-            return false;   
+            return false;
         }
 
         recenterLocalGoalInCorridor(end_pt);
-        
+
         // [Debug]:show width local point
         to_vis_->showWidthMidPoint(end_pt);
         return true;
@@ -800,7 +802,7 @@ void PlanManager::isExtendFRM() {
     // std::vector<double> vec = all_width;
     // double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
     // double min = sum / vec.size();
-    
+
     // method 3
     // double min = all_width[fixed_id];
 
@@ -833,12 +835,12 @@ void PlanManager::rotateAndShareDeform() {
         first_start= false;
     }
 
+    swarm_alloc = swarm_des;
     if (do_allocation) {
         do_allocation = false;
-        swarm_alloc = swarm_des;
-        taskAllocation();
-
-        tb_id = realloc_[fixed_id];
+        applyTaskAllocation(true, "deform event");
+    } else {
+        applyTaskAllocation(false, "deform online");
     }
 
     // update shape info
@@ -856,22 +858,24 @@ void PlanManager::rotateAndShareFRM() {
 
     // compute the diff angle between formation and local goal
     Eigen::Vector2d tb_center_(0.0, 0.0);
-    for (const auto& i : tb_states_) 
+    for (const auto& i : tb_states_)
         tb_center_ += i.pos;
     tb_center_ /= fixed_num;
     auto diff_ = local_goal - tb_center_;
     double yaw = atan2(diff_.y(), diff_.x());
     yaw = snapFormationYawForCorridor(yaw);
     double yaw_e = normalizeFormationYaw(yaw - formation_yaw);
-    
+    bool force_allocation = do_allocation;
+    bool yaw_allocation_request = false;
+
     if (first_start) {
-        do_allocation = true;
+        force_allocation = true;
         first_start = false;
     }
 
     if (abs(yaw_e) > M_PI / 2.5) {
         ROS_WARN("rotation angle is %.2f, task allocation", yaw_e * 180);
-        do_allocation = true;
+        yaw_allocation_request = true;
     }
 
     formation_yaw = yaw;
@@ -879,13 +883,19 @@ void PlanManager::rotateAndShareFRM() {
     for (int i = 0; i < fixed_num; i++)
         swarm_des[i] = r_mat * swarm_des_origin[i];
 
-    if (do_allocation)
+    swarm_alloc = swarm_des;
+    if (force_allocation)
     {
         do_allocation = false;
-        swarm_alloc = swarm_des;
-        taskAllocation();
-
-        tb_id = realloc_[fixed_id];
+        applyTaskAllocation(true, "formation event");
+    }
+    else if (yaw_allocation_request)
+    {
+        applyTaskAllocation(false, "yaw improvement");
+    }
+    else
+    {
+        applyTaskAllocation(false, "online improvement");
     }
     tb_global_goal = getApproachGoal();
 
@@ -905,14 +915,16 @@ void PlanManager::rotateAndShareFRM() {
 
 // other robot update FRM info
 void PlanManager::updateFRMInfo(const plan_manager::RotationVecConstPtr &msg) {
-    if (leader_id == tb_id)
+    if (leader_id == fixed_id)
         return;
 
     for (int i = 0; i < fixed_num; i++)
         realloc_[i] = msg->remap_id[i];
     tb_id = realloc_[fixed_id];
+    first_start = false;
+    do_allocation = false;
 
-    if (task_type == TASK_TYPE::DEFORM) 
+    if (task_type == TASK_TYPE::DEFORM)
         return;
 
     Eigen::Matrix2d rotation_2d;
@@ -1094,22 +1106,22 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
         pt = global_goal;
         return;
     }
-    
-    //find Closest Point On Path 
+
+    //find Closest Point On Path
     std::vector<Eigen::Vector2d> cur_path = path_;
     Eigen::Vector2d cur_pos = tb_states_[tb_id].pos;
-    
+
     auto closestPointOnSegment = [](const Eigen::Vector2d& p, const Eigen::Vector2d& segStart, const Eigen::Vector2d& segEnd) -> Eigen::Vector2d {
         Eigen::Vector2d segVec = segEnd - segStart;
         Eigen::Vector2d vecToPoint = p - segStart;
 
         double segLengthSq = segVec.squaredNorm();
         double t = 0.0;
-    
+
         if (segLengthSq > 1e-8) {
-            t = std::max(0.0, std::min(1.0,vecToPoint.dot(segVec) / segLengthSq)); 
+            t = std::max(0.0, std::min(1.0,vecToPoint.dot(segVec) / segLengthSq));
         }
-        
+
         return segStart + t * segVec;
     };
 
@@ -1117,7 +1129,7 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
     int curPointNextIdx = 0;
 
     double minDistSq = std::numeric_limits<double>::max();
-    
+
     for (size_t i = 0; i < cur_path.size() - 1; ++i) {
         Eigen::Vector2d candidate = closestPointOnSegment(cur_pos, cur_path[i], cur_path[i + 1]);
         double distSq = (cur_pos - candidate).squaredNorm();
@@ -1133,7 +1145,7 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
     double cur_forward_distance;
 
     cur_forward_distance = forward_distance;
-    
+
     // Bisection method
     auto findDesiredPointOnSeg = [](const double& dist_delta, const Eigen::Vector2d& start, const Eigen::Vector2d& end) -> Eigen::Vector2d {
         Eigen::Vector2d left_pt = start;
@@ -1144,7 +1156,7 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
         do {
             mid_pt = (left_pt + right_pt) / 2;
             mid_dist = (mid_pt -start).norm();
-            if(mid_dist > dist_delta) 
+            if(mid_dist > dist_delta)
                 right_pt = mid_pt;
             else
                 left_pt = mid_pt;
@@ -1168,45 +1180,137 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
             return;
         }
     }
-    
+
     ROS_WARN("path less than present distance!!! return the last point in path");
     pt = cur_path.back();
 }
 
 void PlanManager::setPathPoint(const geometry_msgs::PointConstPtr &msg) {
-    if (tb_id == leader_id)
+    if (fixed_id == leader_id)
         return;
 
     leader_path_point << msg->x,msg->y;
 }
 
-// task assignment and show assignment result
-void PlanManager::taskAllocation() {
+bool PlanManager::computeTaskAllocation(std::vector<int>& next_realloc, double& current_cost, double& proposed_cost) {
     std::vector<geometry_msgs::Point> start_pts,goal_pts;
     start_pts.resize(fixed_num);
     goal_pts.resize(fixed_num);
 
+    Eigen::Vector2d start_center(0.0, 0.0);
+    Eigen::Vector2d goal_center(0.0, 0.0);
     for (int i = 0; i < fixed_num; i++) {
-        start_pts[i].x = tb_states_[i].pos.x();
-        start_pts[i].y = tb_states_[i].pos.y();
-        goal_pts[i].x = swarm_alloc[i].x();
-        goal_pts[i].y = swarm_alloc[i].y();
+        start_center += tb_states_[i].pos;
+        goal_center += swarm_alloc[i];
+    }
+    start_center /= fixed_num;
+    goal_center /= fixed_num;
+
+    for (int i = 0; i < fixed_num; i++) {
+        const Eigen::Vector2d rel_start = tb_states_[i].pos - start_center;
+        const Eigen::Vector2d rel_goal = swarm_alloc[i] - goal_center;
+        start_pts[i].x = rel_start.x();
+        start_pts[i].y = rel_start.y();
+        goal_pts[i].x = rel_goal.x();
+        goal_pts[i].y = rel_goal.y();
     }
 
     std::vector<int> result;
-    ot_cli_->compute_assignment(start_pts, goal_pts, result);
+    if (ot_cli_->compute_assignment(start_pts, goal_pts, result) != 0) {
+        return false;
+    }
+    if (result.size() != fixed_num) {
+        ROS_WARN("task allocation returned %zu assignments for %d robots", result.size(), fixed_num);
+        return false;
+    }
 
-    std::vector<int> cur_result(fixed_num);
+    std::vector<int> seen(fixed_num, 0);
+    for (int i = 0; i < fixed_num; i++) {
+        if (result[i] < 0 || result[i] >= fixed_num) {
+            ROS_WARN("task allocation returned invalid slot id %d for logical robot %d", result[i], i);
+            return false;
+        }
+        seen[result[i]] += 1;
+    }
+    for (int i = 0; i < fixed_num; i++) {
+        if (seen[i] != 1) {
+            ROS_WARN("task allocation returned a non-permutation assignment");
+            return false;
+        }
+    }
+
+    current_cost = 0.0;
+    proposed_cost = 0.0;
+    for (int i = 0; i < fixed_num; i++) {
+        const Eigen::Vector2d rel_start(start_pts[i].x, start_pts[i].y);
+        const Eigen::Vector2d current_goal(goal_pts[i].x, goal_pts[i].y);
+        const Eigen::Vector2d proposed_goal(goal_pts[result[i]].x, goal_pts[result[i]].y);
+        current_cost += (rel_start - current_goal).squaredNorm();
+        proposed_cost += (rel_start - proposed_goal).squaredNorm();
+    }
+
+    next_realloc.resize(fixed_num);
     for (int i = 0; i < fixed_num; i++)
-        cur_result[i] = result[realloc_[i]];
-    realloc_ = cur_result;
+        next_realloc[i] = result[realloc_[i]];
+
+    return true;
+}
+
+bool PlanManager::applyTaskAllocation(bool force, const char* reason) {
+    const ros::Time now = ros::Time::now();
+    if (!force) {
+        if (!slot_reassignment_enabled) {
+            return false;
+        }
+        if (!last_slot_reassignment_check_time_.isZero() &&
+            (now - last_slot_reassignment_check_time_).toSec() < slot_reassignment_cooldown) {
+            return false;
+        }
+        last_slot_reassignment_check_time_ = now;
+        if (!last_slot_reassignment_apply_time_.isZero() &&
+            (now - last_slot_reassignment_apply_time_).toSec() < slot_reassignment_cooldown) {
+            return false;
+        }
+    }
+
+    std::vector<int> next_realloc;
+    double current_cost = 0.0;
+    double proposed_cost = 0.0;
+    if (!computeTaskAllocation(next_realloc, current_cost, proposed_cost)) {
+        return false;
+    }
+
+    const bool same_assignment = next_realloc == realloc_;
+    const double improvement = current_cost - proposed_cost;
+    const double min_improvement = std::max(
+        std::max(0.0, slot_reassignment_min_cost_improvement),
+        std::max(0.0, slot_reassignment_min_cost_improvement_ratio) * std::max(0.0, current_cost));
+
+    if (!force && (same_assignment || improvement < min_improvement)) {
+        return false;
+    }
+
+    realloc_ = next_realloc;
+    tb_id = realloc_[fixed_id];
+    reported_reached_current_slot_ = false;
+    last_reassignment_time_ = now;
+    last_slot_reassignment_apply_time_ = now;
 
     //print task allocation info
+    std::cout << "[task allocation:" << reason << "] ";
     for (int i = 0; i<fixed_num; i++) {
         std::cout << i << "-->" << realloc_[i] << "\t";
     }
+    std::cout << "cost " << current_cost << " -> " << proposed_cost
+              << " improvement " << improvement;
 
     std::cout<<"\n";
+    return true;
+}
+
+// task assignment and show assignment result
+void PlanManager::taskAllocation() {
+    applyTaskAllocation(true, "legacy call");
 }
 
 // compute formation bias
@@ -1229,7 +1333,7 @@ void PlanManager::FRMBias(double& e) {
         e += (vec_des[i] - tb_states_[i].pos).norm();
 }
 
-// print change State 
+// print change State
 void PlanManager::changeFRMExecState(PlanManager::FORMATION_EXEC_STATE new_state) {
 
     static string state_str[7] = {"WAIT_ODOM_OR_TARGET", "FRM_INIT_PATH", "FRM_KEEP", "FRM_RECONFIG", "AVOID_OBS", "APPROACH_GOAL", "EMERGENCY_STOP"};
@@ -1271,7 +1375,7 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
     }
 
     Eigen::Vector2d tmp_pt;
-    
+
     std::vector<Eigen::Vector2d> frm_pos;
     Eigen::Vector2d leader_pos;
     int lid;
@@ -1282,7 +1386,7 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
     for (int i = 0; i < rows; i++) {
         for (int j = 0; j < one_row_num; j++) {
             frm_pos.emplace_back(i * frm_gap, j * frm_gap);
-        }   
+        }
     }
 
     if (remaining > 0) {
@@ -1314,7 +1418,7 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
         leader_pos << (rows - 1) * frm_gap, (one_row_num / 2) * frm_gap;
         lid = (rows - 1) * one_row_num + (one_row_num / 2);
     }
-    
+
     // offset frm_pos based on leader_pos
     for (int i = 0; i < frm_pos.size(); i++) {
         frm_pos[i] -= leader_pos;
@@ -1333,7 +1437,7 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
         frm_pos[i] -= centroid;
     }
 
-    // show formation info 
+    // show formation info
     bool show_frm_pos = false;
     if (show_frm_pos) {
         std::cout << "robot_num:" << robot_num << " one_row_num:" << one_row_num << std::endl;;
@@ -1342,7 +1446,7 @@ std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_n
             std::cout << i << "\t" << frm_pos[i].x() << "," << frm_pos[i].y() << (i == lid ? "* \n" : " \n");
         }
     }
-    
+
     return frm_pos;
 }
 
@@ -1513,6 +1617,10 @@ void PlanManager::readParameters() {
     nh_pri_.param("plan_manager/formation_expand_hold_time", formation_expand_hold_time, 3.0);
     nh_pri_.param("plan_manager/formation_expansion_cooldown", formation_expansion_cooldown, 8.0);
     nh_pri_.param("plan_manager/reassignment_cooldown", reassignment_cooldown, 8.0);
+    nh_pri_.param("plan_manager/slot_reassignment_enabled", slot_reassignment_enabled, true);
+    nh_pri_.param("plan_manager/slot_reassignment_cooldown", slot_reassignment_cooldown, 2.0);
+    nh_pri_.param("plan_manager/slot_reassignment_min_cost_improvement", slot_reassignment_min_cost_improvement, 0.08);
+    nh_pri_.param("plan_manager/slot_reassignment_min_cost_improvement_ratio", slot_reassignment_min_cost_improvement_ratio, 0.10);
     nh_pri_.param("plan_manager/timeout_reassignment_enabled", timeout_reassignment_enabled, true);
     nh_pri_.param("plan_manager/frm_type", start_frm_type, -1);
     nh_pri_.param("plan_manager/max_frm_type", formation_max_num, fixed_num);

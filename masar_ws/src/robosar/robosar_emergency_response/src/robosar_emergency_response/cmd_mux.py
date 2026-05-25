@@ -273,6 +273,44 @@ def apply_potential_field_safety(command: Twist2D, decision: PotentialFieldDecis
     return decision.command
 
 
+def apply_soft_potential_field_safety(
+    command: Twist2D,
+    decision: PotentialFieldDecision | None,
+    blend: float = 0.4,
+    max_angular_delta: float = 0.55,
+    min_forward_scale: float = 0.35,
+    critical_stop_distance: float = 0.10,
+) -> Twist2D:
+    if decision is None or not decision.avoid_needed:
+        return command
+
+    blend = max(0.0, min(1.0, float(blend)))
+    max_angular_delta = abs(float(max_angular_delta))
+    min_forward_scale = max(0.0, min(1.0, float(min_forward_scale)))
+    critical_stop_distance = max(0.0, float(critical_stop_distance))
+
+    if (
+        critical_stop_distance > 0.0
+        and decision.min_range is not None
+        and decision.min_range < critical_stop_distance
+        and command.linear_x > 0.0
+    ):
+        return Twist2D(min(0.0, decision.command.linear_x), decision.command.angular_z)
+
+    avoid_linear = decision.command.linear_x
+    if command.linear_x > 1e-3:
+        minimum_forward = command.linear_x * min_forward_scale
+        avoid_linear = max(minimum_forward, min(command.linear_x, avoid_linear))
+    elif command.linear_x < -1e-3:
+        avoid_linear = min(0.0, max(command.linear_x, avoid_linear))
+
+    linear = command.linear_x + blend * (avoid_linear - command.linear_x)
+    angular_delta = decision.command.angular_z - command.angular_z
+    angular_delta = max(-max_angular_delta, min(max_angular_delta, angular_delta))
+    angular = command.angular_z + blend * angular_delta
+    return Twist2D(float(linear), float(angular))
+
+
 def should_bypass_transport_safety(
     mode: str,
     active_task_type: int,

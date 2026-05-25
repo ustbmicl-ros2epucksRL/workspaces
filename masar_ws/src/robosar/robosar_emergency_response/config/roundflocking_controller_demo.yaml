@@ -1,18 +1,32 @@
 # roundflocking 独立控制器 demo 专用参数。
 # launch 会先加载 tepper_response_group.yaml 作为公共基础参数，再加载本文件覆盖 demo 专属项。
 
-# response_task_fixture_node 发布的任务类型和目标位置。
+# response_task_fixture_node 发布的任务类型；roundflocking 表示生成 FIRE 类型的环绕任务。
 task_kind: roundflocking
+
+# 被环绕目标在 demo 世界中的 x 坐标，单位为米。
 target_x: 0.0
+
+# 被环绕目标在 demo 世界中的 y 坐标，单位为米。
 target_y: 0.0
+
+# 被环绕目标的朝向，单位为弧度；当前 roundflocking 控制器只使用目标位置。
 target_yaw: 0.0
+
+# fixture 发布的任务期望保持/执行时长，单位为秒；独立 demo 设置很长，便于人工观察。
 hold_seconds: 3600.0
 
-# response_task_controller_node 使用的 roundflocking 控制器类型、坐标尺度与持续时间。可选 checkpoint/heuristic。
+# roundflocking 控制器类型；checkpoint 使用 NEAT 基因包，heuristic 使用解析式环绕控制器。
 roundflocking_controller_type: heuristic
-roundflocking_world_scale: 1.0
+
+# roundflocking checkpoint/heuristic 的位置归一化尺度；1.75 对齐 ROS2swarm_w Webots/VMAS 场景口径。
+roundflocking_world_scale: 1.75
+
+# 未从任务消息获得 hold_seconds 时的 roundflocking 默认最长持续时间，单位为秒。
 roundflocking_duration: 3600.0
+
+# 是否启用“实际产生环绕角度进展”完成判定；独立 demo 关闭以持续运行观察轨迹。
 roundflocking_completion_enabled: false
 
-# response_cmd_mux_node 在独立 demo 中直接采用任务控制命令。
+# response_cmd_mux_node 的初始行为模式；TASK_CONTROL 表示直接采用 /tb_i/task_cmd_vel。
 default_mode: TASK_CONTROL

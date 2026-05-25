@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import math
 from typing import Sequence
 
-from .checkpoint_controller import global_action_to_twist
+from .checkpoint_controller import global_action_to_twist, rotate_body_to_global
 from .cmd_mux import Twist2D
 
 
@@ -27,11 +27,14 @@ def roundflocking_heuristic_twist_from_observation(
     max_linear_velocity: float,
     max_angular_velocity: float,
     config: RoundflockingHeuristicConfig | None = None,
+    world_scale: float = 1.0,
 ) -> Twist2D:
     cfg = config or RoundflockingHeuristicConfig()
     global_action = roundflocking_heuristic_global_action_from_observation(
         observation,
         config=cfg,
+        robot_yaw=robot_yaw,
+        world_scale=world_scale,
     )
     return global_action_to_twist(
         global_action,
@@ -45,13 +48,20 @@ def roundflocking_heuristic_twist_from_observation(
 def roundflocking_heuristic_global_action_from_observation(
     observation: Sequence[float],
     config: RoundflockingHeuristicConfig | None = None,
+    robot_yaw: float = 0.0,
+    world_scale: float = 1.0,
 ) -> tuple[float, float]:
     """Return the VMAS flocking HeuristicPolicy action in global coordinates."""
     if len(observation) < 6:
         raise ValueError("roundflocking observation must have at least 6 values")
 
     cfg = config or RoundflockingHeuristicConfig()
-    current_pos = (float(observation[0]), float(observation[1]))
+    scale = max(float(world_scale), 1e-6)
+    target_rel_body = (
+        float(observation[4]) * scale,
+        float(observation[5]) * scale,
+    )
+    current_pos = rotate_body_to_global(target_rel_body[0], target_rel_body[1], robot_yaw)
     lidar = [float(value) for value in observation[6:]]
 
     if lidar and min(lidar) < cfg.object_visible_range:

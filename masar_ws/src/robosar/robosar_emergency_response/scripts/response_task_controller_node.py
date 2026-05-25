@@ -11,13 +11,15 @@ try:
     from robosar_emergency_response.checkpoint_controller import (
         NeatNetworkFactory,
         build_roundflocking_observation,
+        build_transport_observation,
         build_transport_vmas_observation,
         clamp_observation,
+        direct_transport_output_to_global_action,
+        differential_twist_from_omni_output,
+        direct_twist_from_network_output,
         global_action_to_twist,
         object_info_from_global_info,
         robot_info_from_global_info,
-        vmas_output_to_global_action,
-        vmas_global_action_to_twist,
     )
     from robosar_emergency_response.roundflocking_heuristic import (
         RoundflockingHeuristicConfig,
@@ -38,13 +40,15 @@ except ImportError:
     from robosar_emergency_response.checkpoint_controller import (
         NeatNetworkFactory,
         build_roundflocking_observation,
+        build_transport_observation,
         build_transport_vmas_observation,
         clamp_observation,
+        direct_transport_output_to_global_action,
+        differential_twist_from_omni_output,
+        direct_twist_from_network_output,
         global_action_to_twist,
         object_info_from_global_info,
         robot_info_from_global_info,
-        vmas_output_to_global_action,
-        vmas_global_action_to_twist,
     )
     from robosar_emergency_response.roundflocking_heuristic import (
         RoundflockingHeuristicConfig,
@@ -137,6 +141,9 @@ class ResponseTaskControllerNode:
         )
         self.transport_controller_type = str(
             rospy.get_param("~transport_controller_type", "checkpoint")
+        ).strip().lower()
+        self.transport_checkpoint_adapter_type = str(
+            rospy.get_param("~transport_checkpoint_adapter_type", "tb3_slot")
         ).strip().lower()
         # transport heuristic 参数与 multi-agent-neat / VMAS 训练口径保持一致。
         self.transport_heuristic_config = TransportHeuristicConfig(
@@ -423,6 +430,7 @@ class ResponseTaskControllerNode:
                 max_linear_velocity=self.max_linear_velocity,
                 max_angular_velocity=self.max_angular_velocity,
                 config=self.roundflocking_heuristic_config,
+                world_scale=self.roundflocking_world_scale,
             )
         if self.roundflocking_controller_type != "checkpoint":
             rospy.logwarn_throttle(
@@ -435,11 +443,11 @@ class ResponseTaskControllerNode:
         if network is not None and self.round_factory is not None:
             try:
                 output = network.activate(clamp_observation(observation, self.round_factory.input_dim))
-                return vmas_global_action_to_twist(
+                return differential_twist_from_omni_output(
                     output,
-                    robot.pose.yaw,
-                    self.max_linear_velocity,
-                    self.max_angular_velocity,
+                    max_linear_velocity=self.max_linear_velocity,
+                    max_angular_velocity=self.max_angular_velocity,
+                    output_activations=self.round_factory.output_activations,
                 )
             except Exception as exc:
                 rospy.logwarn_throttle(2.0, "Roundflocking checkpoint inference failed: %s", exc)
@@ -478,7 +486,7 @@ class ResponseTaskControllerNode:
                 max_linear_velocity=self.max_linear_velocity,
                 max_angular_velocity=self.max_angular_velocity,
             )
-        observation = build_transport_vmas_observation(
+        observation = build_transport_observation(
             robot=robot,
             box=box,
             target=target,
@@ -489,20 +497,37 @@ class ResponseTaskControllerNode:
         if network is not None and self.transport_factory is not None:
             try:
                 output = network.activate(clamp_observation(observation, self.transport_factory.input_dim))
-                global_action = vmas_output_to_global_action(output)
-                global_action = adapt_transport_action_for_tb3(
-                    policy_action=global_action,
-                    robot_position=(robot.pose.x, robot.pose.y),
-                    box_position=(box.x, box.y),
-                    target_position=(target.x, target.y),
-                    robot_index=robot_index,
-                    config=self.transport_tb3_adapter_config,
-                )
-                return global_action_to_twist(
-                    global_action,
-                    robot_yaw=robot.pose.yaw,
+                if self.transport_checkpoint_adapter_type in ("tb3_slot", "physical", "gazebo_tb3"):
+                    policy_action = direct_transport_output_to_global_action(
+                        output,
+                        robot_yaw=robot.pose.yaw,
+                        output_activations=self.transport_factory.output_activations,
+                    )
+                    global_action = adapt_transport_action_for_tb3(
+                        policy_action=policy_action,
+                        robot_position=(robot.pose.x, robot.pose.y),
+                        box_position=(box.x, box.y),
+                        target_position=(target.x, target.y),
+                        robot_index=robot_index,
+                        config=self.transport_tb3_adapter_config,
+                    )
+                    return global_action_to_twist(
+                        global_action,
+                        robot_yaw=robot.pose.yaw,
+                        max_linear_velocity=self.max_linear_velocity,
+                        max_angular_velocity=self.max_angular_velocity,
+                    )
+                if self.transport_checkpoint_adapter_type not in ("direct", "ros2swarm_direct"):
+                    rospy.logwarn_throttle(
+                        2.0,
+                        "Unsupported transport_checkpoint_adapter_type '%s'; using ROS2swarm direct output",
+                        self.transport_checkpoint_adapter_type,
+                    )
+                return direct_twist_from_network_output(
+                    output,
                     max_linear_velocity=self.max_linear_velocity,
                     max_angular_velocity=self.max_angular_velocity,
+                    output_activations=self.transport_factory.output_activations,
                 )
             except Exception as exc:
                 rospy.logwarn_throttle(2.0, "Transport checkpoint inference failed: %s", exc)

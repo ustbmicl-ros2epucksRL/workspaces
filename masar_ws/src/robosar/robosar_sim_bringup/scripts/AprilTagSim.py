@@ -75,8 +75,8 @@ class AprilTagSim:
         # contact kd/max_vel 控制接触弹跳，避免 TB3 顶箱时把箱体数值上抬。
         self.box_contact_kd = rospy.get_param("~transport_box_contact_kd", 5.0)
         self.box_contact_max_vel = rospy.get_param("~transport_box_contact_max_vel", 0.2)
-        self.fire_radius = rospy.get_param("~fire_radius", 0.14)
-        self.fire_height = rospy.get_param("~fire_height", 0.18)
+        self.fire_radius = rospy.get_param("~fire_radius", 0.10)
+        self.fire_height = rospy.get_param("~fire_height", 0.16)
         self.victim_height = rospy.get_param("~victim_height", 1.05)
         self.victim_collision_radius = rospy.get_param(
             "~victim_collision_radius", 0.12

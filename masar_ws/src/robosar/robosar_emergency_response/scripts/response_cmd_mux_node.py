@@ -15,7 +15,7 @@ try:
         MODE_NAV_FORMATION,
         RangeExclusion,
         Twist2D,
-        apply_potential_field_safety,
+        apply_soft_potential_field_safety,
         hysteresis_avoid_state,
         potential_field_safety,
         select_command,
@@ -32,7 +32,7 @@ except ImportError:
         MODE_NAV_FORMATION,
         RangeExclusion,
         Twist2D,
-        apply_potential_field_safety,
+        apply_soft_potential_field_safety,
         hysteresis_avoid_state,
         potential_field_safety,
         select_command,
@@ -80,6 +80,18 @@ class ResponseCmdMuxNode:
         self.ignore_robot_radius = float(rospy.get_param("~formation_ignore_robot_radius", 0.25))
         self.transport_task_bypass_safety = bool(
             rospy.get_param("~transport_task_bypass_safety", False)
+        )
+        self.potential_field_safety_blend = float(
+            rospy.get_param("~potential_field_safety_blend", 0.4)
+        )
+        self.potential_field_safety_max_angular_delta = float(
+            rospy.get_param("~potential_field_safety_max_angular_delta", 0.55)
+        )
+        self.potential_field_safety_min_forward_scale = float(
+            rospy.get_param("~potential_field_safety_min_forward_scale", 0.35)
+        )
+        self.potential_field_safety_critical_stop_distance = float(
+            rospy.get_param("~potential_field_safety_critical_stop_distance", 0.10)
         )
         self.dynamic_obstacle_names = rospy.get_param(
             "~dynamic_obstacle_names",
@@ -188,9 +200,9 @@ class ResponseCmdMuxNode:
         self.last_task_times[robot_name] = rospy.Time.now().to_sec()
 
     def _scan_callback(self, msg, robot_name):
-        teammate_exclusions = []
+        range_exclusions = []
         if self.mode == MODE_NAV_FORMATION:
-            teammate_exclusions = self._teammate_range_exclusions(robot_name)
+            range_exclusions.extend(self._teammate_range_exclusions(robot_name))
         field = potential_field_safety(
             ranges=msg.ranges,
             angle_min=msg.angle_min,
@@ -201,7 +213,7 @@ class ResponseCmdMuxNode:
             threshold=self.hpl_threshold,
             max_translational_velocity=self.safety_max_translational_velocity,
             max_rotational_velocity=self.safety_max_rotational_velocity,
-            range_exclusions=teammate_exclusions,
+            range_exclusions=range_exclusions,
             self_filter_radius=self.hpl_self_filter_radius,
         )
         self.safety_fields[robot_name] = field
@@ -299,7 +311,16 @@ class ResponseCmdMuxNode:
                 )
                 dynamic_close = False
                 if not bypass_safety:
-                    safe = apply_potential_field_safety(safe, field)
+                    safe = apply_soft_potential_field_safety(
+                        safe,
+                        field,
+                        blend=self.potential_field_safety_blend,
+                        max_angular_delta=self.potential_field_safety_max_angular_delta,
+                        min_forward_scale=self.potential_field_safety_min_forward_scale,
+                        critical_stop_distance=(
+                            self.potential_field_safety_critical_stop_distance
+                        ),
+                    )
                     dynamic_close = self._dynamic_obstacle_close(name, dynamic_obstacle_poses)
                     if dynamic_close and (abs(safe.linear_x) > 1e-3 or abs(safe.angular_z) > 1e-3):
                         safe = apply_dynamic_obstacle_pose_safety(
