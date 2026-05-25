@@ -1,2 +1,6 @@
 multi-agent-neat/
 VectorizedMultiAgentSimulator/
+
+# Python cache artifacts
+__pycache__/
+*.py[cod]
