@@ -1,11 +1,42 @@
 #include "path_opti/path_opti.h"
 
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
+
 void PathOptimizer::setGridMapandObsClearance(GridMap::Ptr map_, double clearance) {
     grid_map_ = map_;
     obs_clearance=clearance;
 }
 
+void PathOptimizer::setGridMapandObsClearance(GridMap::Ptr map_, double clearance, ros::NodeHandle& nh) {
+    setGridMapandObsClearance(map_, clearance);
+    nh.param("path_optimizer/enabled", enabled_, true);
+    nh.param("path_optimizer/max_path_points_for_optimization", max_path_points_for_optimization_, 5000);
+    nh.param("path_optimizer/max_optimized_points", max_optimized_points_, 300);
+    nh.param("path_optimizer/lbfgs_mem_size", lbfgs_mem_size_, 4);
+    nh.param("path_optimizer/max_iterations", lbfgs_max_iterations_, 20);
+    nh.param("path_optimizer/max_linesearch", lbfgs_max_linesearch_, 16);
+    max_path_points_for_optimization_ = std::max(0, max_path_points_for_optimization_);
+    max_optimized_points_ = std::max(0, max_optimized_points_);
+    lbfgs_mem_size_ = std::max(1, lbfgs_mem_size_);
+    lbfgs_max_iterations_ = std::max(0, lbfgs_max_iterations_);
+    lbfgs_max_linesearch_ = std::max(1, lbfgs_max_linesearch_);
+}
+
 int PathOptimizer::startOpt(std::vector<Eigen::Vector2d>& path) {
+    if (!enabled_) {
+        return 0;
+    }
+    if (max_path_points_for_optimization_ > 0 &&
+        path.size() > static_cast<std::size_t>(max_path_points_for_optimization_)) {
+        ROS_WARN_THROTTLE(2.0,
+                          "[Path Opti]: skip optimization for large path with %zu points (limit=%d).",
+                          path.size(),
+                          max_path_points_for_optimization_);
+        return 0;
+    }
+
     vector<int> opti_vars;
     for (int i = 0; i < path.size() ; i++) {
         double dist;
@@ -20,6 +51,23 @@ int PathOptimizer::startOpt(std::vector<Eigen::Vector2d>& path) {
         return 0;
     }
 
+    if (max_optimized_points_ > 0 &&
+        opti_vars.size() > static_cast<std::size_t>(max_optimized_points_)) {
+        vector<int> sampled_vars;
+        sampled_vars.reserve(static_cast<std::size_t>(max_optimized_points_));
+        const double stride = static_cast<double>(opti_vars.size() - 1) /
+                              static_cast<double>(std::max(1, max_optimized_points_ - 1));
+        for (int i = 0; i < max_optimized_points_; i++) {
+            const std::size_t idx = static_cast<std::size_t>(std::round(i * stride));
+            sampled_vars.push_back(opti_vars[std::min(idx, opti_vars.size() - 1)]);
+        }
+        ROS_WARN_THROTTLE(2.0,
+                          "[Path Opti]: sampled %zu obstacle-near points down to %zu for bounded memory.",
+                          opti_vars.size(),
+                          sampled_vars.size());
+        opti_vars.swap(sampled_vars);
+    }
+
     Eigen::VectorXd x(opti_vars.size() * 2);
     for(int i = 0; i < opti_vars.size(); i++)
     {
@@ -31,7 +79,9 @@ int PathOptimizer::startOpt(std::vector<Eigen::Vector2d>& path) {
 
     lbfgs::lbfgs_parameter_t params;
     params.g_epsilon = 1.0e-5;
-    params.mem_size = 16;
+    params.mem_size = lbfgs_mem_size_;
+    params.max_iterations = lbfgs_max_iterations_;
+    params.max_linesearch = lbfgs_max_linesearch_;
     params.min_step = 1e-32;
 
     int ret = lbfgs::lbfgs_optimize(x,
@@ -41,6 +91,9 @@ int PathOptimizer::startOpt(std::vector<Eigen::Vector2d>& path) {
                                     nullptr,
                                     this,
                                     params);
+#if defined(__GLIBC__)
+    malloc_trim(0);
+#endif
 
     if (ret < 0) {
         ROS_ERROR("[Path Opti]:%s", lbfgs::lbfgs_strerror(ret));

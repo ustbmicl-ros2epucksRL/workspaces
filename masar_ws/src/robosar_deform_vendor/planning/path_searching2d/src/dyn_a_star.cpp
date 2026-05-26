@@ -355,7 +355,7 @@ vector<Vector2d> AStar::astarSearchAndGetSimplePath(const double step_size, Vect
     return path;
 }
 
-vector<Vector2d> AStar::refinePath(vector<Vector2d> path)
+vector<Vector2d> AStar::refinePath(const vector<Vector2d>& path)
 {
     bool is_show_debug = false;
     // generate the simple path
@@ -373,15 +373,22 @@ vector<Vector2d> AStar::refinePath(vector<Vector2d> path)
         
     int end_idx   = 1;
     Vector2d cut_start = path[0];
-    simple_path.push_back(cut_start);
+    auto appendIfDistinct = [&simple_path](const Vector2d& point) {
+        if (simple_path.empty() || (simple_path.back() - point).norm() > 1e-6)
+            simple_path.push_back(point);
+    };
+    appendIfDistinct(cut_start);
 
     bool finish = false;
-    while (!finish) {
+    int simplify_guard = 0;
+    const int simplify_guard_limit = std::max(16, size * 2);
+    while (!finish && simplify_guard++ < simplify_guard_limit) {
+        bool made_progress = false;
         for (int i = end_idx; i < size; i++){
             bool is_safe = true;
             Vector2d check_pt = path[i];
-            int check_num = ceil((check_pt - cut_start).norm() / 0.01);
             double pts_dis=(check_pt - cut_start).norm();
+            int check_num = std::max(1, static_cast<int>(ceil(pts_dis / 0.01)));
             if(pts_dis>0.3)
                 is_safe= false;
             // check collision
@@ -396,18 +403,39 @@ vector<Vector2d> AStar::refinePath(vector<Vector2d> path)
             
             if (is_safe && i == (size -1)){
                 finish = true;
-                simple_path.push_back(check_pt);
+                appendIfDistinct(check_pt);
+                made_progress = true;
+                break;
             }
 
             if (is_safe){
                 continue;
             }
             else{
-                end_idx = i;
-                cut_start = path[end_idx-1];
-                simple_path.push_back(cut_start);
+                if (i <= end_idx) {
+                    cut_start = path[i];
+                    end_idx = i + 1;
+                    appendIfDistinct(cut_start);
+                } else {
+                    end_idx = i;
+                    cut_start = path[end_idx-1];
+                    appendIfDistinct(cut_start);
+                }
+                if (end_idx >= size) {
+                    finish = true;
+                }
+                made_progress = true;
+                break;
             }
         }
+        if (!made_progress)
+            break;
+    }
+
+    if (!finish) {
+        ROS_WARN_THROTTLE(1.0,
+                          "A* path refinement hit progress guard; keeping bounded refined path.");
+        appendIfDistinct(path.back());
     }
 
     // debug

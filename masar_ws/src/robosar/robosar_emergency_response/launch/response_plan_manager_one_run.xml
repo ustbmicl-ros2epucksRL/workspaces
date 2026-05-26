@@ -44,6 +44,13 @@
   <arg name="controller_stall_fallback_enabled" default="true"/>
   <arg name="controller_stall_fallback_goal_distance" default="0.35"/>
   <arg name="controller_stall_fallback_linear_epsilon" default="0.015"/>
+  <arg name="controller_nmpc_enabled" default="true"/>
+  <!-- NMPC/Ipopt 在线求解资源上限，避免困难局部问题在 5Hz 控制环内无限迭代。 -->
+  <arg name="controller_ipopt_max_iter" default="200"/>
+  <arg name="controller_ipopt_max_cpu_time" default="0.25"/>
+  <arg name="controller_rebuild_interval" default="10"/>
+  <arg name="controller_nmpc_memory_guard_enabled" default="true"/>
+  <arg name="controller_nmpc_rss_limit_mb" default="1024.0"/>
   <!-- 当前机器人用于构建局部障碍地图的深度图话题。 -->
   <arg name="depth_topic" default="/tb_$(arg tb_id)/camera/depth/image_filter"/>
   <!-- 四机器人初始与期望队形槽位配置文件。 -->
@@ -115,6 +122,12 @@
     <param name="plan_manager/obs_clearance" value="0.35"/>
     <!-- 路径优化器避障安全距离，单位为米。 -->
     <param name="path_optimizer/obs_clearance" value="0.35"/>
+    <!-- 路径优化器资源上限；大路径保持 A*+refine，避免 L-BFGS 对海量点一次性分配 GB 级矩阵。 -->
+    <param name="path_optimizer/max_path_points_for_optimization" value="5000"/>
+    <param name="path_optimizer/max_optimized_points" value="300"/>
+    <param name="path_optimizer/lbfgs_mem_size" value="4"/>
+    <param name="path_optimizer/max_iterations" value="20"/>
+    <param name="path_optimizer/max_linesearch" value="16"/>
     <!-- 领航机器人编号。 -->
     <param name="plan_manager/leader_id" value="$(arg leader_id)"/>
     <!-- 编队槽位间距，单位为米。 -->
@@ -152,6 +165,12 @@
     <param name="controller/stall_fallback_enabled" value="$(arg controller_stall_fallback_enabled)"/>
     <param name="controller/stall_fallback_goal_distance" value="$(arg controller_stall_fallback_goal_distance)"/>
     <param name="controller/stall_fallback_linear_epsilon" value="$(arg controller_stall_fallback_linear_epsilon)"/>
+    <param name="controller/nmpc_enabled" value="$(arg controller_nmpc_enabled)"/>
+    <param name="controller/ipopt_max_iter" value="$(arg controller_ipopt_max_iter)"/>
+    <param name="controller/ipopt_max_cpu_time" value="$(arg controller_ipopt_max_cpu_time)"/>
+    <param name="controller/rebuild_interval" value="$(arg controller_rebuild_interval)"/>
+    <param name="controller/nmpc_memory_guard_enabled" value="$(arg controller_nmpc_memory_guard_enabled)"/>
+    <param name="controller/nmpc_rss_limit_mb" value="$(arg controller_nmpc_rss_limit_mb)"/>
     <!-- 里程计或深度图短暂丢失时允许等待的最长时间，单位为秒。 -->
     <param name="grid_map/odom_depth_timeout" value="8.0"/>
 

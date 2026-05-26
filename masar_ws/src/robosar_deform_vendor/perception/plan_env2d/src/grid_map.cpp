@@ -1,5 +1,7 @@
 #include "plan_env/grid_map.h"
 
+#include <algorithm>
+
 void GridMap::initMap(ros::NodeHandle &nh)
 {
   node_ = nh;
@@ -25,6 +27,12 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_.param("grid_map/depth_filter_margin", mp_.depth_filter_margin_, -1);
   node_.param("grid_map/k_depth_scaling_factor", mp_.k_depth_scaling_factor_, -1.0);
   node_.param("grid_map/skip_pixel", mp_.skip_pixel_, -1);
+  node_.param("grid_map/depth_sub_queue", mp_.depth_sub_queue_, 10);
+  node_.param("grid_map/pose_sub_queue", mp_.pose_sub_queue_, 10);
+  node_.param("grid_map/odom_sub_queue", mp_.odom_sub_queue_, 20);
+  node_.param("grid_map/sync_queue", mp_.sync_queue_, 10);
+  node_.param("grid_map/cloud_sub_queue", mp_.cloud_sub_queue_, 5);
+  node_.param("grid_map/indep_odom_sub_queue", mp_.indep_odom_sub_queue_, 5);
 
   node_.param("grid_map/p_hit", mp_.p_hit_, 0.70);
   node_.param("grid_map/p_miss", mp_.p_miss_, 0.35);
@@ -52,6 +60,13 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_.param("grid_map/esdf_slice_height", mp_.esdf_slice_height_, -0.1);
   node_.param("grid_map/show_esdf_time", mp_.show_esdf_time_, false);
   node_.param("grid_map/local_bound_inflate", mp_.local_bound_inflate_, 1.0);
+  mp_.skip_pixel_ = std::max(1, mp_.skip_pixel_);
+  mp_.depth_sub_queue_ = std::max(1, mp_.depth_sub_queue_);
+  mp_.pose_sub_queue_ = std::max(1, mp_.pose_sub_queue_);
+  mp_.odom_sub_queue_ = std::max(1, mp_.odom_sub_queue_);
+  mp_.sync_queue_ = std::max(1, mp_.sync_queue_);
+  mp_.cloud_sub_queue_ = std::max(1, mp_.cloud_sub_queue_);
+  mp_.indep_odom_sub_queue_ = std::max(1, mp_.indep_odom_sub_queue_);
 
   mp_.local_bound_inflate_ = max(mp_.resolution_, mp_.local_bound_inflate_);
   mp_.resolution_inv_ = 1 / mp_.resolution_;
@@ -92,10 +107,14 @@ void GridMap::initMap(ros::NodeHandle &nh)
 
   md_.raycast_num_ = 0;
 
-  md_.proj_points_.resize(mp_.width * mp_.height / mp_.skip_pixel_ / mp_.skip_pixel_);
+  const int projection_cols = std::max(1, (mp_.width + mp_.skip_pixel_ - 1) / mp_.skip_pixel_);
+  const int projection_rows = std::max(1, (mp_.height + mp_.skip_pixel_ - 1) / mp_.skip_pixel_);
+  const std::size_t projection_capacity =
+      static_cast<std::size_t>(projection_cols) * static_cast<std::size_t>(projection_rows);
+  md_.proj_points_.resize(projection_capacity);
   md_.proj_points_cnt = 0;
 
-  md_.proj_pts_to_2d.resize(mp_.width * mp_.height / mp_.skip_pixel_ / mp_.skip_pixel_);
+  md_.proj_pts_to_2d.resize(projection_capacity);
   md_.pts_2d_cnt=0;
 
   md_.cam2body_ << 0.0, 0.0, 1.0, 0.0,
@@ -104,33 +123,34 @@ void GridMap::initMap(ros::NodeHandle &nh)
       0.0, 0.0, 0.0, 1.0;
 
   /* init callback */
-  depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "grid_map/depth", 50));
+  depth_sub_.reset(new message_filters::Subscriber<sensor_msgs::Image>(node_, "grid_map/depth", mp_.depth_sub_queue_));
   extrinsic_sub_ = node_.subscribe<nav_msgs::Odometry>(
       "/vins_estimator/extrinsic", 10, &GridMap::extrinsicCallback, this); //sub
 
   if (mp_.pose_type_ == POSE_STAMPED)
   {
     pose_sub_.reset(
-        new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "grid_map/pose", 25));
+        new message_filters::Subscriber<geometry_msgs::PoseStamped>(node_, "grid_map/pose", mp_.pose_sub_queue_));
 
     sync_image_pose_.reset(new message_filters::Synchronizer<SyncPolicyImagePose>(
-        SyncPolicyImagePose(100), *depth_sub_, *pose_sub_));
+        SyncPolicyImagePose(mp_.sync_queue_), *depth_sub_, *pose_sub_));
     sync_image_pose_->registerCallback(boost::bind(&GridMap::depthPoseCallback, this, _1, _2));
   }
   else if (mp_.pose_type_ == ODOMETRY)
   {
-    odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(node_, "grid_map/odom", 100, ros::TransportHints().tcpNoDelay()));
+    odom_sub_.reset(new message_filters::Subscriber<nav_msgs::Odometry>(
+        node_, "grid_map/odom", mp_.odom_sub_queue_, ros::TransportHints().tcpNoDelay()));
 
     sync_image_odom_.reset(new message_filters::Synchronizer<SyncPolicyImageOdom>(
-        SyncPolicyImageOdom(100), *depth_sub_, *odom_sub_));
+        SyncPolicyImageOdom(mp_.sync_queue_), *depth_sub_, *odom_sub_));
     sync_image_odom_->registerCallback(boost::bind(&GridMap::depthOdomCallback, this, _1, _2));
   }
 
   // use odometry and point cloud
   indep_cloud_sub_ =
-      node_.subscribe<sensor_msgs::PointCloud2>("grid_map/cloud", 10, &GridMap::cloudCallback, this);
+      node_.subscribe<sensor_msgs::PointCloud2>("grid_map/cloud", mp_.cloud_sub_queue_, &GridMap::cloudCallback, this);
   indep_odom_sub_ =
-      node_.subscribe<nav_msgs::Odometry>("grid_map/odom", 10, &GridMap::odomCallback, this);
+      node_.subscribe<nav_msgs::Odometry>("grid_map/odom", mp_.indep_odom_sub_queue_, &GridMap::odomCallback, this);
   active_goal_sub_ =
       node_.subscribe("/move_base_simple/goal", 1, &GridMap::activeGoalCallback, this);
 
@@ -199,7 +219,12 @@ int GridMap::setCacheOccupancy(Eigen::Vector2d pos, int occ)
 
   Eigen::Vector2i id;
   posToIndex(pos, id);
+  if (!isInMap(id))
+    return INVALID_IDX;
+
   int idx_ctns = toAddress(id);
+  if (idx_ctns < 0 || idx_ctns >= static_cast<int>(md_.count_hit_and_miss_.size()))
+    return INVALID_IDX;
 
   md_.count_hit_and_miss_[idx_ctns] += 1;
 
@@ -218,10 +243,26 @@ void GridMap::projectDepthImage()
 {
   md_.proj_points_cnt = 0;
 
-  uint16_t *row_ptr;
   int cols = md_.depth_image_.cols;
   int rows = md_.depth_image_.rows;
   int skip_pix = mp_.skip_pixel_;
+  if (cols <= 0 || rows <= 0 || skip_pix <= 0)
+    return;
+
+  const int projected_cols = std::max(1, (cols + skip_pix - 1) / skip_pix);
+  const int projected_rows = std::max(1, (rows + skip_pix - 1) / skip_pix);
+  const std::size_t required_capacity =
+      static_cast<std::size_t>(projected_cols) * static_cast<std::size_t>(projected_rows);
+  if (md_.proj_points_.size() < required_capacity) {
+    ROS_WARN_THROTTLE(5.0,
+                      "Resize depth projection buffers from %zu to %zu points for image %dx%d.",
+                      md_.proj_points_.size(),
+                      required_capacity,
+                      cols,
+                      rows);
+    md_.proj_points_.resize(required_capacity);
+    md_.proj_pts_to_2d.resize(required_capacity);
+  }
 
   double depth;
 
@@ -231,19 +272,21 @@ void GridMap::projectDepthImage()
   {
     for (int v = 0; v < rows; v += skip_pix)
     {
-      row_ptr = md_.depth_image_.ptr<uint16_t>(v);
+      const uint16_t *row_ptr = md_.depth_image_.ptr<uint16_t>(v);
 
       for (int u = 0; u < cols; u += skip_pix)
       {
 
         Eigen::Vector3d proj_pt;
-        depth = (*row_ptr++) / mp_.k_depth_scaling_factor_;
+        depth = row_ptr[u] / mp_.k_depth_scaling_factor_;
         proj_pt(0) = (u - mp_.cx_) * depth / mp_.fx_;
         proj_pt(1) = (v - mp_.cy_) * depth / mp_.fy_;
         proj_pt(2) = depth;
 
         proj_pt = camera_r * proj_pt + md_.camera_pos_;
 
+        if (md_.proj_points_cnt >= static_cast<int>(md_.proj_points_.size()))
+          return;
         md_.proj_points_[md_.proj_points_cnt++] = proj_pt;
       }
     }
@@ -264,18 +307,18 @@ void GridMap::projectDepthImage()
 
       for (int v = mp_.depth_filter_margin_; v < rows - mp_.depth_filter_margin_; v += mp_.skip_pixel_)
       {
-        row_ptr = md_.depth_image_.ptr<uint16_t>(v) + mp_.depth_filter_margin_;
+        const uint16_t *row_ptr = md_.depth_image_.ptr<uint16_t>(v);
 
         for (int u = mp_.depth_filter_margin_; u < cols - mp_.depth_filter_margin_;
              u += mp_.skip_pixel_)
         {
 
-          depth = (*row_ptr) * inv_factor;
-          row_ptr = row_ptr + mp_.skip_pixel_;
+          const uint16_t raw_depth = row_ptr[u];
+          depth = raw_depth * inv_factor;
 
           // filter depth
 
-          if (*row_ptr == 0)
+          if (raw_depth == 0)
           {
             depth = mp_.max_ray_length_ + 0.1;
           }
@@ -295,6 +338,8 @@ void GridMap::projectDepthImage()
 
           pt_world = camera_r * pt_cur + md_.camera_pos_;
 
+          if (md_.proj_points_cnt >= static_cast<int>(md_.proj_points_.size()))
+            return;
           md_.proj_points_[md_.proj_points_cnt++] = pt_world;
 
         }
@@ -329,6 +374,8 @@ void GridMap::project2D()
             continue;
         pt_two(0)=md_.proj_points_[i](0);
         pt_two(1)=md_.proj_points_[i](1);
+        if (md_.pts_2d_cnt >= static_cast<int>(md_.proj_pts_to_2d.size()))
+            return;
         md_.proj_pts_to_2d[md_.pts_2d_cnt++]=pt_two;
     }
 }
@@ -1075,8 +1122,16 @@ void GridMap::updateESDFMap(Eigen::Vector2d bound_max){
       }
     }
 
-  md_.tmp_buffer1_.clear();
-  md_.tmp_buffer2_.clear();
+  const int buffer_size = mp_.map_voxel_num_(0) * mp_.map_voxel_num_(1);
+  if (static_cast<int>(md_.tmp_buffer1_.size()) != buffer_size)
+    md_.tmp_buffer1_.assign(buffer_size, 0.0);
+  else
+    std::fill(md_.tmp_buffer1_.begin(), md_.tmp_buffer1_.end(), 0.0);
+
+  if (static_cast<int>(md_.tmp_buffer2_.size()) != buffer_size)
+    md_.tmp_buffer2_.assign(buffer_size, 0.0);
+  else
+    std::fill(md_.tmp_buffer2_.begin(), md_.tmp_buffer2_.end(), 0.0);
 
   for (int x = min_esdf[0]; x <= max_esdf[0]; x++) {
       fillESDF(
@@ -1155,8 +1210,16 @@ void GridMap::updateESDF3d (){
       }
     }
 
-  md_.tmp_buffer1_.clear();
-  md_.tmp_buffer2_.clear();
+  const int buffer_size = mp_.map_voxel_num_(0) * mp_.map_voxel_num_(1);
+  if (static_cast<int>(md_.tmp_buffer1_.size()) != buffer_size)
+    md_.tmp_buffer1_.assign(buffer_size, 0.0);
+  else
+    std::fill(md_.tmp_buffer1_.begin(), md_.tmp_buffer1_.end(), 0.0);
+
+  if (static_cast<int>(md_.tmp_buffer2_.size()) != buffer_size)
+    md_.tmp_buffer2_.assign(buffer_size, 0.0);
+  else
+    std::fill(md_.tmp_buffer2_.begin(), md_.tmp_buffer2_.end(), 0.0);
 
   for (int x = min_esdf[0]; x <= max_esdf[0]; x++) {
       fillESDF(
@@ -1190,6 +1253,9 @@ void GridMap::updateESDF3d (){
 }
 
 void GridMap::publishESDF(){
+  if (esdf_pub_.getNumSubscribers() <= 0)
+    return;
+
   double dist;
   pcl::PointCloud<pcl::PointXYZI> cloud;
   pcl::PointXYZI pt;

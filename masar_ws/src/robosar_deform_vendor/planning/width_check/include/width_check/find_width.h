@@ -19,7 +19,6 @@ HOW TO USE:
 */
 
 
-#include <casadi/casadi.hpp>
 #include <plan_env/grid_map.h>
 #include <Eigen/Eigen>
 

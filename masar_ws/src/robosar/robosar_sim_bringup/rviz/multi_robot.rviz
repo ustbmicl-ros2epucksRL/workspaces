@@ -606,14 +606,6 @@ Visualization Manager:
       Value: true
     - Class: rviz/Marker
       Enabled: true
-      Marker Topic: /response_group/formation_slots
-      Name: response_slots
-      Namespaces:
-        response_group_slots: true
-      Queue Size: 100
-      Value: true
-    - Class: rviz/Marker
-      Enabled: true
       Marker Topic: /response_group/state_text
       Name: response_state_text
       Namespaces:

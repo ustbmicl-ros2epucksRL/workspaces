@@ -58,6 +58,8 @@ struct MappingParameters
   bool use_depth_filter_;
   double k_depth_scaling_factor_;
   int skip_pixel_;
+  int depth_sub_queue_, pose_sub_queue_, odom_sub_queue_, sync_queue_;
+  int cloud_sub_queue_, indep_odom_sub_queue_;
 
   /* raycasting */
   double p_hit_, p_miss_, p_min_, p_max_, p_occ_; // occupancy probability

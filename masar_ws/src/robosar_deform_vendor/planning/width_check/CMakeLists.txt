@@ -14,13 +14,6 @@ find_package(catkin REQUIRED COMPONENTS
   cv_bridge
 )
 
-find_package(casadi REQUIRED)
-#message(FATAL_ERROR ${casadi_FOUND})
-#set(casadi_INCLUDE_DIRS /usr/local/include)
-#set(casadi_LIBS /usr/local/lib)
-#message("casadi dir ${CASADI_INCLUDE_DIRS}")
-#message(FATAL_ERROR "casadi lib ${casadi_LIBS}")
-
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -114,7 +107,6 @@ catkin_package(
   INCLUDE_DIRS include
   LIBRARIES width_check
   CATKIN_DEPENDS roscpp std_msgs plan_env2d
-  DEPENDS casadi
 )
 
 ###########
@@ -156,7 +148,6 @@ include_directories(
 ## Specify libraries to link a library or executable target against
  target_link_libraries(width_check
    ${catkin_LIBRARIES}
-   casadi
  )
 
 #############

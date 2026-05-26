@@ -3,6 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
+#include <fstream>
+#include <sstream>
+#include <string>
+
+#if defined(__GLIBC__)
+#include <malloc.h>
+#endif
 
 namespace {
 
@@ -18,6 +25,27 @@ double normalizeAngle(double angle) {
 
 double clampValue(double value, double min_value, double max_value) {
     return std::max(min_value, std::min(max_value, value));
+}
+
+void releaseFreedSolverMemory() {
+#if defined(__GLIBC__)
+    malloc_trim(0);
+#endif
+}
+
+double currentRssMb() {
+    std::ifstream status("/proc/self/status");
+    std::string line;
+    while (std::getline(status, line)) {
+        if (line.rfind("VmRSS:", 0) != 0) {
+            continue;
+        }
+        std::istringstream stream(line.substr(6));
+        double rss_kb = 0.0;
+        stream >> rss_kb;
+        return rss_kb / 1024.0;
+    }
+    return 0.0;
 }
 
 }
@@ -40,14 +68,19 @@ TrajectoryOptimizer::TrajectoryOptimizer(ros::NodeHandle &nh_) {
     nh_.param("controller/stall_fallback_linear_epsilon", stall_fallback_linear_epsilon, 0.015);
     nh_.param("controller/fallback_other_clearance", fallback_other_clearance, 0.4);
     nh_.param("controller/fallback_repulsion_gain", fallback_repulsion_gain, 1.0);
+    nh_.param("controller/nmpc_enabled", nmpc_enabled, true);
+    nh_.param("controller/nmpc_memory_guard_enabled", nmpc_memory_guard_enabled, true);
+    nh_.param("controller/nmpc_rss_limit_mb", nmpc_rss_limit_mb, 256.0);
     state = Eigen::Vector3d::Zero();
     goal = Eigen::Vector2d::Zero();
     global_goal = Eigen::Vector2d::Zero();
     vel = {0.0, 0.0};
-    nmpc_.reset(new NMPCController(nh_));
+    if (nmpc_enabled) {
+        nmpc_.reset(new NMPCController(nh_));
 
 //    nmpc_->initialize();
-    nmpc_->initializeInHighCollision();
+        nmpc_->initializeInHighCollision();
+    }
 
     cur_cost_type = NORMAL_MODE;
 
@@ -71,6 +104,10 @@ bool TrajectoryOptimizer::safeSetLocalGoal(Eigen::Vector2d local_goal, Eigen::Ve
                           desired_wv.y());
         vel = fallbackVelocity();
         return false;
+    }
+
+    if (!nmpc_enabled || !nmpc_) {
+        return true;
     }
 
     try {
@@ -112,6 +149,10 @@ void TrajectoryOptimizer::updateState(Eigen::Vector3d s, Eigen::Vector2d c) {
    }
 
    state = s;
+   if (!nmpc_enabled || !nmpc_) {
+       return;
+   }
+
    std::vector<double> current_control = {c.x(), c.y()};
    std::vector<double> current_state = {s.x(), s.y(), s.z()};
    try {
@@ -133,6 +174,10 @@ void TrajectoryOptimizer::updateOtherOdom(Eigen::Vector2d pos, int id) {
         }
         other_positions_[id] = pos;
     }
+    if (!nmpc_enabled || !nmpc_) {
+        return;
+    }
+
     try {
         nmpc_->setOthersState(pos,id);
     } catch (casadi::CasadiException& e) {
@@ -143,6 +188,9 @@ void TrajectoryOptimizer::updateOtherOdom(Eigen::Vector2d pos, int id) {
 }
 
 void TrajectoryOptimizer::toggleCostFunc(int costFuncType) {
+    if (!nmpc_enabled || !nmpc_) {
+        return;
+    }
 
     if (costFuncType == cur_cost_type)
         return;
@@ -173,8 +221,40 @@ bool TrajectoryOptimizer::run() {
         return true;
     }
     else {
+        if (!nmpc_enabled) {
+            vel = fallbackVelocity();
+            return false;
+        }
+
+        auto trip_memory_guard = [&](const char* phase) {
+            if (!nmpc_memory_guard_enabled || nmpc_rss_limit_mb <= 0.0) {
+                return false;
+            }
+            const double rss_mb = currentRssMb();
+            if (rss_mb <= nmpc_rss_limit_mb) {
+                return false;
+            }
+            if (!nmpc_memory_guard_triggered) {
+                ROS_WARN("NMPC memory guard triggered %s: RSS %.1f MB > %.1f MB; using fallback controller for this node.",
+                         phase,
+                         rss_mb,
+                         nmpc_rss_limit_mb);
+            }
+            nmpc_memory_guard_triggered = true;
+            vel = fallbackVelocity();
+            return true;
+        };
+
+        if (nmpc_memory_guard_triggered || trip_memory_guard("before solve")) {
+            vel = fallbackVelocity();
+            return false;
+        }
+
         try {
             nmpc_->solve();
+            if (trip_memory_guard("after solve")) {
+                return false;
+            }
             vel = nmpc_->getu();
             if (!isFiniteVector(vel, 2)) {
                 ROS_WARN_THROTTLE(1.0, "NMPC returned invalid velocity, using fallback controller.");
@@ -215,6 +295,9 @@ std::vector<double> TrajectoryOptimizer::getControlVelocity() {
 }
 
 std::vector<double> TrajectoryOptimizer::getState() {
+    if (!nmpc_enabled || !nmpc_) {
+        return {};
+    }
     return nmpc_->getState();
 }
 
@@ -305,7 +388,24 @@ bool TrajectoryOptimizer::isFiniteVector(const std::vector<double>& value, std::
 /*             NMPCController          */
 /*==========================================*/
 
-NMPCController::NMPCController() : T_(40), nx_(3), nu_(2), dt_(0.1) {
+NMPCController::NMPCController()
+    : T_(40),
+      nx_(3),
+      nu_(2),
+      dt_(0.1),
+      other_num(0),
+      dist_other_th(0.0),
+      other_constraint_horizon(T_),
+      rebuild_interval(10),
+      solve_count(0),
+      ipopt_max_iter(80),
+      ipopt_max_cpu_time(0.08),
+      problem_mode(UNINITIALIZED_MODE),
+      control0{0.0, 0.0},
+      last_x_ref{0.0, 0.0, 0.0},
+      last_u_ref{0.0, 0.0},
+      last_x_init_seed{0.0, 0.0, 0.0},
+      last_u_init_seed{0.0, 0.0} {
 
 }
 
@@ -314,10 +414,29 @@ NMPCController::NMPCController(ros::NodeHandle &nh_) : nx_(3), nu_(2){
     nh_.param("controller/dt", dt_, -0.1);
     nh_.param("controller/distance_other_tb_dist", dist_other_th, -0.1);
     nh_.param("controller/other_num_in_opti", other_num, -1);
+    nh_.param("controller/rebuild_interval", rebuild_interval, 10);
+    nh_.param("controller/ipopt_max_iter", ipopt_max_iter, 80);
+    nh_.param("controller/ipopt_max_cpu_time", ipopt_max_cpu_time, 0.08);
+    other_num = std::max(0, other_num);
+    rebuild_interval = std::max(0, rebuild_interval);
+    ipopt_max_iter = std::max(1, ipopt_max_iter);
     other_constraint_horizon = T_;
+    solve_count = 0;
+    problem_mode = UNINITIALIZED_MODE;
+    control0 = {0.0, 0.0};
+    last_x_ref = {0.0, 0.0, 0.0};
+    last_u_ref = {0.0, 0.0};
+    last_x_init_seed = {0.0, 0.0, 0.0};
+    last_u_init_seed = {0.0, 0.0};
+    last_other_positions.assign(static_cast<std::size_t>(other_num), Eigen::Vector2d(500.0, 500.0));
 }
 
 void NMPCController::initialize() {
+    opti_ = casadi::Opti();
+    solver_options_ = casadi::Dict();
+    problem_mode = NORMAL_PROBLEM_MODE;
+    solve_count = 0;
+
     x_ = opti_.variable(nx_, T_+1);
     u_ = opti_.variable(nu_, T_);
 
@@ -355,7 +474,10 @@ void NMPCController::initialize() {
 
     solver_options_["ipopt.print_level"] = 0;
     solver_options_["ipopt.sb"] = "yes";
-    solver_options_["ipopt.max_iter"] = 2000;
+    solver_options_["ipopt.max_iter"] = ipopt_max_iter;
+    if (ipopt_max_cpu_time > 0.0) {
+        solver_options_["ipopt.max_cpu_time"] = ipopt_max_cpu_time;
+    }
     solver_options_["ipopt.tol"] = 1e-8;
     solver_options_["print_time"] = 0;
     solver_options_["ipopt.acceptable_obj_change_tol"] = 1e-6;
@@ -374,6 +496,10 @@ void NMPCController::initialize() {
 }
 
 void NMPCController::initializeInHighCollision() {
+    opti_ = casadi::Opti();
+    solver_options_ = casadi::Dict();
+    problem_mode = HIGH_COLLISION_PROBLEM_MODE;
+    solve_count = 0;
 
     x_ = opti_.variable(nx_, T_ + 1);
     u_ = opti_.variable(nu_, T_);
@@ -426,7 +552,10 @@ void NMPCController::initializeInHighCollision() {
 
     solver_options_["ipopt.print_level"] = 0;
     solver_options_["ipopt.sb"] = "yes";
-    solver_options_["ipopt.max_iter"] = 2000;
+    solver_options_["ipopt.max_iter"] = ipopt_max_iter;
+    if (ipopt_max_cpu_time > 0.0) {
+        solver_options_["ipopt.max_cpu_time"] = ipopt_max_cpu_time;
+    }
     solver_options_["ipopt.tol"] = 1e-8;
     solver_options_["print_time"] = 0;
     solver_options_["ipopt.acceptable_obj_change_tol"] = 1e-6;
@@ -445,17 +574,28 @@ void NMPCController::initializeInHighCollision() {
 }
 
 void NMPCController::setOthersState(Eigen::Vector2d pos, int id) {
+    if (id < 0 || id >= other_num || problem_mode != HIGH_COLLISION_PROBLEM_MODE) {
+        return;
+    }
+    if (static_cast<std::size_t>(id) >= last_other_positions.size()) {
+        last_other_positions.resize(static_cast<std::size_t>(id) + 1, Eigen::Vector2d(500.0, 500.0));
+    }
+    last_other_positions[static_cast<std::size_t>(id)] = pos;
     opti_.set_value(others_position(casadi::Slice(), id), std::vector<double>{pos.x(), pos.y()});
 }
 
 //set local goal position,yaw
 void NMPCController::setReference(const std::vector<double> x_ref, const std::vector<double> u_ref) {
+    last_x_ref = x_ref;
+    last_u_ref = u_ref;
     opti_.set_value(_x_ref,casadi::DM::repmat(x_ref, 1, T_ + 1));
     opti_.set_value(_u_ref,casadi::DM::repmat(u_ref, 1, T_));
 }
 
 //update current state(x,y,yaw) and control(linear,angular velocity)
 void NMPCController::setXUInit(const std::vector<double> x, const std::vector<double> u) {
+    last_x_init_seed = x;
+    last_u_init_seed = u;
     u_init=casadi::DM::repmat({u[0], u[1]}, 1, T_);
     x_init=casadi::DM::repmat({x[0], x[1], x[2]}, 1, T_ + 1);
     opti_.set_value(p_, x);
@@ -465,20 +605,57 @@ void NMPCController::solve() {
     opti_.set_initial(x_, x_init);
     opti_.set_initial(u_, u_init);
 
-    casadi::OptiSol solution = opti_.solve();
+    {
+        casadi::OptiSol solution = opti_.solve();
 
-    //get first control
-    casadi::Matrix<double> u0 = solution.value(u_)(casadi::Slice(), 0);
-    control0 = u0.get_elements();
+        //get first control
+        casadi::Matrix<double> u0 = solution.value(u_)(casadi::Slice(), 0);
+        control0 = u0.get_elements();
 
-    //get all state to show path
-    casadi::Matrix<double> all_x = solution.value(x_);
-    state = all_x.get_elements();
+        //get all state to show path
+        casadi::Matrix<double> all_x = solution.value(x_);
+        state = all_x.get_elements();
 
-    // warm start
-    // use first state and all control
-    x_init = casadi::DM::repmat(solution.value(x_)(casadi::Slice(), 0), 1, T_ + 1);
-    u_init = solution.value(u_)(casadi::Slice(), casadi::Slice());
+        // warm start
+        // use first state and all control
+        casadi::Matrix<double> x0 = solution.value(x_)(casadi::Slice(), 0);
+        last_x_init_seed = x0.get_elements();
+        last_u_init_seed = control0;
+        x_init = casadi::DM::repmat(x0, 1, T_ + 1);
+        u_init = solution.value(u_)(casadi::Slice(), casadi::Slice());
+    }
+
+    solve_count++;
+    if (rebuild_interval > 0 && solve_count >= rebuild_interval) {
+        rebuildProblem();
+        return;
+    }
+
+    releaseFreedSolverMemory();
+}
+
+void NMPCController::rebuildProblem() {
+    const ProblemMode mode = problem_mode;
+    const std::vector<double> x_ref_cache = last_x_ref;
+    const std::vector<double> u_ref_cache = last_u_ref;
+    const std::vector<double> x_seed_cache = last_x_init_seed;
+    const std::vector<double> u_seed_cache = last_u_init_seed;
+    const std::vector<Eigen::Vector2d> other_cache = last_other_positions;
+
+    if (mode == HIGH_COLLISION_PROBLEM_MODE) {
+        initializeInHighCollision();
+    } else if (mode == NORMAL_PROBLEM_MODE) {
+        initialize();
+    } else {
+        return;
+    }
+
+    setReference(x_ref_cache, u_ref_cache);
+    setXUInit(x_seed_cache, u_seed_cache);
+    for (std::size_t id = 0; id < other_cache.size() && id < static_cast<std::size_t>(other_num); ++id) {
+        setOthersState(other_cache[id], static_cast<int>(id));
+    }
+    releaseFreedSolverMemory();
 }
 
 casadi::MX NMPCController::dynamics_(const casadi::MX &x, const casadi::MX &u, const double dt) {

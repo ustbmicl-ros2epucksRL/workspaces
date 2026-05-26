@@ -1,5 +1,8 @@
 #include "width_check/find_width.h"
 
+#include <algorithm>
+#include <cmath>
+
 void FindMaxFreeRegion::initMapandMaxGap(GridMap::Ptr occ_map_, double max_gap)
 {
     grid_map_ = occ_map_;
@@ -75,68 +78,42 @@ bool FindMaxFreeRegion::updatePointsRegion() {
 }
 
 void FindMaxFreeRegion::solve_max_b() {
-    casadi::Opti opti_;
-    casadi::MX b_;
+    const Eigen::Vector3d middle_coeff = line_middle.getCoeff();
+    const Eigen::Vector2d normal(middle_coeff.x(), middle_coeff.y());
+    const double normal_norm = normal.norm();
+    const double middle_b = middle_coeff.z();
 
-    b_ = opti_.variable(2, 1);
+    if (!std::isfinite(normal_norm) || normal_norm < 1e-9 ||
+        !std::isfinite(middle_b) || !std::isfinite(max_formation_gap)) {
+        line_greater.setCoeff(middle_coeff);
+        line_less.setCoeff(middle_coeff);
+        return;
+    }
 
-    casadi::MX b_ref = opti_.parameter();
-    casadi::MX max_margin = opti_.parameter();
-    casadi::MX A_ref = opti_.parameter(2);
-    casadi::MX obs_greater_ = opti_.parameter(2, pts_greater.size());
-    casadi::MX obs_less_ = opti_.parameter(2, pts_less.size());
+    const double max_offset = std::max(0.0, max_formation_gap * 0.5) * normal_norm;
+    const double eps = std::max(1e-9, normal_norm * 1e-6);
+    double lower_greater_b = middle_b - max_offset;
+    double upper_less_b = middle_b + max_offset;
 
-    casadi::MX J_ = -(b_(0) - b_(1)) * (b_(0) - b_(1));
-    opti_.minimize(J_);
+    for (const auto& pt : pts_greater) {
+        lower_greater_b = std::max(lower_greater_b, -normal.dot(pt));
+    }
+    for (const auto& pt : pts_less) {
+        upper_less_b = std::min(upper_less_b, -normal.dot(pt));
+    }
 
-    opti_.subject_to((b_(1) - b_ref) * (b_(1) - b_ref) < max_margin * max_margin * casadi::MX::dot(A_ref, A_ref));
-    opti_.subject_to((b_(0) - b_ref) * (b_(0) - b_ref) < max_margin * max_margin * casadi::MX::dot(A_ref, A_ref));
-
-    opti_.subject_to(b_(0) < b_ref);
-    for (int gt_index = 0; gt_index < pts_greater.size(); gt_index++)
-        opti_.subject_to(b_(0) > -casadi::MX::dot(A_ref, obs_greater_(casadi::Slice(), gt_index)));
-
-    opti_.subject_to(b_(1) > b_ref);
-    for (int le_index = 0; le_index < pts_less.size(); le_index++)
-        opti_.subject_to(b_(1) < -casadi::MX::dot(A_ref, obs_less_(casadi::Slice(), le_index)));
-
-    opti_.set_value(b_ref, line_middle.getb());
-    opti_.set_value(A_ref, std::vector<double>{line_middle.getCoeff().x(), line_middle.getCoeff().y()});
-    opti_.set_value(max_margin, max_formation_gap * 0.5);
-    for (int gt_index = 0; gt_index < pts_greater.size(); gt_index++)
-        opti_.set_value(obs_greater_(casadi::Slice(), gt_index),
-                        std::vector<double>{pts_greater[gt_index].x(), pts_greater[gt_index].y()});
-
-    for (int le_index = 0; le_index < pts_less.size(); le_index++)
-        opti_.set_value(obs_less_(casadi::Slice(), le_index),
-                        std::vector<double>{pts_less[le_index].x(), pts_less[le_index].y()});
-
-    casadi::Dict solver_options_;
-    solver_options_["ipopt.print_level"] = 0;
-    solver_options_["ipopt.sb"] = "yes";
-    solver_options_["ipopt.max_iter"] = 2000;
-    solver_options_["ipopt.tol"] = 1e-8;
-    solver_options_["print_time"] = 0;
-    solver_options_["ipopt.acceptable_obj_change_tol"] = 1e-6;
-    opti_.solver("ipopt", solver_options_);
-
-    opti_.set_initial(b_, std::vector<double>{line_middle.getb(), line_middle.getb()});
-
-    try
-    {
-        casadi::OptiSol solution = opti_.solve();
-        std::vector<double> result = solution.value(b_).get_elements();
-
-        Eigen::Vector3d coeff_temp = line_middle.getCoeff();
-        coeff_temp.z() = result[0];
+    Eigen::Vector3d coeff_temp = middle_coeff;
+    if (lower_greater_b >= middle_b - eps || upper_less_b <= middle_b + eps) {
+        coeff_temp.z() = middle_b;
         line_greater.setCoeff(coeff_temp);
-        coeff_temp.z() = result[1];
         line_less.setCoeff(coeff_temp);
+        return;
     }
-    catch(casadi::CasadiException& w)
-    {
-        std::cout << w.what() << std::endl;
-    }
+
+    coeff_temp.z() = lower_greater_b + eps;
+    line_greater.setCoeff(coeff_temp);
+    coeff_temp.z() = upper_less_b - eps;
+    line_less.setCoeff(coeff_temp);
 }
 
 double FindMaxFreeRegion::getWidth() {

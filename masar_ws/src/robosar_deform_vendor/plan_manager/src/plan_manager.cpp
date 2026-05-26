@@ -26,7 +26,7 @@ PlanManager::PlanManager() : nh_(), nh_pri_("~"){
     find_region_.reset(new FindMaxFreeRegion);
     find_region_->initMapandMaxGap(grid_map_, (formation_max_num - 1) * formation_interval + formation_interval);
     path_opti_.reset(new PathOptimizer);
-    path_opti_->setGridMapandObsClearance(grid_map_,obs_clearance);
+    path_opti_->setGridMapandObsClearance(grid_map_, obs_clearance, nh_pri_);
     traj_opt_.reset(new TrajectoryOptimizer(nh_pri_));
     ot_cli_.reset(new OT_Transfer);
     ot_cli_->Init(nh_pri_);

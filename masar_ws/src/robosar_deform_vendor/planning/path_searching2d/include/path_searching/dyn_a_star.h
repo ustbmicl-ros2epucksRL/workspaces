@@ -106,7 +106,7 @@ public:
 
 	std::vector<Eigen::Vector2d> astarSearchAndGetSimplePath(const double step_size, Eigen::Vector2d start_pt, Eigen::Vector2d end_pt);
 
-    std::vector<Eigen::Vector2d> refinePath(std::vector<Eigen::Vector2d> path);
+    std::vector<Eigen::Vector2d> refinePath(const std::vector<Eigen::Vector2d>& path);
 };
 
 inline double AStar::getHeu(GridNodePtr node1, GridNodePtr node2)

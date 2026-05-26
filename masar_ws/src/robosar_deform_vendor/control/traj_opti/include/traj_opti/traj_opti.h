@@ -24,7 +24,15 @@ public:
 
     typedef std::shared_ptr<NMPCController> Ptr;
 private:
+    enum ProblemMode
+    {
+        UNINITIALIZED_MODE = 0,
+        NORMAL_PROBLEM_MODE,
+        HIGH_COLLISION_PROBLEM_MODE
+    };
+
     casadi::MX dynamics_(const casadi::MX& x,const casadi::MX& u,const double dt);
+    void rebuildProblem();
 
 private:
     int T_; // horizon
@@ -34,6 +42,11 @@ private:
     int other_num;
     double dist_other_th;
     int other_constraint_horizon;
+    int rebuild_interval;
+    int solve_count;
+    int ipopt_max_iter;
+    double ipopt_max_cpu_time;
+    ProblemMode problem_mode;
 
     casadi::Opti opti_;
     casadi::MX Q;
@@ -52,6 +65,11 @@ private:
 
     std::vector<double> control0;
     std::vector<double> state;
+    std::vector<double> last_x_ref;
+    std::vector<double> last_u_ref;
+    std::vector<double> last_x_init_seed;
+    std::vector<double> last_u_init_seed;
+    std::vector<Eigen::Vector2d> last_other_positions;
 };
 
 class TrajectoryOptimizer
@@ -89,6 +107,10 @@ private:
     double stall_fallback_linear_epsilon{0.015};
     double fallback_other_clearance{0.4};
     double fallback_repulsion_gain{1.0};
+    bool nmpc_enabled{true};
+    bool nmpc_memory_guard_enabled{true};
+    bool nmpc_memory_guard_triggered{false};
+    double nmpc_rss_limit_mb{384.0};
 
     enum COST_FUNCTION_TYPE
     {

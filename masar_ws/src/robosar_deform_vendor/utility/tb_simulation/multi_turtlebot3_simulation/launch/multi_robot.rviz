@@ -3881,17 +3881,17 @@ Visualization Manager:
           Use rainbow: true
           Value: true
         - Class: rviz/Image
-          Enabled: false
-          Image Topic: /tb_0/camera/color/image_raw
-          Max Value: 1
+          Enabled: true
+          Image Topic: /tb_0/camera/depth/image_raw
+          Max Value: 5
           Median window: 5
           Min Value: 0
-          Name: Image
+          Name: tb0_depth_image
           Normalize Range: true
           Queue Size: 2
           Transport Hint: raw
           Unreliable: false
-          Value: false
+          Value: true
       Enabled: true
       Name: recored_map
     - Alpha: 1
