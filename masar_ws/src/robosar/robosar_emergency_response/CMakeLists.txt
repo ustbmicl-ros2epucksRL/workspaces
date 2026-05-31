@@ -37,7 +37,6 @@ catkin_install_python(PROGRAMS
   scripts/response_task_fixture_node.py
   scripts/response_collision_debug_node.py
   scripts/dynamic_obstacle_cloud_node.py
-  scripts/agent_cmd_safety_node.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

@@ -92,21 +92,6 @@
     <rosparam file="$(arg safety_config)" command="load"/>
   </node>
 
-  <node pkg="robosar_emergency_response" type="agent_cmd_safety_node.py"
-        name="agent_cmd_safety_node" output="screen">
-    <rosparam param="agent_names">[agent_0, agent_1, agent_2, agent_3, agent_4]</rosparam>
-    <rosparam param="response_robot_names">[tb_0, tb_1, tb_2, tb_3]</rosparam>
-    <param name="dynamic_obstacle_trigger_distance" value="1.60"/>
-    <param name="dynamic_obstacle_stop_distance" value="0.95"/>
-    <param name="dynamic_obstacle_reverse_velocity" value="0.16"/>
-    <param name="hardware_protection_layer_max_range" value="0.85"/>
-    <param name="hardware_protection_layer_min_range" value="0.02"/>
-    <param name="hardware_protection_layer_front_attraction" value="0.35"/>
-    <param name="hardware_protection_layer_threshold" value="0"/>
-    <param name="max_translational_velocity" value="0.12"/>
-    <param name="max_rotational_velocity" value="1.2"/>
-  </node>
-
   <node pkg="robosar_emergency_response" type="response_global_info_node.py"
         name="response_global_info_node" output="screen">
     <rosparam file="$(arg response_group_config)" command="load"/>

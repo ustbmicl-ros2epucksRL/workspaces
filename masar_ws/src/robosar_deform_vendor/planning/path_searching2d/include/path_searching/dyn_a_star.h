@@ -91,6 +91,10 @@ private:
 	std::priority_queue<GridNodePtr, std::vector<GridNodePtr>, NodeComparator> openSet_;
 
 	int rounds_{0};
+	Eigen::Vector2d last_adjusted_start_{0.0, 0.0};
+	Eigen::Vector2d last_adjusted_end_{0.0, 0.0};
+	bool last_start_adjusted_{false};
+	bool last_end_adjusted_{false};
 
 public:
 	typedef std::shared_ptr<AStar> Ptr;

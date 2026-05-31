@@ -76,6 +76,7 @@ class DroneDetector
   //camera param
   int img_width_, img_height_;
   double fx_,fy_,cx_,cy_;
+  double camera_body_x_, camera_body_y_, camera_body_z_;
 
   double max_pose_error_;
   double max_pose_error2_;

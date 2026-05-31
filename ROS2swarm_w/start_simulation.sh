@@ -73,6 +73,8 @@ usage() {
   WORKSPACE_DIR             工作空间路径，默认脚本所在目录。
   ROS2SWARM_USE_VGLRUN      auto、1/true 或 0/false；默认 auto。
   ROS2SWARM_VGLRUN_DEVICE   vglrun 使用的设备，默认 /dev/dri/card0。
+  ROS2SWARM_VNC_DISPLAY     容器应连接的 TurboVNC DISPLAY，例如 :1；默认由 run_vnc_gpu.sh 自动检测。
+  ROS2SWARM_XAUTHORITY      容器内 xauth 文件路径，默认优先 /tmp/.docker.xauth。
 
 脚本内可直接修改的配置变量：
   WEBOTS_WORLD
@@ -159,6 +161,12 @@ validate_transport_object_shape() {
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}}"
+
+# 宿主机重启后 TurboVNC 的 DISPLAY/xauth 可能变化；自动对齐容器内 VNC + GPU 环境。
+if [[ -f "${SCRIPT_DIR}/run_vnc_gpu.sh" ]]; then
+  source "${SCRIPT_DIR}/run_vnc_gpu.sh" --quiet
+fi
+
 USE_VGLRUN="${ROS2SWARM_USE_VGLRUN:-auto}"
 VGLRUN_DEVICE="${ROS2SWARM_VGLRUN_DEVICE:-/dev/dri/card0}"
 DRY_RUN=0
@@ -219,6 +227,9 @@ build_cmd=(colcon build --symlink-install --allow-overriding communication_inter
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[start_simulation][dry-run] workdir: $WORKSPACE_DIR"
+  if [[ "${ROS2SWARM_VNC_GPU_LOADED:-}" == "1" ]]; then
+    echo "[start_simulation][dry-run] vnc-gpu: DISPLAY=${DISPLAY:-} XAUTHORITY=${XAUTHORITY:-} VGLRUN_DEVICE=${VGLRUN_DEVICE}"
+  fi
   echo "[start_simulation][dry-run] build: $(quote_args "${build_cmd[@]}")"
   echo "[start_simulation][dry-run] source: source ./install/setup.bash"
   echo "[start_simulation][dry-run] launch: $(quote_args "${launch_cmd[@]}")"

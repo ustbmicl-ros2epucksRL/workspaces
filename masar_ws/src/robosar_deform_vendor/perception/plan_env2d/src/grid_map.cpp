@@ -7,6 +7,7 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_ = nh;
   /* get parameter */
   double x_size, y_size;
+  double camera_body_x, camera_body_y, camera_body_z;
   node_.param("grid_map/resolution", mp_.resolution_, -1.0);
   node_.param("grid_map/map_size_x", x_size, -1.0);
   node_.param("grid_map/map_size_y", y_size, -1.0);
@@ -14,6 +15,9 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_.param("grid_map/local_update_range_y", mp_.local_update_range_(1), -1.0);
   node_.param("grid_map/obstacles_inflation", mp_.obstacles_inflation_, -1.0);
 
+  node_.param("grid_map/camera_body_x", camera_body_x, 0.0);
+  node_.param("grid_map/camera_body_y", camera_body_y, 0.0);
+  node_.param("grid_map/camera_body_z", camera_body_z, 0.16);
   node_.param("grid_map/fx", mp_.fx_, -1.0);
   node_.param("grid_map/fy", mp_.fy_, -1.0);
   node_.param("grid_map/cx", mp_.cx_, -1.0);
@@ -117,9 +121,9 @@ void GridMap::initMap(ros::NodeHandle &nh)
   md_.proj_pts_to_2d.resize(projection_capacity);
   md_.pts_2d_cnt=0;
 
-  md_.cam2body_ << 0.0, 0.0, 1.0, 0.0,
-      -1.0, 0.0, 0.0, 0.0,
-      0.0, -1.0, 0.0, 0.16,
+  md_.cam2body_ << 0.0, 0.0, 1.0, camera_body_x,
+      -1.0, 0.0, 0.0, camera_body_y,
+      0.0, -1.0, 0.0, camera_body_z,
       0.0, 0.0, 0.0, 1.0;
 
   /* init callback */

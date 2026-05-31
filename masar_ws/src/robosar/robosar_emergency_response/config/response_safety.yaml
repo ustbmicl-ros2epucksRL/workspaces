@@ -4,7 +4,7 @@
 
 # ROS2swarm hardware_protection_layer 风格的力场避障检测距离，单位为米。
 # DEFORM 走廊导航需要比 burger 默认值更早接管，避免后车贴墙后才触发。
-hardware_protection_layer_max_range: 0.35
+hardware_protection_layer_max_range: 0.50
 
 # 低于该距离的激光点视作近场盲区/自反射，不参与斥力计算，单位为米。
 hardware_protection_layer_min_range: 0.08
@@ -47,22 +47,22 @@ transport_task_bypass_safety: true
 
 # 势场安全层统一采用软混合：保留 ROS2swarm HPL 的势场方向，但不直接把原命令替换成大幅掉头。
 # 软混合中避障命令的权重；0 表示完全保留原命令，1 表示完全采用限制后的避障命令。
-potential_field_safety_blend: 0.40
+potential_field_safety_blend: 0.65
 
 # 软混合前允许避障命令相对原命令改变的最大角速度增量，单位为弧度每秒。
-potential_field_safety_max_angular_delta: 0.55
+potential_field_safety_max_angular_delta: 0.80
 
 # 原命令前进时保留的最低前进速度比例；避免非极近障碍导致直接停车或倒退。
-potential_field_safety_min_forward_scale: 0.35
+potential_field_safety_min_forward_scale: 0.10
 
-# 极近距离阈值，单位为米；小于该值且原命令前进时允许硬停止/后退。
-potential_field_safety_critical_stop_distance: 0.10
+# 近距离硬保护阈值，单位为米；小于该值且原命令前进时允许硬停止/后退。
+potential_field_safety_critical_stop_distance: 0.24
 
 # Gazebo 位姿动态避障的触发距离，单位为米；搜索组机器人可能因模型尺寸/激光高度没有形成近距离 scan 点。
-dynamic_obstacle_trigger_distance: 0.65
+dynamic_obstacle_trigger_distance: 0.85
 
 # Gazebo 位姿动态避障的强制停车/后退距离，单位为米；应小于 trigger_distance。
-dynamic_obstacle_stop_distance: 0.35
+dynamic_obstacle_stop_distance: 0.42
 
 # Gazebo 位姿动态避障进入 stop_distance 内时使用的后退线速度，单位为米每秒。
 dynamic_obstacle_reverse_velocity: 0.08

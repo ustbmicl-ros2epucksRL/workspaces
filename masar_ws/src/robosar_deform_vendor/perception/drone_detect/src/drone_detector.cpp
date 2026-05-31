@@ -15,9 +15,9 @@ DroneDetector::DroneDetector(ros::NodeHandle& nodeHandle)
 
   new_depth_img_pub_ = nh_.advertise<sensor_msgs::Image>("new_depth_image", 50);
 
-  cam2body_ << 0.0, 0.0, 1.0, 0.0,
-      -1.0, 0.0, 0.0, 0.0,
-      0.0, -1.0, 0.0, 0.16,
+  cam2body_ << 0.0, 0.0, 1.0, camera_body_x_,
+      -1.0, 0.0, 0.0, camera_body_y_,
+      0.0, -1.0, 0.0, camera_body_z_,
       0.0, 0.0, 0.0, 1.0;
 
   for(int i = 0; i < max_drone_num_; i++)
@@ -41,6 +41,9 @@ void DroneDetector::readParameters()
   nh_.getParam("cam_fy", fy_);
   nh_.getParam("cam_cx", cx_);
   nh_.getParam("cam_cy", cy_);
+  nh_.param("camera_body_x", camera_body_x_, 0.0);
+  nh_.param("camera_body_y", camera_body_y_, 0.0);
+  nh_.param("camera_body_z", camera_body_z_, 0.16);
 
   nh_.getParam("pixel_ratio", pixel_ratio_);
   nh_.getParam("my_id", my_id_);

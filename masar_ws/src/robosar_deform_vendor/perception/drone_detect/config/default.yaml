@@ -1,5 +1,8 @@
 # debug_flag: true
 pixel_ratio: 0.1
+camera_body_x: 0.0
+camera_body_y: 0.0
+camera_body_z: 0.190
 estimate/max_pose_error: 0.3 # main change this
 estimate/drone_width: 0.3
 estimate/drone_height: 0.2

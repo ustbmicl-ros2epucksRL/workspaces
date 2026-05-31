@@ -23,7 +23,7 @@ Options:
   --no-rviz    Set rviz:=false.
   --collision-debug    Show collision-envelope debug markers in RViz.
   --no-collision-debug Disable collision-envelope debug markers.
-  --vglrun     Force launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE}.
+  --vglrun     Force launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE} (DRM device or X display).
   --no-vglrun  Disable vglrun.
   --isolated   Use isolated ROS/Gazebo masters. Default.
   --shared-master Reuse the caller's ROS/Gazebo masters.
@@ -82,6 +82,22 @@ has_roslaunch_arg() {
     fi
   done
   return 1
+}
+
+vglrun_target_is_available() {
+  local target="$1"
+
+  if [[ -z "$target" ]]; then
+    return 1
+  fi
+
+  if [[ "$target" == /* ]]; then
+    [[ -e "$target" ]]
+    return
+  fi
+
+  # VirtualGL also accepts X display targets such as :0 or host:0.
+  return 0
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -213,7 +229,7 @@ ROSLAUNCH_ARGS+=("${PASSTHROUGH_ARGS[@]}")
 WRAPPER=()
 case "${USE_VGLRUN,,}" in
   auto)
-    if command -v vglrun >/dev/null 2>&1 && [[ -e "$VGLRUN_DEVICE" ]]; then
+    if command -v vglrun >/dev/null 2>&1 && vglrun_target_is_available "$VGLRUN_DEVICE"; then
       WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
     fi
     ;;
@@ -268,7 +284,7 @@ export GAZEBO_MODEL_DATABASE_URI=""
 
 if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
   command -v vglrun >/dev/null 2>&1 || die "vglrun requested but not found in PATH."
-  [[ -e "$VGLRUN_DEVICE" ]] || die "vglrun device not found: $VGLRUN_DEVICE"
+  vglrun_target_is_available "$VGLRUN_DEVICE" || die "vglrun target not found: $VGLRUN_DEVICE"
 fi
 
 export TURTLEBOT3_MODEL="$MODEL"

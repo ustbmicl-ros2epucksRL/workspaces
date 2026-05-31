@@ -6,11 +6,19 @@
 
 LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
                                             velocity_calc_period_s(0.2), controller_period_s(0.2), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
-    
+    external_dynamic_obstacle_names_ = {"tb_0", "tb_1", "tb_2", "tb_3"};
+    nh_.param("enable_external_dynamic_obstacles", external_dynamic_obstacles_enabled_, true);
+    nh_.getParam("external_dynamic_obstacle_names", external_dynamic_obstacle_names_);
+    nh_.param("external_dynamic_obstacle_radius", external_dynamic_obstacle_radius_, 0.35);
+    nh_.param("external_dynamic_obstacle_repulsion_radius", external_dynamic_obstacle_repulsion_radius_, 0.85);
+
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
 
     // subscribe to occupancy grid map
     occupancy_grid_subscriber_ = nh_.subscribe("/map", 1, &LazyTrafficController::occupancyGridCallback, this);
+    if (external_dynamic_obstacles_enabled_) {
+        model_states_subscriber_ = nh_.subscribe("/gazebo/model_states", 1, &LazyTrafficController::modelStatesCallback, this);
+    }
     // Get latest fleet info from agent bringup
     status_client_ = nh_.serviceClient<robosar_messages::agent_status>("/robosar_agent_bringup_node/agent_status");
     // Get active agents from agent bringup
@@ -40,6 +48,42 @@ LazyTrafficController::~LazyTrafficController() {
 void LazyTrafficController::occupancyGridCallback(const nav_msgs::OccupancyGrid &occupancy_grid_msg) {
     std::lock_guard<std::mutex> lock(map_mutex);
     occupancy_grid_map_ = occupancy_grid_msg;
+}
+
+void LazyTrafficController::modelStatesCallback(const gazebo_msgs::ModelStates &model_states_msg) {
+    std::lock_guard<std::mutex> lock(map_mutex);
+    std::set<std::string> target_names(
+        external_dynamic_obstacle_names_.begin(),
+        external_dynamic_obstacle_names_.end()
+    );
+    external_dynamic_obstacles_.clear();
+
+    for (std::size_t i = 0; i < model_states_msg.name.size(); ++i) {
+        const std::string& name = model_states_msg.name[i];
+        if (target_names.find(name) == target_names.end()) {
+            continue;
+        }
+        if (i >= model_states_msg.pose.size() || i >= model_states_msg.twist.size()) {
+            continue;
+        }
+
+        rvo_agent_obstacle_info_s obstacle;
+        obstacle.agent_name = name;
+        obstacle.current_position = RVO::Vector2(
+            model_states_msg.pose[i].position.x,
+            model_states_msg.pose[i].position.y
+        );
+        obstacle.currrent_velocity = RVO::Vector2(
+            model_states_msg.twist[i].linear.x,
+            model_states_msg.twist[i].linear.y
+        );
+        obstacle.preferred_velocity = RVO::Vector2(0.0, 0.0);
+        obstacle.max_vel = 0.0;
+        obstacle.homing = false;
+        obstacle.collision_radius = external_dynamic_obstacle_radius_;
+        obstacle.repulsion_radius = external_dynamic_obstacle_repulsion_radius_;
+        external_dynamic_obstacles_.push_back(obstacle);
+    }
 }
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
@@ -140,7 +184,7 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
             agent.second.updatePreferredVelocity();
-            agent.second.invokeRVO(agent_map_, occupancy_grid_map_);
+            agent.second.invokeRVO(agent_map_, occupancy_grid_map_, external_dynamic_obstacles_);
 
             agent.second.sendVelocity(agent.second.rvo_velocity_);
             // Inform other subsystems of the controller status

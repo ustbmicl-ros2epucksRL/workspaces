@@ -3,6 +3,6 @@
   <xacro:include filename="$(find realsense2_description)/urdf/_d435.urdf.xacro" />
   
   <xacro:sensor_d435 name="$(arg ns)_camera" topics_ns="$(arg ns)/camera" parent="base_link" publish_pointcloud="false">
-    <origin xyz="0 0 0.16" rpy="0 0 0" />
+    <origin xyz="0 0 0.190" rpy="0 0 0" />
   </xacro:sensor_d435>  
 </robot>

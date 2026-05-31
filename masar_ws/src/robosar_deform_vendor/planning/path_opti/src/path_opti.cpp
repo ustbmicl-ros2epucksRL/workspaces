@@ -96,7 +96,7 @@ int PathOptimizer::startOpt(std::vector<Eigen::Vector2d>& path) {
 #endif
 
     if (ret < 0) {
-        ROS_ERROR("[Path Opti]:%s", lbfgs::lbfgs_strerror(ret));
+        ROS_WARN_THROTTLE(1.0, "[Path Opti]: %s; keeping A* fallback path.", lbfgs::lbfgs_strerror(ret));
         return -1;
     } else {
         for (int i = 0; i < opti_vars.size(); i++)

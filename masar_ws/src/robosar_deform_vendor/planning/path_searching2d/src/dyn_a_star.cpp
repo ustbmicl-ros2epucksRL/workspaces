@@ -165,6 +165,8 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector2d start_pt, Vector2d en
 
     const Vector2i original_start_idx = start_idx;
     const Vector2i original_end_idx = end_idx;
+    last_start_adjusted_ = false;
+    last_end_adjusted_ = false;
 
     if (checkIndexBlocked(start_idx, use_esdf_check))
     {
@@ -190,6 +192,10 @@ bool AStar::ConvertToIndexAndAdjustStartEndPoints(Vector2d start_pt, Vector2d en
             return false;
         }
     }
+    last_start_adjusted_ = (start_idx - original_start_idx).squaredNorm() != 0;
+    last_end_adjusted_ = (end_idx - original_end_idx).squaredNorm() != 0;
+    last_adjusted_start_ = Index2Coord(start_idx);
+    last_adjusted_end_ = Index2Coord(end_idx);
     return true;
 }
 
@@ -337,6 +343,8 @@ vector<Vector2d> AStar::astarSearchAndGetSimplePath(const double step_size, Vect
 
     vector<Vector2d> path;
     bool search_ok = AstarSearch(step_size, start_pt, end_pt, true);
+    const bool esdf_end_adjusted = last_end_adjusted_;
+    const Eigen::Vector2d esdf_adjusted_end = last_adjusted_end_;
     path = getPath();
 
     if (!search_ok || path.empty() || (path[0] - start_pt).norm() > 0.8) {
@@ -351,7 +359,31 @@ vector<Vector2d> AStar::astarSearchAndGetSimplePath(const double step_size, Vect
         path.push_back(start_pt);
     }
 
-    path.push_back(end_pt);
+    Eigen::Vector2d final_end = end_pt;
+    if (checkOccupancy_esdf(end_pt) && esdf_end_adjusted) {
+        final_end = esdf_adjusted_end;
+    } else if (last_end_adjusted_) {
+        final_end = last_adjusted_end_;
+    }
+
+    if ((final_end - end_pt).norm() > 1e-6) {
+        ROS_WARN_THROTTLE(
+            1.0,
+            "Requested path end %.2f %.2f is occupied; using nearby free end %.2f %.2f.",
+            end_pt.x(),
+            end_pt.y(),
+            final_end.x(),
+            final_end.y());
+    }
+
+    if (path.empty()) {
+        path.push_back(start_pt);
+    }
+    if ((path.back() - final_end).norm() > 1e-6) {
+        path.push_back(final_end);
+    } else if (path.size() == 1) {
+        path.push_back(final_end);
+    }
     return path;
 }
 

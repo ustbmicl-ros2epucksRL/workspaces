@@ -16,7 +16,7 @@ Options:
   --no-gz-gui     Set gz_gui:=false.
   --rviz          Set rviz:=true.
   --no-rviz       Set rviz:=false.
-  --vglrun        Force launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE}.
+  --vglrun        Force launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE} (DRM device or X display).
   --no-vglrun     Disable vglrun.
   --isolated      Use an isolated ROS/Gazebo master. Default.
   --shared-master Reuse the caller's ROS/Gazebo master environment.
@@ -27,7 +27,7 @@ Options:
 Environment:
   WORKSPACE_DIR              Catkin workspace root. Auto-detected when unset.
   ROBOSAR_USE_VGLRUN         auto, 1/true, or 0/false. Default: auto.
-  ROBOSAR_VGLRUN_DEVICE      DRM device for vglrun. Default: /dev/dri/card0.
+  ROBOSAR_VGLRUN_DEVICE      DRM device or X display for vglrun. Default: /dev/dri/card0.
   ROBOSAR_RESPONSE_DEMO_WORLD       Gazebo world. Default: deform_navigation_demo.world.
   ROBOSAR_GZ_GUI             Default gz_gui launch arg. Default: true.
   ROBOSAR_RVIZ               Default rviz launch arg. Default: true.
@@ -83,6 +83,22 @@ has_roslaunch_arg() {
     fi
   done
   return 1
+}
+
+vglrun_target_is_available() {
+  local target="$1"
+
+  if [[ -z "$target" ]]; then
+    return 1
+  fi
+
+  if [[ "$target" == /* ]]; then
+    [[ -e "$target" ]]
+    return
+  fi
+
+  # VirtualGL also accepts X display targets such as :0 or host:0.
+  return 0
 }
 
 source_ros_env() {
@@ -294,7 +310,7 @@ ROSLAUNCH_ARGS+=("${PASSTHROUGH_ARGS[@]}")
 WRAPPER=()
 case "${USE_VGLRUN,,}" in
   auto)
-    if command -v vglrun >/dev/null 2>&1 && [[ -e "$VGLRUN_DEVICE" ]]; then
+    if command -v vglrun >/dev/null 2>&1 && vglrun_target_is_available "$VGLRUN_DEVICE"; then
       WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
     fi
     ;;
@@ -358,7 +374,7 @@ fi
 
 if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
   command -v vglrun >/dev/null 2>&1 || die "vglrun requested but not found in PATH."
-  [[ -e "$VGLRUN_DEVICE" ]] || die "vglrun device not found: $VGLRUN_DEVICE"
+  vglrun_target_is_available "$VGLRUN_DEVICE" || die "vglrun target not found: $VGLRUN_DEVICE"
 fi
 
 export TURTLEBOT3_MODEL="$MODEL"

@@ -6,6 +6,7 @@
 #include <string>
 #include <queue>
 #include <set>
+#include <vector>
 
 // ROS stuff
 #include <geometry_msgs/Twist.h>
@@ -45,6 +46,8 @@ public:
     Agent(std::string name, ros::NodeHandle nh) : name_(name), robot_frame_id_(name + "/base_link"), nh_(nh),
                                                   ld_(0.4), v_max_(0.12), goal_threshold_(0.2), w_max_(1.2), at_rest(true),
                                                   preferred_velocity_(RVO::Vector2(0.0, 0.0)), current_velocity_(RVO::Vector2(0.0, 0.0)) {
+        nh_.param("external_dynamic_obstacle_neighbor_distance", external_obstacle_neighbor_distance_, MAX_NEIGH_DISTANCE);
+        nh_.param("external_dynamic_obstacle_repulsion_radius", external_obstacle_repulsion_radius_, 0.85);
         // Initialise publisher
         pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/robosar_agent_bringup_node/" + name + "/cmd_vel", 1);
         //pub_vel_ = nh_.advertise<geometry_msgs::Twist>("/" + name + "/cmd_vel", 1);
@@ -77,7 +80,8 @@ public:
     void clearPath(void);
     void updatePreferredVelocity(void);
     // Function to call reciprocal Velocity Obstacles
-    void invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map);
+    void invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& new_map,
+                   const std::vector<rvo_agent_obstacle_info_s>& external_obstacles = {});
 
     std::string robot_frame_id_;
     //Velocity Obstacle related members
@@ -97,7 +101,8 @@ private:
     bool checkifGoalReached();
     //Function to compute Nearest Neighbors of an agent using euclidian distance
     // Returns true if a chance of collision is detected to trigger repulsion
-    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming);
+    bool computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming,
+                                 const std::vector<rvo_agent_obstacle_info_s>& external_obstacles);
     void computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map);
     void staticObstacleBfs(const RVO::Vector2& start, const std::vector<int8_t>& map_data, 
                             const int& map_width, const int& map_height, 
@@ -118,6 +123,8 @@ private:
     double w_max_;
     double ld_; // Lookahead distance
     std::string name_;
+    double external_obstacle_neighbor_distance_;
+    double external_obstacle_repulsion_radius_;
 
     // Velocity obstacles related members
     std::vector<rvo_agent_obstacle_info_s> neighbors_list_;

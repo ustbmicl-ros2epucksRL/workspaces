@@ -10,7 +10,9 @@
 #include <thread>
 #include <mutex>
 #include<unordered_map>
+#include <vector>
 
+#include <gazebo_msgs/ModelStates.h>
 #include "robosar_messages/robosar_controller.h"
 #include "lazy_traffic_agent.hpp"
 // ROS stuff
@@ -42,6 +44,7 @@ private:
     void initialiseAgentMap(std::set<std::string> active_agents);
     void computeVelocities(const ros::TimerEvent&);
     void occupancyGridCallback(const nav_msgs::OccupancyGrid &occupancy_grid_msg);
+    void modelStatesCallback(const gazebo_msgs::ModelStates &model_states_msg);
     bool controllerServiceCallback(robosar_messages::robosar_controller::Request &req,
                                    robosar_messages::robosar_controller::Response &res);
     void updateAgentPoses(void);
@@ -58,6 +61,11 @@ private:
     // controller data structures
     std::unordered_map<std::string, Agent> agent_map_;
     std::set<std::string> active_agents;
+    std::vector<std::string> external_dynamic_obstacle_names_;
+    std::vector<rvo_agent_obstacle_info_s> external_dynamic_obstacles_;
+    bool external_dynamic_obstacles_enabled_;
+    double external_dynamic_obstacle_radius_;
+    double external_dynamic_obstacle_repulsion_radius_;
 
     // ROS stuff
     tf2_ros::Buffer tf_buffer_;
@@ -67,6 +75,7 @@ private:
     ros::Timer controller_timer_;
     ros::Subscriber status_subscriber_;
     ros::Subscriber occupancy_grid_subscriber_;
+    ros::Subscriber model_states_subscriber_;
     ros::Subscriber gui_subscriber_;
     ros::NodeHandle nh_;
     nav_msgs::OccupancyGrid occupancy_grid_map_;

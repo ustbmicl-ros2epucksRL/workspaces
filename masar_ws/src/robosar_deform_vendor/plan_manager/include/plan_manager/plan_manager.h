@@ -158,6 +158,10 @@ private:
     bool isDirectGoalApproachSafe(const Eigen::Vector2d& goal);
     Eigen::Vector2d getApproachGoal() const;
     Eigen::Vector2d sanitizeControllerGoal(const Eigen::Vector2d& goal) const;
+    bool isNavigationTargetSafe(const Eigen::Vector2d& target, double clearance) const;
+    Eigen::Vector2d recoverNavigationTarget(const Eigen::Vector2d& target,
+                                            const Eigen::Vector2d& reference,
+                                            const char* label) const;
     double normalizeFormationYaw(double yaw) const;
     double snapFormationYawForCorridor(double yaw) const;
     void applyFormationSeparation(Eigen::Vector2d& pos) const;
@@ -236,6 +240,8 @@ private:
     double formation_min_robot_clearance;
     double formation_min_robot_clearance_gain;
     double formation_min_local_goal_progress;
+    double target_recovery_clearance;
+    double target_recovery_search_radius;
     double formation_reduce_robot_fraction;
     double avoid_obs_distance_threshold;
     double formation_reduce_hold_time;

@@ -475,6 +475,7 @@ void PlanManager::trajPlanning() {
 bool PlanManager::trajController(Eigen::Vector2d goal) {
 
     goal = sanitizeControllerGoal(goal);
+    goal = recoverNavigationTarget(goal, tb_states_[tb_id].pos, "controller goal");
 
     //nmpc controller
     double w_des, v_des;
@@ -577,6 +578,82 @@ Eigen::Vector2d PlanManager::sanitizeControllerGoal(const Eigen::Vector2d& goal)
     return sanitized;
 }
 
+bool PlanManager::isNavigationTargetSafe(const Eigen::Vector2d& target, double clearance) const {
+    if (!std::isfinite(target.x()) || !std::isfinite(target.y())) {
+        return false;
+    }
+    if (!grid_map_->isInMap(target)) {
+        return false;
+    }
+    if (grid_map_->getInflateOccupancy(target) != 0) {
+        return false;
+    }
+    const double dist = grid_map_->getDistance(target);
+    return !std::isnan(dist) && (!std::isfinite(dist) || dist >= clearance);
+}
+
+Eigen::Vector2d PlanManager::recoverNavigationTarget(const Eigen::Vector2d& target,
+                                                     const Eigen::Vector2d& reference,
+                                                     const char* label) const {
+    const double clearance = std::max(0.0, target_recovery_clearance);
+    if (isNavigationTargetSafe(target, clearance)) {
+        return target;
+    }
+
+    const double resolution = std::max(0.05, grid_map_->getResolution());
+    const double max_radius = std::max(resolution, target_recovery_search_radius);
+    const int max_cells = static_cast<int>(std::ceil(max_radius / resolution));
+    Eigen::Vector2d best = target;
+    double best_score = std::numeric_limits<double>::infinity();
+    bool found = false;
+
+    for (int radius = 1; radius <= max_cells; ++radius) {
+        for (int dx = -radius; dx <= radius; ++dx) {
+            for (int dy = -radius; dy <= radius; ++dy) {
+                if (std::max(std::abs(dx), std::abs(dy)) != radius) {
+                    continue;
+                }
+
+                Eigen::Vector2d candidate = target + resolution * Eigen::Vector2d(dx, dy);
+                if (!isNavigationTargetSafe(candidate, clearance)) {
+                    continue;
+                }
+
+                const double target_dist = (candidate - target).norm();
+                const double reference_dist = (candidate - reference).norm();
+                const double free_dist = grid_map_->getDistance(candidate);
+                const double score = target_dist + 0.05 * reference_dist -
+                                     0.05 * std::min(free_dist, clearance + 0.5);
+                if (score < best_score) {
+                    best_score = score;
+                    best = candidate;
+                    found = true;
+                }
+            }
+        }
+
+        if (found) {
+            ROS_WARN_THROTTLE(1.0,
+                              "Recovered unsafe %s for tb %d from %.2f %.2f to %.2f %.2f.",
+                              label,
+                              fixed_id,
+                              target.x(),
+                              target.y(),
+                              best.x(),
+                              best.y());
+            return best;
+        }
+    }
+
+    ROS_WARN_THROTTLE(1.0,
+                      "Unable to recover unsafe %s for tb %d near %.2f %.2f; using original target.",
+                      label,
+                      fixed_id,
+                      target.x(),
+                      target.y());
+    return target;
+}
+
 double PlanManager::normalizeFormationYaw(double yaw) const {
     while (yaw > M_PI) {
         yaw -= 2.0 * M_PI;
@@ -628,16 +705,22 @@ void PlanManager::markFormationReduced() {
 }
 
 void PlanManager::pathPlanning(const ros::TimerEvent&) {
+    const Eigen::Vector2d desired_path_end = fixed_id != leader_id ? leader_path_point : tb_global_goal;
+    const Eigen::Vector2d path_end = recoverNavigationTarget(
+        desired_path_end,
+        tb_states_[tb_id].pos,
+        fixed_id == leader_id ? "leader path end" : "follower path end");
+
     if(fixed_id != leader_id) {
-        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, leader_path_point);
+        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, path_end);
     } else {
-        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, tb_global_goal);
+        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, path_end);
     }
 
     if (path_.empty()) {
         ROS_WARN_THROTTLE(1.0, "A* returned an empty path; using current pose and target as fallback path.");
         path_.push_back(tb_states_[tb_id].pos);
-        path_.push_back(fixed_id != leader_id ? leader_path_point : tb_global_goal);
+        path_.push_back(path_end);
     }
 
     const std::vector<Eigen::Vector2d> astar_fallback_path = path_;
@@ -1103,7 +1186,7 @@ void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) 
 
     double to_goal_dist = (global_goal - tb_states_[tb_id].pos).norm();
     if (to_goal_dist<forward_distance+0.2) {
-        pt = global_goal;
+        pt = recoverNavigationTarget(global_goal, tb_states_[tb_id].pos, "near-goal local point");
         return;
     }
 
@@ -1610,6 +1693,8 @@ void PlanManager::readParameters() {
     nh_pri_.param("plan_manager/formation_min_robot_clearance", formation_min_robot_clearance, 0.4);
     nh_pri_.param("plan_manager/formation_min_robot_clearance_gain", formation_min_robot_clearance_gain, 1.0);
     nh_pri_.param("plan_manager/formation_min_local_goal_progress", formation_min_local_goal_progress, 0.30);
+    nh_pri_.param("plan_manager/target_recovery_clearance", target_recovery_clearance, 0.35);
+    nh_pri_.param("plan_manager/target_recovery_search_radius", target_recovery_search_radius, 1.2);
     nh_pri_.param("plan_manager/formation_min_type", formation_min_type, 1);
     nh_pri_.param("plan_manager/formation_reduce_robot_fraction", formation_reduce_robot_fraction, 0.2);
     nh_pri_.param("plan_manager/avoid_obs_distance_threshold", avoid_obs_distance_threshold, 0.15);

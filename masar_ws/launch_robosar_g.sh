@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # 作用：启动 RoboSAR 原有 Gazebo/Tepper 搜索任务闭环栈，包括仿真、SLAM、任务生成、导航调度和控制 GUI。
 # 用法：./launch_robosar_g.sh [选项] [robosar_sim_tepper.launch_arg:=value ...]
-# 常用示例：./launch_robosar_g.sh --vglrun
+# 常用示例：./launch_robosar_g.sh
 # 常用示例：./launch_robosar_g.sh --headless --no-vglrun
 # 常用示例：./launch_robosar_g.sh --dry-run --vglrun
-# 说明：运行 ./launch_robosar_g.sh --help 可查看完整参数；按 Ctrl+C 会关闭本脚本拉起的进程组。
+# 说明：会自动加载 run_vnc_gpu.sh 对齐 VNC/GPU 环境；运行 ./launch_robosar_g.sh --help 可查看完整参数；按 Ctrl+C 会关闭本脚本拉起的进程组。
 
 set -euo pipefail
 
@@ -32,7 +32,7 @@ usage() {
 环境变量：
   WORKSPACE_DIR          masar_ws 工作空间路径；默认是脚本所在目录。
   ROBOSAR_USE_VGLRUN     auto、1/true 或 0/false；默认 auto。
-  ROBOSAR_VGLRUN_DEVICE  vglrun 使用的 DRM 设备；默认 /dev/dri/card0。
+  ROBOSAR_VGLRUN_DEVICE  vglrun 使用的 DRM 设备或 X display；默认 /dev/dri/card0。
   ROBOSAR_GZ_GUI         Gazebo GUI 默认开关；默认 true。
   ROBOSAR_RVIZ           RViz 默认开关；默认 true。
   SLAM_NODE_TYPE         SLAM 节点类型；默认 sync_slam_toolbox_node。
@@ -57,6 +57,22 @@ has_roslaunch_arg() {
 
 quote_args() {
   printf "%q " "$@"
+}
+
+vglrun_target_is_available() {
+  local target="$1"
+
+  if [[ -z "$target" ]]; then
+    return 1
+  fi
+
+  if [[ "$target" == /* ]]; then
+    [[ -e "$target" ]]
+    return
+  fi
+
+  # VirtualGL also accepts X display targets such as :0 or host:0.
+  return 0
 }
 
 source_ros_env() {
@@ -193,6 +209,9 @@ handle_interrupt() {
 }
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [[ "${ROBOSAR_AUTO_VNC_GPU:-1}" != "0" && -f "$SCRIPT_DIR/run_vnc_gpu.sh" ]]; then
+  source "$SCRIPT_DIR/run_vnc_gpu.sh" --env-only
+fi
 WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR}"
 WORKSPACE_SETUP="$WORKSPACE_DIR/devel/setup.bash"
 LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
@@ -269,7 +288,7 @@ fi
 WRAPPER=()
 case "${USE_VGLRUN,,}" in
   auto)
-    if command -v vglrun >/dev/null 2>&1 && [[ -e "$VGLRUN_DEVICE" ]]; then
+    if command -v vglrun >/dev/null 2>&1 && vglrun_target_is_available "$VGLRUN_DEVICE"; then
       WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
     fi
     ;;
@@ -305,7 +324,7 @@ if [[ "$DRY_RUN" == "0" ]]; then
 
   if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
     command -v vglrun >/dev/null 2>&1 || die "vglrun requested but not found in PATH."
-    [[ -e "$VGLRUN_DEVICE" ]] || die "vglrun device not found: $VGLRUN_DEVICE"
+    vglrun_target_is_available "$VGLRUN_DEVICE" || die "vglrun target not found: $VGLRUN_DEVICE"
   fi
 
   trap 'handle_interrupt' INT TERM

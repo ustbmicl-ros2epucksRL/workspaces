@@ -34,6 +34,8 @@ usage() {
   SPAWN_MIN_DISTANCE        最小出生间距。
   ROBOSAR_USE_VGLRUN        auto、1/true 或 0/false；默认 auto。
   ROBOSAR_VGLRUN_DEVICE     vglrun 使用的设备，默认 /dev/dri/card0。
+  ROS2SWARM_VNC_DISPLAY     容器应连接的 TurboVNC DISPLAY，例如 :1；默认由 run_vnc_gpu.sh 自动检测。
+  ROS2SWARM_XAUTHORITY      容器内 xauth 文件路径，默认优先 /tmp/.docker.xauth。
 EOF
 }
 
@@ -78,6 +80,12 @@ resolve_use_vglrun() {
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}}"
+
+# 宿主机重启后 TurboVNC 的 DISPLAY/xauth 可能变化；自动对齐容器内 VNC + GPU 环境。
+if [[ -f "${SCRIPT_DIR}/run_vnc_gpu.sh" ]]; then
+  source "${SCRIPT_DIR}/run_vnc_gpu.sh" --quiet
+fi
+
 HOST_WORKSPACE_DIR="$(cd -- "${WORKSPACE_DIR}/.." && pwd)"
 SCENE_STATE_FILE="${SCENE_STATE_FILE:-${HOST_WORKSPACE_DIR}/.robosar_scene_state.json}"
 SCENE_CONFIG="${SCENE_CONFIG:-${HOST_WORKSPACE_DIR}/masar_ws/src/robosar/robosar_sim_bringup/config/sim_scenes.json}"
@@ -238,6 +246,9 @@ bridge_cmd=(ros2 run ros1_bridge dynamic_bridge --bridge-all-topics)
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[start_robosar_webots][dry-run] workdir: $WORKSPACE_DIR"
+  if [[ "${ROS2SWARM_VNC_GPU_LOADED:-}" == "1" ]]; then
+    echo "[start_robosar_webots][dry-run] vnc-gpu: DISPLAY=${DISPLAY:-} XAUTHORITY=${XAUTHORITY:-} VGLRUN_DEVICE=${VGLRUN_DEVICE}"
+  fi
   echo "[start_robosar_webots][dry-run] build: $(quote_args "${build_cmd[@]}")"
   echo "[start_robosar_webots][dry-run] source: source ./install/setup.bash"
   echo "[start_robosar_webots][dry-run] webots: $(quote_args "${webots_launch_cmd[@]}")"

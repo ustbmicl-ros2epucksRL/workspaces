@@ -151,3 +151,10 @@ def test_soft_potential_field_safety_limits_turnaround_but_keeps_close_stop():
         critical_stop_distance=0.10,
     )
     assert critical.linear_x <= 0.0
+
+    victim_clearance_stop = apply_soft_potential_field_safety(
+        command,
+        PotentialFieldDecision(True, Twist2D(-0.12, 1.0), min_range=0.20),
+        critical_stop_distance=0.24,
+    )
+    assert victim_clearance_stop.linear_x <= 0.0

@@ -16,7 +16,7 @@ Options:
   --no-gz-gui  Set gz_gui:=false.
   --rviz       Set rviz:=true.
   --no-rviz    Set rviz:=false.
-  --vglrun     Run the Tepper simulator launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE}.
+  --vglrun     Run the Tepper simulator launch through vglrun -d ${ROBOSAR_VGLRUN_DEVICE} (DRM device or X display).
   --no-vglrun  Disable vglrun.
   --dry-run    Print the startup sequence without executing it.
   -h, --help   Show this help.
@@ -82,6 +82,22 @@ has_roslaunch_arg() {
 
 quote_args() {
   printf "%q " "$@"
+}
+
+vglrun_target_is_available() {
+  local target="$1"
+
+  if [[ -z "$target" ]]; then
+    return 1
+  fi
+
+  if [[ "$target" == /* ]]; then
+    [[ -e "$target" ]]
+    return
+  fi
+
+  # VirtualGL also accepts X display targets such as :0 or host:0.
+  return 0
 }
 
 ros_master_port() {
@@ -268,7 +284,7 @@ done
 WRAPPER=()
 case "${USE_VGLRUN,,}" in
   auto)
-    if command -v vglrun >/dev/null 2>&1 && [[ -e "$VGLRUN_DEVICE" ]]; then
+    if command -v vglrun >/dev/null 2>&1 && vglrun_target_is_available "$VGLRUN_DEVICE"; then
       WRAPPER=(vglrun -d "$VGLRUN_DEVICE")
     fi
     ;;
@@ -288,11 +304,7 @@ fi
 
 GAZEBO_CMD="GAZEBO_MODEL_DATABASE_URI='' ${VGLRUN_CMD}roslaunch robosar_sim_bringup robosar_sim_tepper.launch gz_gui:=${GZ_GUI} rviz:=${RVIZ}"
 OVERLAY_CMD="roslaunch robosar_emergency_response tepper_response_demo.launch $(quote_args "${OVERLAY_ARGS[@]}")"
-TRAFFIC_REMAP_ARGS=()
-for agent_index in 0 1 2 3 4; do
-  TRAFFIC_REMAP_ARGS+=("/robosar_agent_bringup_node/agent_${agent_index}/cmd_vel:=/robosar_agent_bringup_node/agent_${agent_index}/raw_cmd_vel")
-done
-TRAFFIC_CMD="rosrun robosar_controller robosar_traffic_controller_node $(quote_args "${TRAFFIC_REMAP_ARGS[@]}")"
+TRAFFIC_CMD="rosrun robosar_controller robosar_traffic_controller_node"
 
 echo "[tepper-response] workspace=$WORKSPACE_DIR"
 echo "[tepper-response] TURTLEBOT3_MODEL=$MODEL"
@@ -309,7 +321,7 @@ if [[ "$DRY_RUN" == "0" ]]; then
 
   if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
     command -v vglrun >/dev/null 2>&1 || die "vglrun requested but not found in PATH."
-    [[ -e "$VGLRUN_DEVICE" ]] || die "vglrun device not found: $VGLRUN_DEVICE"
+    vglrun_target_is_available "$VGLRUN_DEVICE" || die "vglrun target not found: $VGLRUN_DEVICE"
   fi
 
   trap 'handle_interrupt' INT TERM

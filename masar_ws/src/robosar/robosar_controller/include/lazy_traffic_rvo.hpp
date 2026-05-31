@@ -5,6 +5,7 @@
 
 //A class that operates on 2D
 #include "Vector2.h"
+#include <algorithm>
 #include <queue>
 #include <map>
 #include <unordered_map>
@@ -27,6 +28,8 @@ typedef struct rvo_agent_obstacle_info {
   RVO::Vector2 current_position;
   double max_vel;
   bool homing = false;
+  double collision_radius = RVO_AGENT_RADIUS;
+  double repulsion_radius = 0.5;
 } rvo_agent_obstacle_info_s;
 
 
@@ -146,11 +149,13 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
             vel_a_to_b = vel_cand - vel_b;
             RVO::Vector2 neigh_pos = n.current_position;
             float time;
-            //If homing or if neighbour is at rest/searching, reduce clearance radius to avoid deadlock
+            double neighbor_radius = std::max(static_cast<double>(RVO_AGENT_RADIUS), n.collision_radius);
+            // If homing or if neighbour is at rest/searching, reduce clearance radius to avoid deadlock.
+            // Larger external obstacles can still request a larger base radius through collision_radius.
             if(isHoming || (AreSame(vel_b.x(),0.0)&& AreSame(vel_b.y(),0.0))){
-              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR_HOMING*RVO_AGENT_RADIUS, is_collision);
+              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR_HOMING*neighbor_radius, is_collision);
             }else{
-              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*RVO_AGENT_RADIUS, is_collision);
+              time = rvoTimeToCollision(pos_curr, vel_a_to_b, neigh_pos, RVO_RADIUS_MULT_FACTOR*neighbor_radius, is_collision);
             }
             if(is_collision)  {
                 t_to_collision = -std::ceil(time / TIME_STEP);
@@ -217,8 +222,10 @@ inline RVO::Vector2 flockControlVelocity_weighted(rvo_agent_obstacle_info_s ego_
   for (const auto &n : repulsion_list)
   {
     dist_vect = ego_pos - n.current_position;
-    //vel_computed += dist_vect; //larger the distance, larger the addition in repulsion, doesn't make sense
-    vel_computed += (1-abs(dist_vect)/0.5f)*norm(dist_vect);
+    const double repulsion_radius = std::max(1e-3, n.repulsion_radius);
+    const double weight = 1.0 - abs(dist_vect) / repulsion_radius;
+    if (weight > 0.0)
+      vel_computed += weight*norm(dist_vect);
   }
   if(!repulsion_list.empty()) {
     vel_computed = norm(vel_computed)*ego_agent_info.max_vel/2;
