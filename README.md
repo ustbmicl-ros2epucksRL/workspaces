@@ -13,7 +13,7 @@
 
 | 目录                                                                         | 定位                         | 主要内容                                                                                      |
 | -------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
-| [multi-agent-neat](multi-agent-neat/README.md)                           | 独立 Git 仓库，作为本工作区的学习算法子项目索引 | VMAS 任务上的 Pure-NEAT、EA-RL、warm-start EA-RL、BenchMARL/heuristic baseline、结果分析与视频导出         |
+| [multi-agent-neat](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/README.md) | 独立 Git 仓库，作为本工作区的学习算法子模块索引 | VMAS 任务上的 Pure-NEAT、EA-RL、warm-start EA-RL、BenchMARL/heuristic baseline、结果分析与视频导出         |
 | [VectorizedMultiAgentSimulator](VectorizedMultiAgentSimulator/README.md) | VMAS 开源环境                  | PyTorch 向量化 2D 多智能体仿真器，为 `multi-agent-neat` 提供 `flocking`、`transport` 等训练/评估环境            |
 | [ROS2swarm_w](ROS2swarm_w/README.md)                                     | ROS2 + Webots 群行为验证        | Webots 场景、`robot_N` 节点、e-puck/Burger 支持、ROS2swarm 行为策略、NEAT/VMAS 策略加载、RoboSAR Webots 桥接适配 |
 | [masar_ws](masar_ws/README.md)                                           | ROS1 RoboSAR 搜救系统          | 多机器人 SLAM、任务生成、任务分配、导航控制、GUI、Gazebo 搜救闭环、Webots 桥接闭环、应急响应组与 DEFORM 集成                     |
@@ -131,7 +131,7 @@ python benchmark/analysis/ea_rl_warmup_dashboard.py \
   --budget-frames 362400000
 ```
 
-更多训练、baseline、视频导出说明见 [multi-agent-neat/benchmark/README.md](multi-agent-neat/benchmark/README.md)。
+更多训练、baseline、视频导出说明见 [multi-agent-neat/benchmark/README.md](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/benchmark/README.md)。
 
 ### 2. Webots 群行为验证
 
@@ -193,23 +193,23 @@ cd masar_ws
 
 ### VMAS 算法结果
 
-当前 `multi-agent-neat/results/analysis` 已包含 flocking 与 transport 的结果图、CSV、dashboard 和视频索引。
+`multi-agent-neat` 是独立 Git 子模块，GitHub 上的结果链接会跳转到子模块仓库查看。当前 [`multi-agent-neat/results/analysis`](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/tree/main/results/analysis) 已包含 flocking 与 transport 的结果图、CSV、dashboard 和视频索引。
 
 
 | 任务               | 最佳/当前选中策略                                | 结果摘要                                                                                | 入口                                                                                                                                                                                                                                              |
 | ---------------- | ---------------------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `vmas/flocking`  | EA-RL warmup, `rec + layerwise + 50 gen` | 6 seeds，Final IQM `-24.486`；相对 heuristic 提升 `38.896%`，相对 Pure NEAT rec 提升 `10.991%` | [算法对比](multi-agent-neat/results/analysis/flocking/algorithm_training_comparison.md), [训练曲线](multi-agent-neat/results/analysis/flocking/algorithm_training_comparison.png), [视频索引](multi-agent-neat/results/analysis/flocking/video_index.md)    |
-| `vmas/transport` | EA-RL warmup, `rec + layerwise + 50 gen` | 6 seeds，Final IQM `79.642`；相对 heuristic 提升 `3.521%`，相对 Pure NEAT rec 提升 `44.221%`   | [算法对比](multi-agent-neat/results/analysis/transport/algorithm_training_comparison.md), [训练曲线](multi-agent-neat/results/analysis/transport/algorithm_training_comparison.png), [视频索引](multi-agent-neat/results/analysis/transport/video_index.md) |
+| `vmas/flocking`  | EA-RL warmup, `rec + layerwise + 50 gen` | 6 seeds，Final IQM `-24.486`；相对 heuristic 提升 `38.896%`，相对 Pure NEAT rec 提升 `10.991%` | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/algorithm_training_comparison.md), [训练曲线](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/algorithm_training_comparison.png), [视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/video_index.md)    |
+| `vmas/transport` | EA-RL warmup, `rec + layerwise + 50 gen` | 6 seeds，Final IQM `79.642`；相对 heuristic 提升 `3.521%`，相对 Pure NEAT rec 提升 `44.221%`   | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/algorithm_training_comparison.md), [训练曲线](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/algorithm_training_comparison.png), [视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/video_index.md) |
 
 
 可视化结果还包括：
 
-- [flocking warmup 配置热力图](multi-agent-neat/results/analysis/flocking/warmup_selection_heatmap.png)
-- [flocking 最优策略轨迹](multi-agent-neat/results/analysis/flocking/best_policy_trajectory.png)
-- [flocking 最优策略时间线](multi-agent-neat/results/analysis/flocking/best_policy_timeline.png)
-- [transport warmup 配置热力图](multi-agent-neat/results/analysis/transport/warmup_selection_heatmap.png)
-- [transport 最优策略轨迹](multi-agent-neat/results/analysis/transport/best_policy_trajectory.png)
-- [transport 最优策略时间线](multi-agent-neat/results/analysis/transport/best_policy_timeline.png)
+- [flocking warmup 配置热力图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/warmup_selection_heatmap.png)
+- [flocking 最优策略轨迹](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/best_policy_trajectory.png)
+- [flocking 最优策略时间线](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/best_policy_timeline.png)
+- [transport warmup 配置热力图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/warmup_selection_heatmap.png)
+- [transport 最优策略轨迹](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/best_policy_trajectory.png)
+- [transport 最优策略时间线](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/best_policy_timeline.png)
 
 ### Webots 行为视频
 
