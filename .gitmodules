@@ -1,0 +1,6 @@
+# workspace 是顶层仓库，multi-agent-neat 是子模块。
+# multi-agent-neat 的代码修改需要在它自己的仓库中提交并推送。
+# 子模块更新后，还需要在 workspace 顶层提交并推送新的子模块索引。
+[submodule "multi-agent-neat"]
+	path = multi-agent-neat
+	url = git@github.com:ustbmicl-ros2epucksRL/multi-agent-neat.git
