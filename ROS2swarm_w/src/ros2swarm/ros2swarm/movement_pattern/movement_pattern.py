@@ -37,7 +37,7 @@ class MovementPattern(AbstractPattern):
         self.command_publisher = self.create_publisher(Twist,
                                                        self.get_namespace() + topic, 10)
         if bypass:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'bypass_protection=true, 直接发布到 {self.get_namespace()}{topic}，跳过硬件保护层')
 
     def swarm_command_false_case(self):

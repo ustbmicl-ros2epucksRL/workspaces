@@ -135,7 +135,7 @@ class IRTFLayer(Node):
                                transformed_point.item(0))
             self.angles[index] = angle
         except TransformException as ex:
-            self.get_logger().info(
+            self.get_logger().debug(
                 f'Could not transform {to_frame_rel} to {from_frame_rel}: {ex}')
                 
         # publishes a range data and detects the robots in the ranges

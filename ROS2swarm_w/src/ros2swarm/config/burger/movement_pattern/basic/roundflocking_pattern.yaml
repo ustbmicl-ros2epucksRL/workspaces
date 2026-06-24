@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     # ===== 环绕集群模式配置 (Round Flocking Pattern) =====
-    # 使用 NEAT 神经网络控制机器人围绕目标点进行集群运动
+    # 使用 VMAS 训练得到的 best_actor.pt 控制机器人围绕目标点进行集群运动
     # 
     # TurtleBot3 Burger 物理参数:
     #   - 轮径 r = 0.033m, 轮距 L = 0.16m
@@ -10,11 +10,9 @@
     #   右轮速度 = (v + L/2 × ω) / r
     #   当 v=0.15, ω=0.8 时: (0.15 + 0.08×0.8)/0.033 = 6.48 rad/s ✓
     
-    # ===== NEAT 神经网络配置 =====
-    # 基因包文件名（在checkpoints/roundflocking/目录下查找）
-    # 可指定文件名如: 'flocking_genome_package_0.3.pkl' 或 'flocking_genome_package_0.6.pkl'
-    # 留空则使用默认: 'flocking_genome_package_0.3.pkl'
-    genome_file: 'flocking_genome_package_0.3.pkl'
+    # ===== VMAS best_actor.pt 配置 =====
+    actor_path: 'best_actor.pt'
+    actor_device: 'cpu'
     
     # ===== 速度限制 =====
     max_linear_velocity: 0.15    # 最大线速度 (m/s)
@@ -25,8 +23,24 @@
     
     # ===== Webots 仿真目标配置 =====
     target_def_name: 'flocking_target'  # 环绕目标的 DEF 名称 (圆柱体)
+    target_radius: 0.6                  # 训练侧期望环绕半径
     
     # ===== 激光雷达配置 =====
     # 基于 RobotisLds01 激光雷达 (360 束)
     n_lidar_rays: 12   # 采样区间数 (将360°分为12个区间，每个30°)
-    max_range: 3.5     # 使用的最大探测范围 (m)
+    max_range: 0.20    # 使用的最大探测范围 (m，与训练时一致)
+
+    # ===== 观测归一化与动作适配 =====
+    # best_actor.pt 复用旧 Webots 成功路径：
+    # 全局位置按 3.5m 场景半宽归一化，速度和目标相对向量转到机器人本体系。
+    world_scale: 1.75
+    velocity_scale: 1.0
+    target_centric_position: false
+
+    # ===== 独立 recurrent 状态下的环半径外环 =====
+    # best_actor.pt 在训练侧共享 recurrent 状态时能稳定贴近 0.6m；
+    # Webots 旧成功路径要求每机器人独立状态，因此保留 actor 输出并叠加半径/切向稳定项。
+    ring_stabilization_enabled: true
+    actor_action_weight: 0.25
+    ring_radial_gain: 6.0
+    ring_tangential_gain: 1.0

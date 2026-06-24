@@ -1,0 +1,495 @@
+[INFO] [launch]: All log files can be found below /root/.ros/log/2026-06-23-23-43-40-726907-xxxy-Chaoqiang-R628-G2-219528
+[INFO] [launch]: Default logging verbosity is set to INFO
+==================================================
+世界文件模板    | command_world.wbt
+机器人数量      | 5
+机器人类型      | e_puck
+行为模式        | aggregation_pattern
+传感器类型      | lidar
+日志级别        | info
+位置生成方式    | 随机 (区域: X[-1.0, 1.0], Y[-1.0, 1.0])
+  障碍物数量    | 0
+==================================================
+机器人位置:
+  robot_0: (-0.521, -0.991)
+  robot_1: (0.549, 0.333)
+  robot_2: (-0.000, -0.066)
+  robot_3: (0.335, 0.185)
+  robot_4: (0.816, -0.471)
+[generate_world] 已生成世界文件: /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/worlds/generated_command_world.wbt
+[INFO] [webots-1]: process started with pid [219548]
+[INFO] [ros2_supervisor.py-2]: process started with pid [219550]
+[INFO] [global_info_supervisor-3]: process started with pid [219552]
+[INFO] [webots_controller_robot_0-4]: process started with pid [219554]
+[INFO] [epuck_node-5]: process started with pid [219556]
+[INFO] [webots_controller_robot_1-6]: process started with pid [219558]
+[INFO] [epuck_node-7]: process started with pid [219560]
+[INFO] [webots_controller_robot_2-8]: process started with pid [219562]
+[INFO] [epuck_node-9]: process started with pid [219565]
+[INFO] [webots_controller_robot_3-10]: process started with pid [219567]
+[INFO] [epuck_node-11]: process started with pid [219570]
+[INFO] [webots_controller_robot_4-12]: process started with pid [219572]
+[INFO] [epuck_node-13]: process started with pid [219574]
+[INFO] [lidar_layer-14]: process started with pid [219576]
+[INFO] [hardware_protection_layer-15]: process started with pid [219578]
+[INFO] [aggregation_pattern-16]: process started with pid [219580]
+[INFO] [robot_state_publisher-17]: process started with pid [219582]
+[INFO] [lidar_layer-18]: process started with pid [219584]
+[INFO] [hardware_protection_layer-19]: process started with pid [219586]
+[INFO] [aggregation_pattern-20]: process started with pid [219588]
+[INFO] [robot_state_publisher-21]: process started with pid [219590]
+[INFO] [lidar_layer-22]: process started with pid [219592]
+[INFO] [hardware_protection_layer-23]: process started with pid [219594]
+[INFO] [aggregation_pattern-24]: process started with pid [219596]
+[INFO] [robot_state_publisher-25]: process started with pid [219598]
+[INFO] [lidar_layer-26]: process started with pid [219600]
+[INFO] [hardware_protection_layer-27]: process started with pid [219602]
+[INFO] [aggregation_pattern-28]: process started with pid [219604]
+[INFO] [robot_state_publisher-29]: process started with pid [219606]
+[INFO] [lidar_layer-30]: process started with pid [219608]
+[INFO] [hardware_protection_layer-31]: process started with pid [219610]
+[INFO] [aggregation_pattern-32]: process started with pid [219612]
+[INFO] [robot_state_publisher-33]: process started with pid [219615]
+[robot_state_publisher-21] [INFO] [1782258221.007992505] [robot_1.robot_state_publisher]: got segment 
+[robot_state_publisher-29] [INFO] [1782258221.016630067] [robot_3.robot_state_publisher]: got segment 
+[webots_controller_robot_0-4] The specified robot (at /tmp/webots/root/1234/ipc/robot_0/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[robot_state_publisher-33] [INFO] [1782258221.042257412] [robot_4.robot_state_publisher]: got segment 
+[robot_state_publisher-17] [INFO] [1782258221.043044181] [robot_0.robot_state_publisher]: got segment 
+[robot_state_publisher-25] [INFO] [1782258221.043044177] [robot_2.robot_state_publisher]: got segment 
+[webots_controller_robot_1-6] The specified robot (at /tmp/webots/root/1234/ipc/robot_1/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[webots_controller_robot_3-10] The specified robot (at /tmp/webots/root/1234/ipc/robot_3/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[webots_controller_robot_4-12] The specified robot (at /tmp/webots/root/1234/ipc/robot_4/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[webots_controller_robot_2-8] The specified robot (at /tmp/webots/root/1234/ipc/robot_2/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[global_info_supervisor-3] The specified robot (at /tmp/webots/root/1234/ipc/GlobalInfoSupervisor/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[ros2_supervisor.py-2] The specified robot (at /tmp/webots/root/1234/ipc/Ros2Supervisor/extern) is not in the list of robots with <extern> controllers, retrying for another 50 seconds...
+[global_info_supervisor-3] [INFO] [1782258225.083272581] [GlobalInfoSupervisor.global_info_supervisor]: GlobalInfoSupervisor 启动中 (timestep=20ms, synchronization=FALSE)...
+[robot_state_publisher-21] [INFO] [1782258225.211456051] [robot_1.robot_state_publisher]: got segment RPlidar A2
+[robot_state_publisher-21] [INFO] [1782258225.211512703] [robot_1.robot_state_publisher]: got segment accelerometer
+[robot_state_publisher-21] [INFO] [1782258225.211520401] [robot_1.robot_state_publisher]: got segment appearance
+[robot_state_publisher-21] [INFO] [1782258225.211526955] [robot_1.robot_state_publisher]: got segment appearance_11
+[robot_state_publisher-21] [INFO] [1782258225.211532862] [robot_1.robot_state_publisher]: got segment appearance_13
+[robot_state_publisher-21] [INFO] [1782258225.211538949] [robot_1.robot_state_publisher]: got segment appearance_15
+[robot_state_publisher-21] [INFO] [1782258225.211545002] [robot_1.robot_state_publisher]: got segment appearance_3
+[robot_state_publisher-21] [INFO] [1782258225.211551226] [robot_1.robot_state_publisher]: got segment appearance_5
+[robot_state_publisher-21] [INFO] [1782258225.211556752] [robot_1.robot_state_publisher]: got segment appearance_7
+[robot_state_publisher-21] [INFO] [1782258225.211562031] [robot_1.robot_state_publisher]: got segment appearance_9
+[robot_state_publisher-21] [INFO] [1782258225.211568235] [robot_1.robot_state_publisher]: got segment base_link
+[robot_state_publisher-21] [INFO] [1782258225.211573921] [robot_1.robot_state_publisher]: got segment camera
+[robot_state_publisher-21] [INFO] [1782258225.211579622] [robot_1.robot_state_publisher]: got segment cap screw
+[robot_state_publisher-21] [INFO] [1782258225.211585467] [robot_1.robot_state_publisher]: got segment cap screw(0)
+[robot_state_publisher-21] [INFO] [1782258225.211589520] [robot_1.robot_state_publisher]: got segment cap screw(1)
+[robot_state_publisher-21] [INFO] [1782258225.211593102] [robot_1.robot_state_publisher]: got segment emitter
+[robot_state_publisher-21] [INFO] [1782258225.211596549] [robot_1.robot_state_publisher]: got segment gyro
+[robot_state_publisher-21] [INFO] [1782258225.211600166] [robot_1.robot_state_publisher]: got segment led0
+[robot_state_publisher-21] [INFO] [1782258225.211603723] [robot_1.robot_state_publisher]: got segment led1
+[robot_state_publisher-21] [INFO] [1782258225.211607111] [robot_1.robot_state_publisher]: got segment led2
+[robot_state_publisher-21] [INFO] [1782258225.211610402] [robot_1.robot_state_publisher]: got segment led3
+[robot_state_publisher-21] [INFO] [1782258225.211613894] [robot_1.robot_state_publisher]: got segment led4
+[robot_state_publisher-21] [INFO] [1782258225.211617271] [robot_1.robot_state_publisher]: got segment led5
+[robot_state_publisher-21] [INFO] [1782258225.211620718] [robot_1.robot_state_publisher]: got segment led6
+[robot_state_publisher-21] [INFO] [1782258225.211624065] [robot_1.robot_state_publisher]: got segment led7
+[robot_state_publisher-21] [INFO] [1782258225.211627459] [robot_1.robot_state_publisher]: got segment led8
+[robot_state_publisher-21] [INFO] [1782258225.211631952] [robot_1.robot_state_publisher]: got segment led9
+[robot_state_publisher-21] [INFO] [1782258225.211637006] [robot_1.robot_state_publisher]: got segment left wheel
+[robot_state_publisher-21] [INFO] [1782258225.211642434] [robot_1.robot_state_publisher]: got segment ls0
+[robot_state_publisher-21] [INFO] [1782258225.211646171] [robot_1.robot_state_publisher]: got segment ls1
+[robot_state_publisher-21] [INFO] [1782258225.211649486] [robot_1.robot_state_publisher]: got segment ls2
+[robot_state_publisher-21] [INFO] [1782258225.211652719] [robot_1.robot_state_publisher]: got segment ls3
+[robot_state_publisher-21] [INFO] [1782258225.211657818] [robot_1.robot_state_publisher]: got segment ls4
+[robot_state_publisher-21] [INFO] [1782258225.211662827] [robot_1.robot_state_publisher]: got segment ls5
+[robot_state_publisher-21] [INFO] [1782258225.211668230] [robot_1.robot_state_publisher]: got segment ls6
+[robot_state_publisher-21] [INFO] [1782258225.211673254] [robot_1.robot_state_publisher]: got segment ls7
+[robot_state_publisher-21] [INFO] [1782258225.211679130] [robot_1.robot_state_publisher]: got segment pi-puck
+[robot_state_publisher-21] [INFO] [1782258225.211696936] [robot_1.robot_state_publisher]: got segment pi-puck led 0
+[robot_state_publisher-21] [INFO] [1782258225.211700516] [robot_1.robot_state_publisher]: got segment pi-puck led 1
+[robot_state_publisher-21] [INFO] [1782258225.211703979] [robot_1.robot_state_publisher]: got segment pi-puck led 2
+[robot_state_publisher-21] [INFO] [1782258225.211707463] [robot_1.robot_state_publisher]: got segment pipe
+[robot_state_publisher-21] [INFO] [1782258225.211710879] [robot_1.robot_state_publisher]: got segment ps0
+[robot_state_publisher-21] [INFO] [1782258225.211714537] [robot_1.robot_state_publisher]: got segment ps0_14
+[robot_state_publisher-21] [INFO] [1782258225.211718552] [robot_1.robot_state_publisher]: got segment ps1
+[robot_state_publisher-21] [INFO] [1782258225.211721809] [robot_1.robot_state_publisher]: got segment ps1_12
+[robot_state_publisher-21] [INFO] [1782258225.211725270] [robot_1.robot_state_publisher]: got segment ps2
+[robot_state_publisher-21] [INFO] [1782258225.211728572] [robot_1.robot_state_publisher]: got segment ps2_10
+[robot_state_publisher-21] [INFO] [1782258225.211731906] [robot_1.robot_state_publisher]: got segment ps3
+[robot_state_publisher-21] [INFO] [1782258225.211735145] [robot_1.robot_state_publisher]: got segment ps3_8
+[robot_state_publisher-21] [INFO] [1782258225.211769189] [robot_1.robot_state_publisher]: got segment ps4
+[robot_state_publisher-21] [INFO] [1782258225.211774826] [robot_1.robot_state_publisher]: got segment ps4_6
+[robot_state_publisher-21] [INFO] [1782258225.211779816] [robot_1.robot_state_publisher]: got segment ps5
+[robot_state_publisher-21] [INFO] [1782258225.211785171] [robot_1.robot_state_publisher]: got segment ps5_4
+[robot_state_publisher-21] [INFO] [1782258225.211790350] [robot_1.robot_state_publisher]: got segment ps6
+[robot_state_publisher-21] [INFO] [1782258225.211795356] [robot_1.robot_state_publisher]: got segment ps6_2
+[robot_state_publisher-21] [INFO] [1782258225.211801434] [robot_1.robot_state_publisher]: got segment ps7
+[robot_state_publisher-21] [INFO] [1782258225.211806689] [robot_1.robot_state_publisher]: got segment ps7_1
+[robot_state_publisher-21] [INFO] [1782258225.211811736] [robot_1.robot_state_publisher]: got segment receiver
+[robot_state_publisher-21] [INFO] [1782258225.211816950] [robot_1.robot_state_publisher]: got segment right wheel
+[robot_state_publisher-21] [INFO] [1782258225.211821124] [robot_1.robot_state_publisher]: got segment solid
+[robot_state_publisher-21] [INFO] [1782258225.211824697] [robot_1.robot_state_publisher]: got segment solid_0
+[robot_state_publisher-21] [INFO] [1782258225.211828257] [robot_1.robot_state_publisher]: got segment speaker
+[robot_state_publisher-21] [INFO] [1782258225.211831521] [robot_1.robot_state_publisher]: got segment tof
+[robot_state_publisher-17] [INFO] [1782258225.215353368] [robot_0.robot_state_publisher]: got segment RPlidar A2
+[robot_state_publisher-17] [INFO] [1782258225.215398111] [robot_0.robot_state_publisher]: got segment accelerometer
+[robot_state_publisher-17] [INFO] [1782258225.215403905] [robot_0.robot_state_publisher]: got segment appearance
+[robot_state_publisher-17] [INFO] [1782258225.215408749] [robot_0.robot_state_publisher]: got segment appearance_11
+[robot_state_publisher-17] [INFO] [1782258225.215413725] [robot_0.robot_state_publisher]: got segment appearance_13
+[robot_state_publisher-17] [INFO] [1782258225.215418173] [robot_0.robot_state_publisher]: got segment appearance_15
+[robot_state_publisher-17] [INFO] [1782258225.215422307] [robot_0.robot_state_publisher]: got segment appearance_3
+[robot_state_publisher-17] [INFO] [1782258225.215426247] [robot_0.robot_state_publisher]: got segment appearance_5
+[robot_state_publisher-17] [INFO] [1782258225.215429760] [robot_0.robot_state_publisher]: got segment appearance_7
+[robot_state_publisher-17] [INFO] [1782258225.215433021] [robot_0.robot_state_publisher]: got segment appearance_9
+[robot_state_publisher-17] [INFO] [1782258225.215436402] [robot_0.robot_state_publisher]: got segment base_link
+[robot_state_publisher-17] [INFO] [1782258225.215440007] [robot_0.robot_state_publisher]: got segment camera
+[robot_state_publisher-17] [INFO] [1782258225.215443441] [robot_0.robot_state_publisher]: got segment cap screw
+[robot_state_publisher-17] [INFO] [1782258225.215446791] [robot_0.robot_state_publisher]: got segment cap screw(0)
+[robot_state_publisher-17] [INFO] [1782258225.215450118] [robot_0.robot_state_publisher]: got segment cap screw(1)
+[robot_state_publisher-17] [INFO] [1782258225.215453610] [robot_0.robot_state_publisher]: got segment emitter
+[robot_state_publisher-17] [INFO] [1782258225.215457053] [robot_0.robot_state_publisher]: got segment gyro
+[robot_state_publisher-17] [INFO] [1782258225.215460473] [robot_0.robot_state_publisher]: got segment led0
+[robot_state_publisher-17] [INFO] [1782258225.215463826] [robot_0.robot_state_publisher]: got segment led1
+[robot_state_publisher-17] [INFO] [1782258225.215467169] [robot_0.robot_state_publisher]: got segment led2
+[robot_state_publisher-17] [INFO] [1782258225.215470518] [robot_0.robot_state_publisher]: got segment led3
+[robot_state_publisher-17] [INFO] [1782258225.215474213] [robot_0.robot_state_publisher]: got segment led4
+[robot_state_publisher-17] [INFO] [1782258225.215478086] [robot_0.robot_state_publisher]: got segment led5
+[robot_state_publisher-17] [INFO] [1782258225.215481753] [robot_0.robot_state_publisher]: got segment led6
+[robot_state_publisher-17] [INFO] [1782258225.215485197] [robot_0.robot_state_publisher]: got segment led7
+[robot_state_publisher-17] [INFO] [1782258225.215488691] [robot_0.robot_state_publisher]: got segment led8
+[robot_state_publisher-17] [INFO] [1782258225.215492230] [robot_0.robot_state_publisher]: got segment led9
+[robot_state_publisher-17] [INFO] [1782258225.215495712] [robot_0.robot_state_publisher]: got segment left wheel
+[robot_state_publisher-17] [INFO] [1782258225.215499194] [robot_0.robot_state_publisher]: got segment ls0
+[robot_state_publisher-17] [INFO] [1782258225.215502620] [robot_0.robot_state_publisher]: got segment ls1
+[robot_state_publisher-17] [INFO] [1782258225.215505882] [robot_0.robot_state_publisher]: got segment ls2
+[robot_state_publisher-17] [INFO] [1782258225.215509330] [robot_0.robot_state_publisher]: got segment ls3
+[robot_state_publisher-17] [INFO] [1782258225.215512598] [robot_0.robot_state_publisher]: got segment ls4
+[robot_state_publisher-17] [INFO] [1782258225.215515855] [robot_0.robot_state_publisher]: got segment ls5
+[robot_state_publisher-17] [INFO] [1782258225.215519144] [robot_0.robot_state_publisher]: got segment ls6
+[robot_state_publisher-17] [INFO] [1782258225.215522442] [robot_0.robot_state_publisher]: got segment ls7
+[robot_state_publisher-17] [INFO] [1782258225.215527054] [robot_0.robot_state_publisher]: got segment pi-puck
+[robot_state_publisher-17] [INFO] [1782258225.215531067] [robot_0.robot_state_publisher]: got segment pi-puck led 0
+[robot_state_publisher-17] [INFO] [1782258225.215534705] [robot_0.robot_state_publisher]: got segment pi-puck led 1
+[robot_state_publisher-17] [INFO] [1782258225.215538425] [robot_0.robot_state_publisher]: got segment pi-puck led 2
+[robot_state_publisher-17] [INFO] [1782258225.215541986] [robot_0.robot_state_publisher]: got segment pipe
+[robot_state_publisher-17] [INFO] [1782258225.215545400] [robot_0.robot_state_publisher]: got segment ps0
+[robot_state_publisher-17] [INFO] [1782258225.215548752] [robot_0.robot_state_publisher]: got segment ps0_14
+[robot_state_publisher-17] [INFO] [1782258225.215552209] [robot_0.robot_state_publisher]: got segment ps1
+[robot_state_publisher-17] [INFO] [1782258225.215555555] [robot_0.robot_state_publisher]: got segment ps1_12
+[robot_state_publisher-17] [INFO] [1782258225.215559021] [robot_0.robot_state_publisher]: got segment ps2
+[robot_state_publisher-17] [INFO] [1782258225.215562379] [robot_0.robot_state_publisher]: got segment ps2_10
+[robot_state_publisher-17] [INFO] [1782258225.215566001] [robot_0.robot_state_publisher]: got segment ps3
+[robot_state_publisher-17] [INFO] [1782258225.215569393] [robot_0.robot_state_publisher]: got segment ps3_8
+[robot_state_publisher-17] [INFO] [1782258225.215596137] [robot_0.robot_state_publisher]: got segment ps4
+[robot_state_publisher-17] [INFO] [1782258225.215600154] [robot_0.robot_state_publisher]: got segment ps4_6
+[robot_state_publisher-17] [INFO] [1782258225.215603981] [robot_0.robot_state_publisher]: got segment ps5
+[robot_state_publisher-17] [INFO] [1782258225.215608358] [robot_0.robot_state_publisher]: got segment ps5_4
+[robot_state_publisher-17] [INFO] [1782258225.215612315] [robot_0.robot_state_publisher]: got segment ps6
+[robot_state_publisher-17] [INFO] [1782258225.215615700] [robot_0.robot_state_publisher]: got segment ps6_2
+[robot_state_publisher-17] [INFO] [1782258225.215619303] [robot_0.robot_state_publisher]: got segment ps7
+[robot_state_publisher-17] [INFO] [1782258225.215622683] [robot_0.robot_state_publisher]: got segment ps7_1
+[robot_state_publisher-17] [INFO] [1782258225.215626103] [robot_0.robot_state_publisher]: got segment receiver
+[robot_state_publisher-17] [INFO] [1782258225.215629467] [robot_0.robot_state_publisher]: got segment right wheel
+[robot_state_publisher-17] [INFO] [1782258225.215632927] [robot_0.robot_state_publisher]: got segment solid
+[robot_state_publisher-17] [INFO] [1782258225.215636429] [robot_0.robot_state_publisher]: got segment solid_0
+[robot_state_publisher-17] [INFO] [1782258225.215639829] [robot_0.robot_state_publisher]: got segment speaker
+[robot_state_publisher-17] [INFO] [1782258225.215643185] [robot_0.robot_state_publisher]: got segment tof
+[robot_state_publisher-29] [INFO] [1782258225.219217876] [robot_3.robot_state_publisher]: got segment RPlidar A2
+[robot_state_publisher-29] [INFO] [1782258225.219253993] [robot_3.robot_state_publisher]: got segment accelerometer
+[robot_state_publisher-29] [INFO] [1782258225.219259741] [robot_3.robot_state_publisher]: got segment appearance
+[robot_state_publisher-29] [INFO] [1782258225.219264146] [robot_3.robot_state_publisher]: got segment appearance_11
+[robot_state_publisher-29] [INFO] [1782258225.219268099] [robot_3.robot_state_publisher]: got segment appearance_13
+[robot_state_publisher-29] [INFO] [1782258225.219271777] [robot_3.robot_state_publisher]: got segment appearance_15
+[robot_state_publisher-29] [INFO] [1782258225.219275457] [robot_3.robot_state_publisher]: got segment appearance_3
+[robot_state_publisher-29] [INFO] [1782258225.219279081] [robot_3.robot_state_publisher]: got segment appearance_5
+[robot_state_publisher-29] [INFO] [1782258225.219282943] [robot_3.robot_state_publisher]: got segment appearance_7
+[robot_state_publisher-29] [INFO] [1782258225.219286443] [robot_3.robot_state_publisher]: got segment appearance_9
+[robot_state_publisher-29] [INFO] [1782258225.219290220] [robot_3.robot_state_publisher]: got segment base_link
+[robot_state_publisher-29] [INFO] [1782258225.219293859] [robot_3.robot_state_publisher]: got segment camera
+[robot_state_publisher-29] [INFO] [1782258225.219297366] [robot_3.robot_state_publisher]: got segment cap screw
+[robot_state_publisher-29] [INFO] [1782258225.219301043] [robot_3.robot_state_publisher]: got segment cap screw(0)
+[robot_state_publisher-29] [INFO] [1782258225.219304841] [robot_3.robot_state_publisher]: got segment cap screw(1)
+[robot_state_publisher-29] [INFO] [1782258225.219308742] [robot_3.robot_state_publisher]: got segment emitter
+[robot_state_publisher-29] [INFO] [1782258225.219314959] [robot_3.robot_state_publisher]: got segment gyro
+[robot_state_publisher-29] [INFO] [1782258225.219320989] [robot_3.robot_state_publisher]: got segment led0
+[robot_state_publisher-29] [INFO] [1782258225.219326632] [robot_3.robot_state_publisher]: got segment led1
+[robot_state_publisher-29] [INFO] [1782258225.219331941] [robot_3.robot_state_publisher]: got segment led2
+[robot_state_publisher-29] [INFO] [1782258225.219337607] [robot_3.robot_state_publisher]: got segment led3
+[robot_state_publisher-29] [INFO] [1782258225.219343162] [robot_3.robot_state_publisher]: got segment led4
+[robot_state_publisher-29] [INFO] [1782258225.219348800] [robot_3.robot_state_publisher]: got segment led5
+[robot_state_publisher-29] [INFO] [1782258225.219354027] [robot_3.robot_state_publisher]: got segment led6
+[robot_state_publisher-29] [INFO] [1782258225.219357659] [robot_3.robot_state_publisher]: got segment led7
+[robot_state_publisher-29] [INFO] [1782258225.219362457] [robot_3.robot_state_publisher]: got segment led8
+[robot_state_publisher-29] [INFO] [1782258225.219367599] [robot_3.robot_state_publisher]: got segment led9
+[robot_state_publisher-29] [INFO] [1782258225.219372983] [robot_3.robot_state_publisher]: got segment left wheel
+[robot_state_publisher-29] [INFO] [1782258225.219376899] [robot_3.robot_state_publisher]: got segment ls0
+[robot_state_publisher-29] [INFO] [1782258225.219380398] [robot_3.robot_state_publisher]: got segment ls1
+[robot_state_publisher-29] [INFO] [1782258225.219383749] [robot_3.robot_state_publisher]: got segment ls2
+[robot_state_publisher-29] [INFO] [1782258225.219387251] [robot_3.robot_state_publisher]: got segment ls3
+[robot_state_publisher-29] [INFO] [1782258225.219390718] [robot_3.robot_state_publisher]: got segment ls4
+[robot_state_publisher-29] [INFO] [1782258225.219394355] [robot_3.robot_state_publisher]: got segment ls5
+[robot_state_publisher-29] [INFO] [1782258225.219397661] [robot_3.robot_state_publisher]: got segment ls6
+[robot_state_publisher-29] [INFO] [1782258225.219400975] [robot_3.robot_state_publisher]: got segment ls7
+[robot_state_publisher-29] [INFO] [1782258225.219404611] [robot_3.robot_state_publisher]: got segment pi-puck
+[robot_state_publisher-29] [INFO] [1782258225.219407965] [robot_3.robot_state_publisher]: got segment pi-puck led 0
+[robot_state_publisher-29] [INFO] [1782258225.219411456] [robot_3.robot_state_publisher]: got segment pi-puck led 1
+[robot_state_publisher-29] [INFO] [1782258225.219414856] [robot_3.robot_state_publisher]: got segment pi-puck led 2
+[robot_state_publisher-29] [INFO] [1782258225.219418260] [robot_3.robot_state_publisher]: got segment pipe
+[robot_state_publisher-29] [INFO] [1782258225.219421690] [robot_3.robot_state_publisher]: got segment ps0
+[robot_state_publisher-29] [INFO] [1782258225.219425184] [robot_3.robot_state_publisher]: got segment ps0_14
+[robot_state_publisher-29] [INFO] [1782258225.219428615] [robot_3.robot_state_publisher]: got segment ps1
+[robot_state_publisher-29] [INFO] [1782258225.219431995] [robot_3.robot_state_publisher]: got segment ps1_12
+[robot_state_publisher-29] [INFO] [1782258225.219435385] [robot_3.robot_state_publisher]: got segment ps2
+[robot_state_publisher-29] [INFO] [1782258225.219438757] [robot_3.robot_state_publisher]: got segment ps2_10
+[robot_state_publisher-29] [INFO] [1782258225.219442054] [robot_3.robot_state_publisher]: got segment ps3
+[robot_state_publisher-29] [INFO] [1782258225.219445386] [robot_3.robot_state_publisher]: got segment ps3_8
+[robot_state_publisher-29] [INFO] [1782258225.219468992] [robot_3.robot_state_publisher]: got segment ps4
+[robot_state_publisher-29] [INFO] [1782258225.219472732] [robot_3.robot_state_publisher]: got segment ps4_6
+[robot_state_publisher-29] [INFO] [1782258225.219476337] [robot_3.robot_state_publisher]: got segment ps5
+[robot_state_publisher-29] [INFO] [1782258225.219479774] [robot_3.robot_state_publisher]: got segment ps5_4
+[robot_state_publisher-29] [INFO] [1782258225.219483161] [robot_3.robot_state_publisher]: got segment ps6
+[robot_state_publisher-29] [INFO] [1782258225.219486516] [robot_3.robot_state_publisher]: got segment ps6_2
+[robot_state_publisher-29] [INFO] [1782258225.219490337] [robot_3.robot_state_publisher]: got segment ps7
+[robot_state_publisher-29] [INFO] [1782258225.219493798] [robot_3.robot_state_publisher]: got segment ps7_1
+[robot_state_publisher-29] [INFO] [1782258225.219497344] [robot_3.robot_state_publisher]: got segment receiver
+[robot_state_publisher-29] [INFO] [1782258225.219501073] [robot_3.robot_state_publisher]: got segment right wheel
+[robot_state_publisher-29] [INFO] [1782258225.219504730] [robot_3.robot_state_publisher]: got segment solid
+[robot_state_publisher-29] [INFO] [1782258225.219508143] [robot_3.robot_state_publisher]: got segment solid_0
+[robot_state_publisher-29] [INFO] [1782258225.219511472] [robot_3.robot_state_publisher]: got segment speaker
+[robot_state_publisher-29] [INFO] [1782258225.219514787] [robot_3.robot_state_publisher]: got segment tof
+[webots_controller_robot_0-4] [INFO] [1782258225.219657739] [resource_manager]: Initialize hardware 'WebotsControl' 
+[webots_controller_robot_1-6] [INFO] [1782258225.219709614] [resource_manager]: Initialize hardware 'WebotsControl' 
+[webots_controller_robot_3-10] [INFO] [1782258225.219800741] [resource_manager]: Initialize hardware 'WebotsControl' 
+[webots_controller_robot_3-10] [INFO] [1782258225.219968660] [resource_manager]: Successful initialization of hardware 'WebotsControl'
+[webots_controller_robot_3-10] [INFO] [1782258225.220099921] [resource_manager]: 'configure' hardware 'WebotsControl' 
+[webots_controller_robot_3-10] [INFO] [1782258225.220108065] [resource_manager]: Successful 'configure' of hardware 'WebotsControl'
+[webots_controller_robot_3-10] [INFO] [1782258225.220113559] [resource_manager]: 'activate' hardware 'WebotsControl' 
+[webots_controller_robot_3-10] [INFO] [1782258225.220119576] [resource_manager]: Successful 'activate' of hardware 'WebotsControl'
+[webots_controller_robot_0-4] [INFO] [1782258225.219848451] [resource_manager]: Successful initialization of hardware 'WebotsControl'
+[webots_controller_robot_0-4] [INFO] [1782258225.219989629] [resource_manager]: 'configure' hardware 'WebotsControl' 
+[webots_controller_robot_0-4] [INFO] [1782258225.219999293] [resource_manager]: Successful 'configure' of hardware 'WebotsControl'
+[webots_controller_robot_0-4] [INFO] [1782258225.220006003] [resource_manager]: 'activate' hardware 'WebotsControl' 
+[webots_controller_robot_0-4] [INFO] [1782258225.220011794] [resource_manager]: Successful 'activate' of hardware 'WebotsControl'
+[webots_controller_robot_1-6] [INFO] [1782258225.219898595] [resource_manager]: Successful initialization of hardware 'WebotsControl'
+[webots_controller_robot_1-6] [INFO] [1782258225.220035389] [resource_manager]: 'configure' hardware 'WebotsControl' 
+[webots_controller_robot_1-6] [INFO] [1782258225.220045352] [resource_manager]: Successful 'configure' of hardware 'WebotsControl'
+[webots_controller_robot_1-6] [INFO] [1782258225.220053064] [resource_manager]: 'activate' hardware 'WebotsControl' 
+[webots_controller_robot_1-6] [INFO] [1782258225.220060119] [resource_manager]: Successful 'activate' of hardware 'WebotsControl'
+[webots_controller_robot_1-6] [INFO] [1782258225.256142582] [robot_1.robot_1]: Controller successfully connected to robot in Webots simulation.
+[webots_controller_robot_0-4] [INFO] [1782258225.256159569] [robot_0.robot_0]: Controller successfully connected to robot in Webots simulation.
+[webots_controller_robot_3-10] [INFO] [1782258225.257096448] [robot_3.robot_3]: Controller successfully connected to robot in Webots simulation.
+[INFO] [spawner-34]: process started with pid [219998]
+[INFO] [spawner-35]: process started with pid [220000]
+[INFO] [spawner-36]: process started with pid [220002]
+[INFO] [spawner-37]: process started with pid [220004]
+[INFO] [spawner-38]: process started with pid [220006]
+[INFO] [spawner-39]: process started with pid [220008]
+[robot_state_publisher-25] [INFO] [1782258225.272301358] [robot_2.robot_state_publisher]: got segment RPlidar A2
+[robot_state_publisher-25] [INFO] [1782258225.272344506] [robot_2.robot_state_publisher]: got segment accelerometer
+[robot_state_publisher-25] [INFO] [1782258225.272350210] [robot_2.robot_state_publisher]: got segment appearance
+[robot_state_publisher-25] [INFO] [1782258225.272354630] [robot_2.robot_state_publisher]: got segment appearance_11
+[robot_state_publisher-25] [INFO] [1782258225.272358494] [robot_2.robot_state_publisher]: got segment appearance_13
+[robot_state_publisher-25] [INFO] [1782258225.272362232] [robot_2.robot_state_publisher]: got segment appearance_15
+[robot_state_publisher-25] [INFO] [1782258225.272365987] [robot_2.robot_state_publisher]: got segment appearance_3
+[robot_state_publisher-25] [INFO] [1782258225.272369779] [robot_2.robot_state_publisher]: got segment appearance_5
+[robot_state_publisher-25] [INFO] [1782258225.272373437] [robot_2.robot_state_publisher]: got segment appearance_7
+[robot_state_publisher-25] [INFO] [1782258225.272376978] [robot_2.robot_state_publisher]: got segment appearance_9
+[robot_state_publisher-25] [INFO] [1782258225.272380423] [robot_2.robot_state_publisher]: got segment base_link
+[robot_state_publisher-25] [INFO] [1782258225.272384153] [robot_2.robot_state_publisher]: got segment camera
+[robot_state_publisher-25] [INFO] [1782258225.272387728] [robot_2.robot_state_publisher]: got segment cap screw
+[robot_state_publisher-25] [INFO] [1782258225.272391198] [robot_2.robot_state_publisher]: got segment cap screw(0)
+[robot_state_publisher-25] [INFO] [1782258225.272394637] [robot_2.robot_state_publisher]: got segment cap screw(1)
+[robot_state_publisher-25] [INFO] [1782258225.272398172] [robot_2.robot_state_publisher]: got segment emitter
+[robot_state_publisher-25] [INFO] [1782258225.272401860] [robot_2.robot_state_publisher]: got segment gyro
+[robot_state_publisher-25] [INFO] [1782258225.272405594] [robot_2.robot_state_publisher]: got segment led0
+[robot_state_publisher-25] [INFO] [1782258225.272409070] [robot_2.robot_state_publisher]: got segment led1
+[robot_state_publisher-25] [INFO] [1782258225.272412623] [robot_2.robot_state_publisher]: got segment led2
+[robot_state_publisher-25] [INFO] [1782258225.272416023] [robot_2.robot_state_publisher]: got segment led3
+[robot_state_publisher-25] [INFO] [1782258225.272419588] [robot_2.robot_state_publisher]: got segment led4
+[robot_state_publisher-25] [INFO] [1782258225.272423310] [robot_2.robot_state_publisher]: got segment led5
+[robot_state_publisher-25] [INFO] [1782258225.272427388] [robot_2.robot_state_publisher]: got segment led6
+[robot_state_publisher-25] [INFO] [1782258225.272430759] [robot_2.robot_state_publisher]: got segment led7
+[robot_state_publisher-25] [INFO] [1782258225.272434148] [robot_2.robot_state_publisher]: got segment led8
+[robot_state_publisher-25] [INFO] [1782258225.272437642] [robot_2.robot_state_publisher]: got segment led9
+[robot_state_publisher-25] [INFO] [1782258225.272441245] [robot_2.robot_state_publisher]: got segment left wheel
+[robot_state_publisher-25] [INFO] [1782258225.272445580] [robot_2.robot_state_publisher]: got segment ls0
+[robot_state_publisher-25] [INFO] [1782258225.272449445] [robot_2.robot_state_publisher]: got segment ls1
+[robot_state_publisher-25] [INFO] [1782258225.272452882] [robot_2.robot_state_publisher]: got segment ls2
+[robot_state_publisher-25] [INFO] [1782258225.272456537] [robot_2.robot_state_publisher]: got segment ls3
+[robot_state_publisher-25] [INFO] [1782258225.272459955] [robot_2.robot_state_publisher]: got segment ls4
+[robot_state_publisher-25] [INFO] [1782258225.272463383] [robot_2.robot_state_publisher]: got segment ls5
+[robot_state_publisher-25] [INFO] [1782258225.272466668] [robot_2.robot_state_publisher]: got segment ls6
+[robot_state_publisher-25] [INFO] [1782258225.272470125] [robot_2.robot_state_publisher]: got segment ls7
+[robot_state_publisher-25] [INFO] [1782258225.272473930] [robot_2.robot_state_publisher]: got segment pi-puck
+[robot_state_publisher-25] [INFO] [1782258225.272477623] [robot_2.robot_state_publisher]: got segment pi-puck led 0
+[robot_state_publisher-25] [INFO] [1782258225.272481626] [robot_2.robot_state_publisher]: got segment pi-puck led 1
+[robot_state_publisher-25] [INFO] [1782258225.272485133] [robot_2.robot_state_publisher]: got segment pi-puck led 2
+[robot_state_publisher-25] [INFO] [1782258225.272488542] [robot_2.robot_state_publisher]: got segment pipe
+[robot_state_publisher-25] [INFO] [1782258225.272491904] [robot_2.robot_state_publisher]: got segment ps0
+[robot_state_publisher-25] [INFO] [1782258225.272495183] [robot_2.robot_state_publisher]: got segment ps0_14
+[robot_state_publisher-25] [INFO] [1782258225.272498783] [robot_2.robot_state_publisher]: got segment ps1
+[robot_state_publisher-25] [INFO] [1782258225.272502086] [robot_2.robot_state_publisher]: got segment ps1_12
+[robot_state_publisher-25] [INFO] [1782258225.272505542] [robot_2.robot_state_publisher]: got segment ps2
+[robot_state_publisher-25] [INFO] [1782258225.272508835] [robot_2.robot_state_publisher]: got segment ps2_10
+[robot_state_publisher-25] [INFO] [1782258225.272512271] [robot_2.robot_state_publisher]: got segment ps3
+[robot_state_publisher-25] [INFO] [1782258225.272515677] [robot_2.robot_state_publisher]: got segment ps3_8
+[robot_state_publisher-25] [INFO] [1782258225.272543690] [robot_2.robot_state_publisher]: got segment ps4
+[robot_state_publisher-25] [INFO] [1782258225.272547924] [robot_2.robot_state_publisher]: got segment ps4_6
+[robot_state_publisher-25] [INFO] [1782258225.272551586] [robot_2.robot_state_publisher]: got segment ps5
+[robot_state_publisher-25] [INFO] [1782258225.272555302] [robot_2.robot_state_publisher]: got segment ps5_4
+[robot_state_publisher-25] [INFO] [1782258225.272559101] [robot_2.robot_state_publisher]: got segment ps6
+[robot_state_publisher-25] [INFO] [1782258225.272562658] [robot_2.robot_state_publisher]: got segment ps6_2
+[robot_state_publisher-25] [INFO] [1782258225.272566052] [robot_2.robot_state_publisher]: got segment ps7
+[robot_state_publisher-25] [INFO] [1782258225.272569399] [robot_2.robot_state_publisher]: got segment ps7_1
+[robot_state_publisher-25] [INFO] [1782258225.272572782] [robot_2.robot_state_publisher]: got segment receiver
+[robot_state_publisher-25] [INFO] [1782258225.272576377] [robot_2.robot_state_publisher]: got segment right wheel
+[robot_state_publisher-25] [INFO] [1782258225.272580089] [robot_2.robot_state_publisher]: got segment solid
+[robot_state_publisher-25] [INFO] [1782258225.272583438] [robot_2.robot_state_publisher]: got segment solid_0
+[robot_state_publisher-25] [INFO] [1782258225.272586837] [robot_2.robot_state_publisher]: got segment speaker
+[robot_state_publisher-25] [INFO] [1782258225.272590334] [robot_2.robot_state_publisher]: got segment tof
+[robot_state_publisher-33] [INFO] [1782258225.273401939] [robot_4.robot_state_publisher]: got segment RPlidar A2
+[robot_state_publisher-33] [INFO] [1782258225.273439045] [robot_4.robot_state_publisher]: got segment accelerometer
+[robot_state_publisher-33] [INFO] [1782258225.273444425] [robot_4.robot_state_publisher]: got segment appearance
+[robot_state_publisher-33] [INFO] [1782258225.273448913] [robot_4.robot_state_publisher]: got segment appearance_11
+[robot_state_publisher-33] [INFO] [1782258225.273452905] [robot_4.robot_state_publisher]: got segment appearance_13
+[robot_state_publisher-33] [INFO] [1782258225.273456740] [robot_4.robot_state_publisher]: got segment appearance_15
+[robot_state_publisher-33] [INFO] [1782258225.273460510] [robot_4.robot_state_publisher]: got segment appearance_3
+[robot_state_publisher-33] [INFO] [1782258225.273464879] [robot_4.robot_state_publisher]: got segment appearance_5
+[robot_state_publisher-33] [INFO] [1782258225.273468732] [robot_4.robot_state_publisher]: got segment appearance_7
+[robot_state_publisher-33] [INFO] [1782258225.273472379] [robot_4.robot_state_publisher]: got segment appearance_9
+[robot_state_publisher-33] [INFO] [1782258225.273475873] [robot_4.robot_state_publisher]: got segment base_link
+[robot_state_publisher-33] [INFO] [1782258225.273479681] [robot_4.robot_state_publisher]: got segment camera
+[robot_state_publisher-33] [INFO] [1782258225.273483534] [robot_4.robot_state_publisher]: got segment cap screw
+[robot_state_publisher-33] [INFO] [1782258225.273487379] [robot_4.robot_state_publisher]: got segment cap screw(0)
+[robot_state_publisher-33] [INFO] [1782258225.273491114] [robot_4.robot_state_publisher]: got segment cap screw(1)
+[robot_state_publisher-33] [INFO] [1782258225.273494765] [robot_4.robot_state_publisher]: got segment emitter
+[robot_state_publisher-33] [INFO] [1782258225.273498374] [robot_4.robot_state_publisher]: got segment gyro
+[robot_state_publisher-33] [INFO] [1782258225.273502065] [robot_4.robot_state_publisher]: got segment led0
+[robot_state_publisher-33] [INFO] [1782258225.273505559] [robot_4.robot_state_publisher]: got segment led1
+[robot_state_publisher-33] [INFO] [1782258225.273509132] [robot_4.robot_state_publisher]: got segment led2
+[robot_state_publisher-33] [INFO] [1782258225.273512399] [robot_4.robot_state_publisher]: got segment led3
+[robot_state_publisher-33] [INFO] [1782258225.273516072] [robot_4.robot_state_publisher]: got segment led4
+[robot_state_publisher-33] [INFO] [1782258225.273521559] [robot_4.robot_state_publisher]: got segment led5
+[robot_state_publisher-33] [INFO] [1782258225.273527340] [robot_4.robot_state_publisher]: got segment led6
+[robot_state_publisher-33] [INFO] [1782258225.273532254] [robot_4.robot_state_publisher]: got segment led7
+[robot_state_publisher-33] [INFO] [1782258225.273535683] [robot_4.robot_state_publisher]: got segment led8
+[robot_state_publisher-33] [INFO] [1782258225.273538993] [robot_4.robot_state_publisher]: got segment led9
+[robot_state_publisher-33] [INFO] [1782258225.273542333] [robot_4.robot_state_publisher]: got segment left wheel
+[robot_state_publisher-33] [INFO] [1782258225.273546013] [robot_4.robot_state_publisher]: got segment ls0
+[robot_state_publisher-33] [INFO] [1782258225.273549693] [robot_4.robot_state_publisher]: got segment ls1
+[robot_state_publisher-33] [INFO] [1782258225.273553109] [robot_4.robot_state_publisher]: got segment ls2
+[robot_state_publisher-33] [INFO] [1782258225.273556479] [robot_4.robot_state_publisher]: got segment ls3
+[robot_state_publisher-33] [INFO] [1782258225.273559798] [robot_4.robot_state_publisher]: got segment ls4
+[robot_state_publisher-33] [INFO] [1782258225.273563164] [robot_4.robot_state_publisher]: got segment ls5
+[robot_state_publisher-33] [INFO] [1782258225.273566480] [robot_4.robot_state_publisher]: got segment ls6
+[robot_state_publisher-33] [INFO] [1782258225.273569874] [robot_4.robot_state_publisher]: got segment ls7
+[robot_state_publisher-33] [INFO] [1782258225.273573605] [robot_4.robot_state_publisher]: got segment pi-puck
+[robot_state_publisher-33] [INFO] [1782258225.273577159] [robot_4.robot_state_publisher]: got segment pi-puck led 0
+[robot_state_publisher-33] [INFO] [1782258225.273580918] [robot_4.robot_state_publisher]: got segment pi-puck led 1
+[robot_state_publisher-33] [INFO] [1782258225.273584533] [robot_4.robot_state_publisher]: got segment pi-puck led 2
+[robot_state_publisher-33] [INFO] [1782258225.273588031] [robot_4.robot_state_publisher]: got segment pipe
+[robot_state_publisher-33] [INFO] [1782258225.273591542] [robot_4.robot_state_publisher]: got segment ps0
+[robot_state_publisher-33] [INFO] [1782258225.273595028] [robot_4.robot_state_publisher]: got segment ps0_14
+[robot_state_publisher-33] [INFO] [1782258225.273598774] [robot_4.robot_state_publisher]: got segment ps1
+[robot_state_publisher-33] [INFO] [1782258225.273602142] [robot_4.robot_state_publisher]: got segment ps1_12
+[robot_state_publisher-33] [INFO] [1782258225.273605770] [robot_4.robot_state_publisher]: got segment ps2
+[robot_state_publisher-33] [INFO] [1782258225.273609180] [robot_4.robot_state_publisher]: got segment ps2_10
+[robot_state_publisher-33] [INFO] [1782258225.273612581] [robot_4.robot_state_publisher]: got segment ps3
+[robot_state_publisher-33] [INFO] [1782258225.273617372] [robot_4.robot_state_publisher]: got segment ps3_8
+[robot_state_publisher-33] [INFO] [1782258225.273647808] [robot_4.robot_state_publisher]: got segment ps4
+[robot_state_publisher-33] [INFO] [1782258225.273652755] [robot_4.robot_state_publisher]: got segment ps4_6
+[robot_state_publisher-33] [INFO] [1782258225.273656797] [robot_4.robot_state_publisher]: got segment ps5
+[robot_state_publisher-33] [INFO] [1782258225.273660937] [robot_4.robot_state_publisher]: got segment ps5_4
+[robot_state_publisher-33] [INFO] [1782258225.273664886] [robot_4.robot_state_publisher]: got segment ps6
+[robot_state_publisher-33] [INFO] [1782258225.273668551] [robot_4.robot_state_publisher]: got segment ps6_2
+[robot_state_publisher-33] [INFO] [1782258225.273672026] [robot_4.robot_state_publisher]: got segment ps7
+[robot_state_publisher-33] [INFO] [1782258225.273675368] [robot_4.robot_state_publisher]: got segment ps7_1
+[robot_state_publisher-33] [INFO] [1782258225.273678842] [robot_4.robot_state_publisher]: got segment receiver
+[robot_state_publisher-33] [INFO] [1782258225.273688873] [robot_4.robot_state_publisher]: got segment right wheel
+[robot_state_publisher-33] [INFO] [1782258225.273693014] [robot_4.robot_state_publisher]: got segment solid
+[robot_state_publisher-33] [INFO] [1782258225.273696545] [robot_4.robot_state_publisher]: got segment solid_0
+[robot_state_publisher-33] [INFO] [1782258225.273700127] [robot_4.robot_state_publisher]: got segment speaker
+[robot_state_publisher-33] [INFO] [1782258225.273703570] [robot_4.robot_state_publisher]: got segment tof
+[webots_controller_robot_4-12] [INFO] [1782258225.275762127] [resource_manager]: Initialize hardware 'WebotsControl' 
+[webots_controller_robot_4-12] [INFO] [1782258225.276011822] [resource_manager]: Successful initialization of hardware 'WebotsControl'
+[webots_controller_robot_4-12] [INFO] [1782258225.276212403] [resource_manager]: 'configure' hardware 'WebotsControl' 
+[webots_controller_robot_4-12] [INFO] [1782258225.276224854] [resource_manager]: Successful 'configure' of hardware 'WebotsControl'
+[webots_controller_robot_4-12] [INFO] [1782258225.276233287] [resource_manager]: 'activate' hardware 'WebotsControl' 
+[webots_controller_robot_4-12] [INFO] [1782258225.276240952] [resource_manager]: Successful 'activate' of hardware 'WebotsControl'
+[webots_controller_robot_2-8] [INFO] [1782258225.276035539] [resource_manager]: Initialize hardware 'WebotsControl' 
+[webots_controller_robot_2-8] [INFO] [1782258225.276383139] [resource_manager]: Successful initialization of hardware 'WebotsControl'
+[webots_controller_robot_2-8] [INFO] [1782258225.276654686] [resource_manager]: 'configure' hardware 'WebotsControl' 
+[webots_controller_robot_2-8] [INFO] [1782258225.276669478] [resource_manager]: Successful 'configure' of hardware 'WebotsControl'
+[webots_controller_robot_2-8] [INFO] [1782258225.276679909] [resource_manager]: 'activate' hardware 'WebotsControl' 
+[webots_controller_robot_2-8] [INFO] [1782258225.276702511] [resource_manager]: Successful 'activate' of hardware 'WebotsControl'
+[webots_controller_robot_2-8] [INFO] [1782258225.307923979] [robot_2.robot_2]: Controller successfully connected to robot in Webots simulation.
+[webots_controller_robot_4-12] [INFO] [1782258225.308261863] [robot_4.robot_4]: Controller successfully connected to robot in Webots simulation.
+[INFO] [spawner-40]: process started with pid [220014]
+[INFO] [spawner-41]: process started with pid [220016]
+[INFO] [spawner-42]: process started with pid [220018]
+[INFO] [spawner-43]: process started with pid [220020]
+[global_info_supervisor-3] [INFO] [1782258225.532603933] [GlobalInfoSupervisor.global_info_supervisor]: GlobalInfoSupervisor 初始化完成 - 找到 5 个机器人, 0 个物体
+[spawner-35] [INFO] [1782258225.609362680] [robot_1.spawner_joint_state_broadcaster]: waiting for service /robot_1/controller_manager/list_controllers to become available...
+[spawner-34] [INFO] [1782258225.610830153] [robot_1.spawner_diffdrive_controller]: waiting for service /robot_1/controller_manager/list_controllers to become available...
+[webots_controller_robot_1-6] [INFO] [1782258225.615610840] [robot_1.controller_manager]: Loading controller 'joint_state_broadcaster'
+[spawner-36] [INFO] [1782258225.616657052] [robot_0.spawner_diffdrive_controller]: waiting for service /robot_0/controller_manager/list_controllers to become available...
+[spawner-38] [INFO] [1782258225.618571552] [robot_3.spawner_diffdrive_controller]: waiting for service /robot_3/controller_manager/list_controllers to become available...
+[spawner-37] [INFO] [1782258225.619280628] [robot_0.spawner_joint_state_broadcaster]: waiting for service /robot_0/controller_manager/list_controllers to become available...
+[webots_controller_robot_0-4] [INFO] [1782258225.620976461] [robot_0.controller_manager]: Loading controller 'diffdrive_controller'
+[spawner-39] [INFO] [1782258225.627579904] [robot_3.spawner_joint_state_broadcaster]: waiting for service /robot_3/controller_manager/list_controllers to become available...
+[webots_controller_robot_3-10] [INFO] [1782258225.632370863] [robot_3.controller_manager]: Loading controller 'joint_state_broadcaster'
+[spawner-40] [INFO] [1782258225.667143553] [robot_2.spawner_diffdrive_controller]: waiting for service /robot_2/controller_manager/list_controllers to become available...
+[spawner-41] [INFO] [1782258225.673852061] [robot_2.spawner_joint_state_broadcaster]: waiting for service /robot_2/controller_manager/list_controllers to become available...
+[spawner-43] [INFO] [1782258225.673956196] [robot_4.spawner_joint_state_broadcaster]: waiting for service /robot_4/controller_manager/list_controllers to become available...
+[spawner-42] [INFO] [1782258225.675547218] [robot_4.spawner_diffdrive_controller]: waiting for service /robot_4/controller_manager/list_controllers to become available...
+[spawner-36] [INFO] [1782258225.676505550] [robot_0.spawner_diffdrive_controller]: [94mLoaded [1mdiffdrive_controller[0m
+[spawner-35] [INFO] [1782258225.676534642] [robot_1.spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[spawner-39] [INFO] [1782258225.696496169] [robot_3.spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[webots_controller_robot_1-6] [INFO] [1782258225.698113076] [robot_1.controller_manager]: Loading controller 'diffdrive_controller'
+[spawner-34] [INFO] [1782258225.755465930] [robot_1.spawner_diffdrive_controller]: [94mLoaded [1mdiffdrive_controller[0m
+[webots_controller_robot_1-6] [INFO] [1782258225.758235004] [robot_1.controller_manager]: Configuring controller 'diffdrive_controller'
+[webots_controller_robot_4-12] [INFO] [1782258225.780502568] [robot_4.controller_manager]: Loading controller 'joint_state_broadcaster'
+[webots_controller_robot_0-4] [INFO] [1782258225.788530058] [robot_0.controller_manager]: Configuring controller 'diffdrive_controller'
+[webots_controller_robot_3-10] [INFO] [1782258225.792134247] [robot_3.controller_manager]: Configuring controller 'joint_state_broadcaster'
+[webots_controller_robot_3-10] [INFO] [1782258225.792249649] [robot_3.joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[webots_controller_robot_4-12] [INFO] [1782258225.812627674] [robot_4.controller_manager]: Loading controller 'diffdrive_controller'
+[spawner-34] [INFO] [1782258225.812715493] [robot_1.spawner_diffdrive_controller]: [92mConfigured and activated [1mdiffdrive_controller[0m
+[spawner-43] [INFO] [1782258225.813431896] [robot_4.spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[webots_controller_robot_1-6] [INFO] [1782258225.813712545] [robot_1.controller_manager]: Configuring controller 'joint_state_broadcaster'
+[webots_controller_robot_1-6] [INFO] [1782258225.813774028] [robot_1.joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[spawner-36] [INFO] [1782258225.853979649] [robot_0.spawner_diffdrive_controller]: [92mConfigured and activated [1mdiffdrive_controller[0m
+[webots_controller_robot_4-12] [INFO] [1782258225.854648881] [robot_4.controller_manager]: Configuring controller 'joint_state_broadcaster'
+[webots_controller_robot_4-12] [INFO] [1782258225.854779437] [robot_4.joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[spawner-39] [INFO] [1782258225.854796273] [robot_3.spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[spawner-42] [INFO] [1782258225.855508853] [robot_4.spawner_diffdrive_controller]: [94mLoaded [1mdiffdrive_controller[0m
+[webots_controller_robot_3-10] [INFO] [1782258225.873451768] [robot_3.controller_manager]: Loading controller 'diffdrive_controller'
+[webots_controller_robot_0-4] [INFO] [1782258225.873655166] [robot_0.controller_manager]: Loading controller 'joint_state_broadcaster'
+[spawner-35] [INFO] [1782258225.880695967] [robot_1.spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[webots_controller_robot_4-12] [INFO] [1782258225.880879387] [robot_4.controller_manager]: Configuring controller 'diffdrive_controller'
+[spawner-37] [INFO] [1782258225.918637179] [robot_0.spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[spawner-38] [INFO] [1782258225.918924849] [robot_3.spawner_diffdrive_controller]: [94mLoaded [1mdiffdrive_controller[0m
+[webots_controller_robot_0-4] [INFO] [1782258225.921552581] [robot_0.controller_manager]: Configuring controller 'joint_state_broadcaster'
+[webots_controller_robot_3-10] [INFO] [1782258225.921597363] [robot_3.controller_manager]: Configuring controller 'diffdrive_controller'
+[webots_controller_robot_0-4] [INFO] [1782258225.921636242] [robot_0.joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[webots_controller_robot_2-8] [INFO] [1782258225.928926943] [robot_2.controller_manager]: Loading controller 'joint_state_broadcaster'
+[spawner-43] [INFO] [1782258225.940109743] [robot_4.spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[spawner-41] [INFO] [1782258225.960896494] [robot_2.spawner_joint_state_broadcaster]: [94mLoaded [1mjoint_state_broadcaster[0m
+[webots_controller_robot_2-8] [INFO] [1782258225.963029676] [robot_2.controller_manager]: Configuring controller 'joint_state_broadcaster'
+[webots_controller_robot_2-8] [INFO] [1782258225.963124483] [robot_2.joint_state_broadcaster]: 'joints' or 'interfaces' parameter is empty. All available state interfaces will be published
+[spawner-37] [INFO] [1782258225.980888347] [robot_0.spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[spawner-38] [INFO] [1782258225.981175981] [robot_3.spawner_diffdrive_controller]: [92mConfigured and activated [1mdiffdrive_controller[0m
+[spawner-42] [INFO] [1782258225.982112828] [robot_4.spawner_diffdrive_controller]: [92mConfigured and activated [1mdiffdrive_controller[0m
+[INFO] [spawner-34]: process has finished cleanly [pid 219998]
+[webots_controller_robot_2-8] [INFO] [1782258226.016124980] [robot_2.controller_manager]: Loading controller 'diffdrive_controller'
+[spawner-41] [INFO] [1782258226.017141777] [robot_2.spawner_joint_state_broadcaster]: [92mConfigured and activated [1mjoint_state_broadcaster[0m
+[INFO] [spawner-36]: process has finished cleanly [pid 220002]
+[INFO] [spawner-39]: process has finished cleanly [pid 220008]
+[INFO] [spawner-35]: process has finished cleanly [pid 220000]
+[spawner-40] [INFO] [1782258226.058735030] [robot_2.spawner_diffdrive_controller]: [94mLoaded [1mdiffdrive_controller[0m
+[webots_controller_robot_2-8] [INFO] [1782258226.061111889] [robot_2.controller_manager]: Configuring controller 'diffdrive_controller'
+[INFO] [spawner-43]: process has finished cleanly [pid 220020]
+[spawner-40] [INFO] [1782258226.124140969] [robot_2.spawner_diffdrive_controller]: [92mConfigured and activated [1mdiffdrive_controller[0m
+[INFO] [spawner-42]: process has finished cleanly [pid 220018]
+[INFO] [spawner-38]: process has finished cleanly [pid 220006]
+[INFO] [spawner-37]: process has finished cleanly [pid 220004]
+[INFO] [spawner-41]: process has finished cleanly [pid 220016]
+[INFO] [spawner-40]: process has finished cleanly [pid 220014]
+[global_info_supervisor-3] [INFO] [1782258227.364450975] [GlobalInfoSupervisor.global_info_supervisor]: Webots 录制视角已调整: position=[0.0, 0.0, 6.0], fov=1.1
+[global_info_supervisor-3] [INFO] [1782258227.461354273] [GlobalInfoSupervisor.global_info_supervisor]: Webots 3D 场景录制开始: /root/workspace/ROS2swarm_w/videos/aggregation_pattern.mp4 (1600x900, codec=0, quality=90)
+[global_info_supervisor-3] [INFO] [1782258263.279747787] [GlobalInfoSupervisor.global_info_supervisor]: Webots 3D 场景录制停止，正在保存: /root/workspace/ROS2swarm_w/videos/aggregation_pattern.mp4
+[global_info_supervisor-3] [INFO] [1782258272.114028518] [GlobalInfoSupervisor.global_info_supervisor]: Webots 电影保存完成: /root/workspace/ROS2swarm_w/videos/aggregation_pattern.mp4

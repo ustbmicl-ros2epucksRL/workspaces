@@ -4,6 +4,7 @@
 # 可直接修改的全局变量：
 #   WEBOTS_WORLD / PATTERN / NUMBER_ROBOTS / TOTAL_ROBOTS
 #   LOG_LEVEL / ROBOT / SENSOR_TYPE
+#   WEBOTS_MODE / WEBOTS_GUI
 #   X_MIN / X_MAX / Y_MIN / Y_MAX / MIN_DISTANCE / Z_HEIGHT
 #   DRIVING_SWARM / LOGGING / NUM_OBSTACLES / TRANSPORT_OBJECT_SHAPE
 #     这些变量会直接透传给 create_enviroment.launch.py。
@@ -18,14 +19,17 @@ set -euo pipefail
 # Webots 世界模板文件名。
 WEBOTS_WORLD="command_world.wbt"                # 例如：command_world.wbt
 # 行为模式 launch 名称。
-PATTERN="transport_pattern"
-# 例如：transport_pattern、roundflocking_pattern、navigation_pattern、aggregation_pattern、attraction_pattern、dispersion_pattern、drive_pattern、
+PATTERN="roundflocking_pattern"
+# 例如：transport_pattern、roundflocking_pattern、navigation_pattern、aggregation_pattern、attraction_pattern、dispersion_pattern、drive_pattern。
 # 当前实例中实际生成并启动的机器人数量。
 NUMBER_ROBOTS="5"                               # 正整数
 # 实验总机器人数量，主要用于测量/日志相关流程。
 TOTAL_ROBOTS="10"                               # 正整数
 # ROS 日志级别。
 LOG_LEVEL="info"                                # debug、info、warn、error、fatal
+# Webots 运行模式和渲染开关。
+WEBOTS_MODE="realtime"                          # pause、realtime、fast、rendering
+WEBOTS_GUI="true"                               # true、false
 # 机器人类型。
 ROBOT="e_puck"                                  # e_puck、burger
 # 传感器类型。
@@ -72,7 +76,7 @@ usage() {
 环境变量：
   WORKSPACE_DIR             工作空间路径，默认脚本所在目录。
   ROS2SWARM_USE_VGLRUN      auto、1/true 或 0/false；默认 auto。
-  ROS2SWARM_VGLRUN_DEVICE   vglrun 使用的设备，默认 /dev/dri/card0。
+  ROS2SWARM_VGLRUN_DEVICE   vglrun 使用的设备，默认 /dev/dri/card2。
   ROS2SWARM_VNC_DISPLAY     容器应连接的 TurboVNC DISPLAY，例如 :1；默认由 run_vnc_gpu.sh 自动检测。
   ROS2SWARM_XAUTHORITY      容器内 xauth 文件路径，默认优先 /tmp/.docker.xauth。
 
@@ -87,6 +91,10 @@ usage() {
     实验总机器人数量，主要给测量/日志流程使用；正整数。
   LOG_LEVEL
     ROS 日志级别；可选 debug、info、warn、error、fatal。
+  WEBOTS_MODE
+    Webots 运行模式；可选 pause、realtime、fast、rendering。
+  WEBOTS_GUI
+    是否启用 Webots GUI/rendering；可选 true、false。
   ROBOT
     机器人类型；可选 e_puck、burger。
   SENSOR_TYPE
@@ -168,7 +176,7 @@ if [[ -f "${SCRIPT_DIR}/run_vnc_gpu.sh" ]]; then
 fi
 
 USE_VGLRUN="${ROS2SWARM_USE_VGLRUN:-auto}"
-VGLRUN_DEVICE="${ROS2SWARM_VGLRUN_DEVICE:-/dev/dri/card0}"
+VGLRUN_DEVICE="${ROS2SWARM_VGLRUN_DEVICE:-/dev/dri/card2}"
 DRY_RUN=0
 
 while (($#)); do
@@ -204,6 +212,8 @@ launch_cmd=(
   number_robots:=${NUMBER_ROBOTS}
   total_robots:=${TOTAL_ROBOTS}
   log_level:=${LOG_LEVEL}
+  webots_mode:=${WEBOTS_MODE}
+  webots_gui:=${WEBOTS_GUI}
   robot:=${ROBOT}
   sensor_type:=${SENSOR_TYPE}
   x_min:=${X_MIN}

@@ -1,12 +1,12 @@
 /**:
   ros__parameters:
     # ===== 导航模式配置 (Navigation Pattern) =====
-    # 使用 NEAT 神经网络控制机器人导航到各自的目标点
+    # 使用 VMAS 训练得到的 best_actor.pt 控制机器人导航到各自的目标点
     # 每个机器人有专属的目标点，目标点颜色不同且可进入
     
-    # ===== NEAT 神经网络配置 =====
-    # 基因包文件名（在checkpoints/navigation/目录下查找）
-    genome_file: 'navigation_genome_package.pkl'
+    # ===== VMAS best_actor.pt 配置 =====
+    actor_path: 'best_actor.pt'
+    actor_device: 'cpu'
     
     # ===== 速度限制 (基于 TurtleBot3 Burger 参数) =====
     # TurtleBot3 Burger 物理参数:
@@ -29,7 +29,13 @@
     # 网络输入维度: 位置(2) + 速度(2) + 目标相对位置(2) + 激光雷达(12) = 18
     collisions: true
     n_lidar_rays: 12
-    max_range: 0.2
+    max_range: 0.35
     
     # ===== 观测归一化配置 =====
     world_scale: 1.75
+    velocity_scale: 0.0
+    action_mapping: 'heading'
+    turn_gain: 2.0
+    min_action_norm: 0.02
+    allow_reverse: true
+    diagnostics_period: 2.0

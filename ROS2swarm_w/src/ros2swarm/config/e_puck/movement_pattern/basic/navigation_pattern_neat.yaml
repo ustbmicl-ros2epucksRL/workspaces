@@ -1,0 +1,29 @@
+/**:
+  ros__parameters:
+    # ===== 导航模式配置 (Navigation Pattern NEAT) =====
+    # 使用旧 Webots 成功路径的 NEAT 控制器。
+
+    # ===== NEAT 神经网络配置 =====
+    # 当前文件内容与历史 navigation_genome_package_gen49.pkl 一致，只是文件名已改短。
+    genome_file: 'navigation_genome_package.pkl'
+
+    # ===== 速度限制 (基于 E-puck v2 安全参数) =====
+    max_linear_velocity: 0.12
+    max_angular_velocity: 1.0
+
+    # ===== 控制周期 (单位: 秒) =====
+    timer_period: 0.1
+
+    # ===== Webots 仿真对象名称 =====
+    target_def_prefix: 'navigation_target'
+
+    # ===== 任务完成判断配置 =====
+    goal_threshold: 0.1
+
+    # ===== 观测配置 =====
+    collisions: true
+    n_lidar_rays: 12
+    max_range: 0.2
+
+    # ===== 观测归一化配置 =====
+    world_scale: 1.75

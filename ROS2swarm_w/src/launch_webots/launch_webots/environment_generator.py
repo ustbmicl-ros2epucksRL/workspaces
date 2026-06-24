@@ -22,8 +22,27 @@ TRANSPORT_OBJECT_SHAPES = (
     'triangular_prism',
 )
 TRANSPORT_OBJECT_SIZE = 0.25
-TRANSPORT_OBJECT_MASS = 0.5
+TRANSPORT_OBJECT_MASS = 0.6
 TRANSPORT_OBJECT_Z = 0.05
+ROUND_FLOCKING_TARGET_CLEARANCE = 0.6
+
+
+def inset_bounds_for_clearance(
+    min_value: float,
+    max_value: float,
+    clearance: float,
+) -> tuple[float, float]:
+    """Return bounds inset by ``clearance`` when the interval is wide enough."""
+    min_value = float(min_value)
+    max_value = float(max_value)
+    clearance = max(0.0, float(clearance))
+    if max_value < min_value:
+        min_value, max_value = max_value, min_value
+
+    if max_value - min_value < 2.0 * clearance:
+        center = (min_value + max_value) * 0.5
+        return center, center
+    return min_value + clearance, max_value - clearance
 
 
 def parse_world_file_objects(world_file_path: str) -> list:

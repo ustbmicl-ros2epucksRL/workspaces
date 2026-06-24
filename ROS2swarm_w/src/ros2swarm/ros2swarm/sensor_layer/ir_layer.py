@@ -72,7 +72,8 @@ class IRLayer(Node):
                                        qos_profile=qos_profile_sensor_data)
                                        for i in range(len(self.range_topics))] #为每个传感器定义一个订阅器
 
-        print(self.get_namespace() + "/" + self.range_topics[0],"==========================")
+        self.get_logger().debug(
+            self.get_namespace() + "/" + self.range_topics[0])
         
         # 将整合后的传感器数据发布到 /range_data 话题
         self.range_data_publisher = self.create_publisher(

@@ -29,6 +29,8 @@ from launch_ros.actions import Node
 # 导入机器人节点创建函数
 from launch_webots.robot_nodes import create_epuck_nodes, create_burger_nodes
 from launch_webots.environment_generator import (
+    ROUND_FLOCKING_TARGET_CLEARANCE,
+    inset_bounds_for_clearance,
     parse_world_file_objects,
     generate_random_positions_with_obstacles,
     generate_world_file,
@@ -59,6 +61,8 @@ def generate_launch_description():
     driving_swarm = 'False'
     logging = 'False'
     transport_object_shape = 'cube'
+    webots_mode = 'realtime'
+    webots_gui = 'true'
 
     # 随机位置生成参数
     random_seed = None
@@ -96,6 +100,10 @@ def generate_launch_description():
             logging = arg.split(":=")[1]
         elif arg.startswith("transport_object_shape:="):
             transport_object_shape = arg.split(":=")[1]
+        elif arg.startswith("webots_mode:="):
+            webots_mode = arg.split(":=")[1]
+        elif arg.startswith("webots_gui:="):
+            webots_gui = arg.split(":=")[1]
         elif arg.startswith("random_seed:="):
             random_seed = int(arg.split(":=")[1])
         elif arg.startswith("x_min:="):
@@ -171,7 +179,8 @@ def generate_launch_description():
         # 运输任务：生成箱子和目标点
         task_objects['transport_object_shape'] = transport_object_shape
         box_pos = generate_random_positions_with_obstacles(
-            1, x_min, x_max, y_min, y_max, min_distance, None, occupied_positions
+            1, x_min, x_max, y_min, y_max, min_distance, None,
+            occupied_positions
         )[0]
         task_objects['transport_box'] = box_pos
         occupied_positions.append((box_pos[0], box_pos[1], 0.1))
@@ -179,7 +188,8 @@ def generate_launch_description():
         print(f"运输箱子位置: ({box_pos[0]:.3f}, {box_pos[1]:.3f})")
 
         target_pos = generate_random_positions_with_obstacles(
-            1, x_min, x_max, y_min, y_max, min_distance, None, occupied_positions
+            1, x_min, x_max, y_min, y_max, min_distance, None,
+            occupied_positions
         )[0]
         task_objects['target_zone'] = target_pos
         occupied_positions.append((target_pos[0], target_pos[1], 0.2))
@@ -187,8 +197,31 @@ def generate_launch_description():
 
     elif task_type == 'roundflocking':
         # 环绕任务：生成圆柱目标
+        target_x_min, target_x_max = inset_bounds_for_clearance(
+            x_min,
+            x_max,
+            ROUND_FLOCKING_TARGET_CLEARANCE,
+        )
+        target_y_min, target_y_max = inset_bounds_for_clearance(
+            y_min,
+            y_max,
+            ROUND_FLOCKING_TARGET_CLEARANCE,
+        )
+        print(
+            f"环绕目标生成区域: "
+            f"X[{target_x_min:.3f}, {target_x_max:.3f}], "
+            f"Y[{target_y_min:.3f}, {target_y_max:.3f}] "
+            f"(留出 {ROUND_FLOCKING_TARGET_CLEARANCE:.2f}m 环绕半径)"
+        )
         flocking_pos = generate_random_positions_with_obstacles(
-            1, x_min, x_max, y_min, y_max, min_distance, None, occupied_positions
+            1,
+            target_x_min,
+            target_x_max,
+            target_y_min,
+            target_y_max,
+            min_distance,
+            None,
+            occupied_positions
         )[0]
         task_objects['flocking_target'] = flocking_pos
         occupied_positions.append((flocking_pos[0], flocking_pos[1], 0.15))
@@ -257,7 +290,11 @@ def generate_launch_description():
             PythonLaunchDescriptionSource(
                 os.path.join(launch_file_dir, 'launch', 'start_webots.launch.py')
             ),
-            launch_arguments={'world_path': generated_world_path}.items(),
+            launch_arguments={
+                'world_path': generated_world_path,
+                'webots_mode': webots_mode,
+                'webots_gui': webots_gui,
+            }.items(),
         )
         ld.add_action(webots_start)
 

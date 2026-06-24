@@ -1,0 +1,18 @@
+Traceback (most recent call last):
+  File "/root/workspace/ROS2swarm_w/install/ros2swarm/lib/ros2swarm/voter_model_pattern", line 33, in <module>
+    sys.exit(load_entry_point('ros2swarm', 'console_scripts', 'voter_model_pattern')())
+  File "/root/workspace/ROS2swarm_w/build/ros2swarm/ros2swarm/voting_pattern/basic/voter_model_pattern.py", line 116, in main
+    setup_node.init_and_spin(args, VoterModelPattern)
+  File "/root/workspace/ROS2swarm_w/build/ros2swarm/ros2swarm/utils/setup_node.py", line 26, in init_and_spin
+    rclpy.spin(pattern_node())
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+    executor.spin_once()
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 773, in spin_once
+    self._spin_once_impl(timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 762, in _spin_once_impl
+    handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 745, in wait_for_ready_callbacks
+    return next(self._cb_iter)
+  File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 618, in _wait_for_ready_callbacks
+    wait_set = _rclpy.WaitSet(
+rclpy._rclpy_pybind11.RCLError: failed to initialize wait set: the given context is not valid, either rcl_init() was not called or rcl_shutdown() was called., at ./src/rcl/wait.c:130

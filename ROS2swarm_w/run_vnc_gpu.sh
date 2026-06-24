@@ -157,7 +157,7 @@ _run_vnc_gpu_configure() {
 
   export ROS2SWARM_USE_VGLRUN="${ROS2SWARM_USE_VGLRUN:-true}"
   export ROBOSAR_USE_VGLRUN="${ROBOSAR_USE_VGLRUN:-true}"
-  export ROS2SWARM_VGLRUN_DEVICE="${ROS2SWARM_VGLRUN_DEVICE:-/dev/dri/card0}"
+  export ROS2SWARM_VGLRUN_DEVICE="${ROS2SWARM_VGLRUN_DEVICE:-/dev/dri/card2}"
   export ROBOSAR_VGLRUN_DEVICE="${ROBOSAR_VGLRUN_DEVICE:-${ROS2SWARM_VGLRUN_DEVICE}}"
   export ROS2SWARM_VNC_GPU_DISPLAY="$DISPLAY"
   export ROS2SWARM_VNC_GPU_XAUTHORITY="$XAUTHORITY"
@@ -233,7 +233,7 @@ _run_vnc_gpu_usage() {
 环境变量覆盖：
   ROS2SWARM_VNC_DISPLAY     指定 VNC DISPLAY，例如 :1。
   ROS2SWARM_XAUTHORITY      指定 xauth 文件，默认优先 /tmp/.docker.xauth。
-  ROS2SWARM_VGLRUN_DEVICE   指定 VirtualGL 3D 设备，默认 /dev/dri/card0。
+  ROS2SWARM_VGLRUN_DEVICE   指定 VirtualGL 3D 设备，默认 /dev/dri/card2。
   ROBOSAR_VGLRUN_DEVICE     RoboSAR 启动脚本使用的 VirtualGL 3D 设备。
   ROS2SWARM_X11_SOCKET_DIR  X11 socket 目录，默认 /tmp/.X11-unix。
 EOF

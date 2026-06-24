@@ -125,7 +125,7 @@ class RobotBridge:
 
         now = self.node.get_clock().now()
         if (now - self._last_missing_stamp_log).nanoseconds > 1_000_000_000:
-            self.node.get_logger().warn(
+            self.node.get_logger().debug(
                 '%s %s missing header stamp, falling back to node clock'
                 % (self.agent_name, source_name)
             )
@@ -251,7 +251,7 @@ class RobosarBridgeAdapter(Node):
             self.bridges.append(bridge)
 
             agent = 'agent_%d' % i
-            self.get_logger().info(
+            self.get_logger().debug(
                 '  %s: spawn=(%.3f, %.3f, yaw=%.2f)' %
                 (agent, spawn_x[i], spawn_y[i], spawn_yaw[i]))
 

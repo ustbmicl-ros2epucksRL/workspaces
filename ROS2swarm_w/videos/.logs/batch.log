@@ -1,0 +1,175 @@
+[batch] START 2026-06-23T23:41:03+00:00 pattern=drive_pattern duration=25s domain=81 timeout=285s
+[record] pattern=drive_pattern duration=25s domain=81 display=:1 output=videos/drive_pattern.mp4
+duration=24.920000
+size=3687177
+[batch] OK 2026-06-23T23:41:49+00:00 pattern=drive_pattern out=videos/drive_pattern.mp4
+[batch] START 2026-06-23T23:41:49+00:00 pattern=random_walk_pattern duration=30s domain=82 timeout=290s
+[record] pattern=random_walk_pattern duration=30s domain=82 display=:1 output=videos/random_walk_pattern.mp4
+duration=29.920000
+size=4668291
+[batch] OK 2026-06-23T23:42:40+00:00 pattern=random_walk_pattern out=videos/random_walk_pattern.mp4
+[batch] START 2026-06-23T23:42:40+00:00 pattern=dispersion_pattern duration=35s domain=83 timeout=295s
+[record] pattern=dispersion_pattern duration=35s domain=83 display=:1 output=videos/dispersion_pattern.mp4
+duration=34.920000
+size=5138816
+[batch] OK 2026-06-23T23:43:37+00:00 pattern=dispersion_pattern out=videos/dispersion_pattern.mp4
+[batch] START 2026-06-23T23:43:37+00:00 pattern=aggregation_pattern duration=35s domain=84 timeout=295s
+[record] pattern=aggregation_pattern duration=35s domain=84 display=:1 output=videos/aggregation_pattern.mp4
+duration=34.920000
+size=5496355
+[batch] OK 2026-06-23T23:44:35+00:00 pattern=aggregation_pattern out=videos/aggregation_pattern.mp4
+[batch] START 2026-06-23T23:44:35+00:00 pattern=attraction_pattern duration=35s domain=85 timeout=295s
+[record] pattern=attraction_pattern duration=35s domain=85 display=:1 output=videos/attraction_pattern.mp4
+duration=34.920000
+size=5540863
+[batch] OK 2026-06-23T23:45:33+00:00 pattern=attraction_pattern out=videos/attraction_pattern.mp4
+[batch] START 2026-06-23T23:45:33+00:00 pattern=attraction_pattern2 duration=35s domain=86 timeout=295s
+[record] pattern=attraction_pattern2 duration=35s domain=86 display=:1 output=videos/attraction_pattern2.mp4
+duration=34.960000
+size=5340847
+[batch] OK 2026-06-23T23:46:30+00:00 pattern=attraction_pattern2 out=videos/attraction_pattern2.mp4
+[batch] START 2026-06-23T23:46:30+00:00 pattern=magnetometer_pattern duration=35s domain=87 timeout=295s
+[record] pattern=magnetometer_pattern duration=35s domain=87 display=:1 output=videos/magnetometer_pattern.mp4
+duration=34.920000
+size=3863887
+[batch] OK 2026-06-23T23:47:27+00:00 pattern=magnetometer_pattern out=videos/magnetometer_pattern.mp4
+[batch] START 2026-06-23T23:47:27+00:00 pattern=minimalist_flocking_pattern duration=40s domain=88 timeout=300s
+[record] pattern=minimalist_flocking_pattern duration=40s domain=88 display=:1 output=videos/minimalist_flocking_pattern.mp4
+duration=39.920000
+size=4984645
+[batch] OK 2026-06-23T23:48:30+00:00 pattern=minimalist_flocking_pattern out=videos/minimalist_flocking_pattern.mp4
+[batch] START 2026-06-23T23:48:30+00:00 pattern=rat_search_pattern duration=40s domain=89 timeout=300s
+[record] pattern=rat_search_pattern duration=40s domain=89 display=:1 output=videos/rat_search_pattern.mp4
+[record][error] launch process exited before /global_info appeared
+[epuck_node-11]     self._spin_once_impl(timeout_sec)
+[epuck_node-11]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 762, in _spin_once_impl
+[epuck_node-11]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[epuck_node-11]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 745, in wait_for_ready_callbacks
+[epuck_node-11]     return next(self._cb_iter)
+[epuck_node-11]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 642, in _wait_for_ready_callbacks
+[epuck_node-11]     wait_set.wait(timeout_nsec)
+[epuck_node-11] KeyboardInterrupt
+[epuck_node-9] Traceback (most recent call last):
+[epuck_node-9]   File "/root/workspace/ROS2swarm_w/install/launch_webots/lib/launch_webots/epuck_node", line 33, in <module>
+[epuck_node-9]     sys.exit(load_entry_point('launch-webots', 'console_scripts', 'epuck_node')())
+[epuck_node-9]   File "/root/workspace/ROS2swarm_w/build/launch_webots/launch_webots/epuck_node.py", line 153, in main
+[epuck_node-9]     rclpy.spin(epuck_controller)
+[epuck_node-9]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[epuck_node-9]     executor.spin_once()
+[epuck_node-9]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 773, in spin_once
+[epuck_node-9]     self._spin_once_impl(timeout_sec)
+[epuck_node-9]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 762, in _spin_once_impl
+[epuck_node-9]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[epuck_node-9]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 745, in wait_for_ready_callbacks
+[epuck_node-9]     return next(self._cb_iter)
+[epuck_node-9]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 642, in _wait_for_ready_callbacks
+[epuck_node-9]     wait_set.wait(timeout_nsec)
+[epuck_node-9] KeyboardInterrupt
+[epuck_node-7] Traceback (most recent call last):
+[epuck_node-7]   File "/root/workspace/ROS2swarm_w/install/launch_webots/lib/launch_webots/epuck_node", line 33, in <module>
+[epuck_node-7]     sys.exit(load_entry_point('launch-webots', 'console_scripts', 'epuck_node')())
+[epuck_node-7]   File "/root/workspace/ROS2swarm_w/build/launch_webots/launch_webots/epuck_node.py", line 153, in main
+[epuck_node-7]     rclpy.spin(epuck_controller)
+[epuck_node-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[epuck_node-7]     executor.spin_once()
+[epuck_node-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 773, in spin_once
+[epuck_node-7]     self._spin_once_impl(timeout_sec)
+[epuck_node-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 762, in _spin_once_impl
+[ERROR] [epuck_node-5]: process has died [pid 229945, exit code -2, cmd '/root/workspace/ROS2swarm_w/install/launch_webots/lib/launch_webots/epuck_node --ros-args -r __ns:=/robot_0 --params-file /tmp/launch_params_n8sccbdu'].
+[epuck_node-7]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[epuck_node-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 745, in wait_for_ready_callbacks
+[epuck_node-7]     return next(self._cb_iter)
+[epuck_node-7]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 642, in _wait_for_ready_callbacks
+[epuck_node-7]     wait_set.wait(timeout_nsec)
+[epuck_node-7] KeyboardInterrupt
+[epuck_node-5] Traceback (most recent call last):
+[epuck_node-5]   File "/root/workspace/ROS2swarm_w/install/launch_webots/lib/launch_webots/epuck_node", line 33, in <module>
+[epuck_node-5]     sys.exit(load_entry_point('launch-webots', 'console_scripts', 'epuck_node')())
+[epuck_node-5]   File "/root/workspace/ROS2swarm_w/build/launch_webots/launch_webots/epuck_node.py", line 153, in main
+[epuck_node-5]     rclpy.spin(epuck_controller)
+[epuck_node-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/__init__.py", line 229, in spin
+[epuck_node-5]     executor.spin_once()
+[epuck_node-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 773, in spin_once
+[epuck_node-5]     self._spin_once_impl(timeout_sec)
+[epuck_node-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 762, in _spin_once_impl
+[epuck_node-5]     handler, entity, node = self.wait_for_ready_callbacks(timeout_sec=timeout_sec)
+[epuck_node-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 745, in wait_for_ready_callbacks
+[epuck_node-5]     return next(self._cb_iter)
+[epuck_node-5]   File "/opt/ros/humble/local/lib/python3.10/dist-packages/rclpy/executors.py", line 642, in _wait_for_ready_callbacks
+[epuck_node-5]     wait_set.wait(timeout_nsec)
+[epuck_node-5] KeyboardInterrupt
+[INFO] [robot_state_publisher-21]: process has finished cleanly [pid 229979]
+[INFO] [robot_state_publisher-17]: process has finished cleanly [pid 229971]
+[INFO] [webots-1]: process has finished cleanly [pid 229937]
+[webots_controller_robot_0-4] Cannot connect to Webots instance, retrying for another 45 seconds...
+[webots_controller_robot_3-10] Cannot connect to Webots instance, retrying for another 45 seconds...
+[webots_controller_robot_1-6] Cannot connect to Webots instance, retrying for another 45 seconds...
+[webots_controller_robot_4-12] Cannot connect to Webots instance, retrying for another 45 seconds...
+[webots_controller_robot_2-8] Cannot connect to Webots instance, retrying for another 45 seconds...
+[ERROR] [webots_controller_robot_4-12]: process[webots_controller_robot_4-12] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[ERROR] [webots_controller_robot_3-10]: process[webots_controller_robot_3-10] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[ERROR] [webots_controller_robot_2-8]: process[webots_controller_robot_2-8] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[ERROR] [webots_controller_robot_1-6]: process[webots_controller_robot_1-6] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[ERROR] [webots_controller_robot_0-4]: process[webots_controller_robot_0-4] failed to terminate '5' seconds after receiving 'SIGINT', escalating to 'SIGTERM'
+[INFO] [webots_controller_robot_4-12]: sending signal 'SIGTERM' to process[webots_controller_robot_4-12]
+[INFO] [webots_controller_robot_3-10]: sending signal 'SIGTERM' to process[webots_controller_robot_3-10]
+[INFO] [webots_controller_robot_2-8]: sending signal 'SIGTERM' to process[webots_controller_robot_2-8]
+[ERROR] [webots_controller_robot_4-12]: process has died [pid 229961, exit code -15, cmd '/root/ros2_ws/install/webots_ros2_driver/share/webots_ros2_driver/scripts/webots-controller --robot-name=robot_4 --protocol=ipc --port=1234 ros2 --ros-args -r /robot_4/diffdrive_controller/cmd_vel_unstamped:=/robot_4/cmd_vel -r /robot_4/diffdrive_controller/odom:=/robot_4/odom -r __ns:=/robot_4 -p robot_description:=/root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/assets/epuck_webots.urdf -p use_sim_time:=True -p set_robot_state_publisher:=True --params-file /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/resource/ros2_control.yml'].
+[INFO] [webots_controller_robot_1-6]: sending signal 'SIGTERM' to process[webots_controller_robot_1-6]
+[ERROR] [webots_controller_robot_3-10]: process has died [pid 229957, exit code -15, cmd '/root/ros2_ws/install/webots_ros2_driver/share/webots_ros2_driver/scripts/webots-controller --robot-name=robot_3 --protocol=ipc --port=1234 ros2 --ros-args -r /robot_3/diffdrive_controller/cmd_vel_unstamped:=/robot_3/cmd_vel -r /robot_3/diffdrive_controller/odom:=/robot_3/odom -r __ns:=/robot_3 -p robot_description:=/root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/assets/epuck_webots.urdf -p use_sim_time:=True -p set_robot_state_publisher:=True --params-file /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/resource/ros2_control.yml'].
+[INFO] [webots_controller_robot_0-4]: sending signal 'SIGTERM' to process[webots_controller_robot_0-4]
+[ERROR] [webots_controller_robot_2-8]: process has died [pid 229951, exit code -15, cmd '/root/ros2_ws/install/webots_ros2_driver/share/webots_ros2_driver/scripts/webots-controller --robot-name=robot_2 --protocol=ipc --port=1234 ros2 --ros-args -r /robot_2/diffdrive_controller/cmd_vel_unstamped:=/robot_2/cmd_vel -r /robot_2/diffdrive_controller/odom:=/robot_2/odom -r __ns:=/robot_2 -p robot_description:=/root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/assets/epuck_webots.urdf -p use_sim_time:=True -p set_robot_state_publisher:=True --params-file /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/resource/ros2_control.yml'].
+[ERROR] [webots_controller_robot_1-6]: process has died [pid 229947, exit code -15, cmd '/root/ros2_ws/install/webots_ros2_driver/share/webots_ros2_driver/scripts/webots-controller --robot-name=robot_1 --protocol=ipc --port=1234 ros2 --ros-args -r /robot_1/diffdrive_controller/cmd_vel_unstamped:=/robot_1/cmd_vel -r /robot_1/diffdrive_controller/odom:=/robot_1/odom -r __ns:=/robot_1 -p robot_description:=/root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/assets/epuck_webots.urdf -p use_sim_time:=True -p set_robot_state_publisher:=True --params-file /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/resource/ros2_control.yml'].
+[ERROR] [webots_controller_robot_0-4]: process has died [pid 229943, exit code -15, cmd '/root/ros2_ws/install/webots_ros2_driver/share/webots_ros2_driver/scripts/webots-controller --robot-name=robot_0 --protocol=ipc --port=1234 ros2 --ros-args -r /robot_0/diffdrive_controller/cmd_vel_unstamped:=/robot_0/cmd_vel -r /robot_0/diffdrive_controller/odom:=/robot_0/odom -r __ns:=/robot_0 -p robot_description:=/root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/assets/epuck_webots.urdf -p use_sim_time:=True -p set_robot_state_publisher:=True --params-file /root/workspace/ROS2swarm_w/install/launch_webots/share/launch_webots/resource/ros2_control.yml'].
+[batch] FAIL 2026-06-23T23:48:42+00:00 pattern=rat_search_pattern rc=1
+[batch] START 2026-06-23T23:48:45+00:00 pattern=discussed_dispersion_pattern duration=45s domain=90 timeout=305s
+[record] pattern=discussed_dispersion_pattern duration=45s domain=90 display=:1 output=videos/discussed_dispersion_pattern.mp4
+duration=44.920000
+size=4807313
+[batch] OK 2026-06-23T23:49:56+00:00 pattern=discussed_dispersion_pattern out=videos/discussed_dispersion_pattern.mp4
+[batch] START 2026-06-23T23:49:56+00:00 pattern=navigation_pattern duration=60s domain=91 timeout=320s
+[record] pattern=navigation_pattern duration=60s domain=91 display=:1 output=videos/navigation_pattern.mp4
+duration=59.920000
+size=7488509
+[batch] OK 2026-06-23T23:51:24+00:00 pattern=navigation_pattern out=videos/navigation_pattern.mp4
+[batch] START 2026-06-23T23:51:24+00:00 pattern=navigation_pattern_neat duration=60s domain=92 timeout=320s
+[record] pattern=navigation_pattern_neat duration=60s domain=92 display=:1 output=videos/navigation_pattern_neat.mp4
+duration=59.920000
+size=7424080
+[batch] OK 2026-06-23T23:52:52+00:00 pattern=navigation_pattern_neat out=videos/navigation_pattern_neat.mp4
+[batch] START 2026-06-23T23:52:52+00:00 pattern=roundflocking_pattern duration=75s domain=93 timeout=335s
+[record] pattern=roundflocking_pattern duration=75s domain=93 display=:1 output=videos/roundflocking_pattern.mp4
+duration=74.920000
+size=11008400
+[batch] OK 2026-06-23T23:54:40+00:00 pattern=roundflocking_pattern out=videos/roundflocking_pattern.mp4
+[batch] START 2026-06-23T23:54:40+00:00 pattern=roundflocking_pattern_neat duration=75s domain=94 timeout=335s
+[record] pattern=roundflocking_pattern_neat duration=75s domain=94 display=:1 output=videos/roundflocking_pattern_neat.mp4
+duration=74.920000
+size=10987896
+[batch] OK 2026-06-23T23:56:28+00:00 pattern=roundflocking_pattern_neat out=videos/roundflocking_pattern_neat.mp4
+[batch] START 2026-06-23T23:56:28+00:00 pattern=transport_pattern duration=75s domain=95 timeout=335s
+[record] pattern=transport_pattern duration=75s domain=95 display=:1 output=videos/transport_pattern.mp4
+duration=74.920000
+size=9122347
+[batch] OK 2026-06-23T23:58:16+00:00 pattern=transport_pattern out=videos/transport_pattern.mp4
+[batch] START 2026-06-23T23:58:16+00:00 pattern=transport_pattern_neat duration=75s domain=96 timeout=335s
+[record] pattern=transport_pattern_neat duration=75s domain=96 display=:1 output=videos/transport_pattern_neat.mp4
+duration=74.920000
+size=9599154
+[batch] OK 2026-06-24T00:00:04+00:00 pattern=transport_pattern_neat out=videos/transport_pattern_neat.mp4
+[batch] START 2026-06-24T00:00:04+00:00 pattern=majority_rule_pattern duration=30s domain=97 timeout=290s
+[record] pattern=majority_rule_pattern duration=30s domain=97 display=:1 output=videos/majority_rule_pattern.mp4
+duration=29.920000
+size=3436688
+[batch] OK 2026-06-24T00:00:56+00:00 pattern=majority_rule_pattern out=videos/majority_rule_pattern.mp4
+[batch] START 2026-06-24T00:00:56+00:00 pattern=voter_model_pattern duration=30s domain=98 timeout=290s
+[record] pattern=voter_model_pattern duration=30s domain=98 display=:1 output=videos/voter_model_pattern.mp4
+duration=29.920000
+size=3443973
+[batch] OK 2026-06-24T00:01:48+00:00 pattern=voter_model_pattern out=videos/voter_model_pattern.mp4
+[batch] START 2026-06-24T00:01:48+00:00 pattern=voter_model_with_limiter_pattern duration=30s domain=99 timeout=290s
+[record] pattern=voter_model_with_limiter_pattern duration=30s domain=99 display=:1 output=videos/voter_model_with_limiter_pattern.mp4
+duration=29.920000
+size=3504805
+[batch] OK 2026-06-24T00:02:39+00:00 pattern=voter_model_with_limiter_pattern out=videos/voter_model_with_limiter_pattern.mp4
+[batch] DONE 2026-06-24T00:02:42+00:00

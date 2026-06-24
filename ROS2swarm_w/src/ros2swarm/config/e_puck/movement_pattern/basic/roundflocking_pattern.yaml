@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     # ===== 环绕集群模式配置 (Round Flocking Pattern) =====
-    # 使用 NEAT 神经网络控制机器人围绕目标点进行集群运动
+    # 使用 VMAS 训练得到的 best_actor.pt 控制机器人围绕目标点进行集群运动
     # 机器人在目标周围形成环绕编队
     # 
     # 传感器: RpLidarA2 激光雷达 (本地修改版)
@@ -10,11 +10,9 @@
     #   - 电机最大角速度: 7.536 rad/s
     #   - 轮径: 0.02m, 轮距: 0.052m
     
-    # ===== NEAT 神经网络配置 =====
-    # 基因包文件名（在checkpoints/roundflocking/目录下查找）
-    # 可指定文件名如: 'flocking_genome_package_0.3.pkl' 或 'flocking_genome_package_0.6.pkl'
-    # 留空则使用默认: 'flocking_genome_package_0.3.pkl'  #####0.6版本仍未完整适配（这个包含tanh的激活函数）
-    genome_file: 'flocking_genome_package_0.3.pkl'
+    # ===== VMAS best_actor.pt 配置 =====
+    actor_path: 'best_actor.pt'
+    actor_device: 'cpu'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
     # E-puck v2 物理参数:
@@ -31,6 +29,7 @@
     
     # ===== Webots 仿真目标配置 =====
     target_def_name: 'flocking_target'  # 环绕目标的 DEF 名称 (圆柱体)
+    target_radius: 0.6                  # 训练侧期望环绕半径
     
     # ===== 激光雷达配置 =====
     # 基于本地修改版 RpLidarA2 激光雷达 (400 束)
@@ -38,7 +37,16 @@
     max_range: 0.20    # 使用的最大探测范围 (m)，略大于盲区0.06m
     
     # ===== 观测归一化配置 =====
-    # NEAT网络在VMAS环境训练时使用的坐标范围为 [-1, 1]
-    # Webots仿真场景大小为 3.5x3.5，坐标范围为 [-1.75, 1.75]
-    # world_scale用于将世界坐标归一化到网络期望的输入范围
-    world_scale: 1.75  # 归一化因子: 实际坐标 / world_scale -> [-1, 1]
+    # best_actor.pt 复用旧 Webots 成功路径：
+    # 全局位置按 3.5m 场景半宽归一化，速度和目标相对向量转到机器人本体系。
+    world_scale: 1.75
+    velocity_scale: 1.0
+    target_centric_position: false
+
+    # ===== 独立 recurrent 状态下的环半径外环 =====
+    # best_actor.pt 在训练侧共享 recurrent 状态时能稳定贴近 0.6m；
+    # Webots 旧成功路径要求每机器人独立状态，因此保留 actor 输出并叠加半径/切向稳定项。
+    ring_stabilization_enabled: true
+    actor_action_weight: 0.25
+    ring_radial_gain: 6.0
+    ring_tangential_gain: 1.0

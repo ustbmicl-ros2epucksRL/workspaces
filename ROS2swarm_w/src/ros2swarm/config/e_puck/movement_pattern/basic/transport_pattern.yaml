@@ -1,18 +1,16 @@
 /**:
   ros__parameters:
     # ===== 运输模式配置 (Transport Pattern) =====
-    # 使用 NEAT 神经网络控制机器人协作搬运物体
+    # 使用 VMAS 训练得到的 best_actor.pt 控制机器人协作搬运物体
     # 机器人需要协作将指定包裹推到目标区域
     
     # ===== 硬件保护层 =====
     # 运输任务需要接触包裹进行推动，跳过避障调整直接发布到 cmd_vel
     bypass_protection: true
     
-    # ===== NEAT 神经网络配置 =====
-    # 基因包文件名（在checkpoints/transport/目录下查找）
-    # 可指定文件名如: 'transport_genome_package.pkl'
-    # 留空则使用默认: 'transport_genome_package.pkl'
-    genome_file: 'transport_genome_package.pkl'
+    # ===== VMAS best_actor.pt 配置 =====
+    actor_path: 'best_actor.pt'
+    actor_device: 'cpu'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
     # E-puck v2 物理参数:
@@ -26,7 +24,7 @@
     # 差速驱动约束 (当线速度和角速度同时作用时):
     #   轮角速度 = (v + L/2 × ω) / r <= 7.536 rad/s
     #   即: v + 0.026 × ω <= 0.15 m/s
-    # NEAT网络会同时输出线速度和角速度，需保守设置:
+    # actor 输出会被映射为线速度和角速度，需保守设置:
     #   验证: 0.12 + 0.026 × 1.0 = 0.146 < 0.15 ✓
     max_linear_velocity: 0.12    # 最大线速度 (m/s)
     max_angular_velocity: 1.0    # 最大角速度 (rad/s)
@@ -44,7 +42,14 @@
     goal_threshold: 0.22  # 任务完成判断阈值 (m)
     
     # ===== 观测归一化配置 =====
-    # NEAT网络在VMAS环境训练时使用的坐标范围为 [-1, 1]
+    # actor 在VMAS环境训练时使用的坐标范围为 [-1, 1]
     # Webots仿真场景大小为 3.5x3.5，坐标范围为 [-1.75, 1.75]
     # world_scale用于将世界坐标归一化到网络期望的输入范围
     world_scale: 1.75  # 归一化因子: 实际坐标 / world_scale -> [-1, 1]
+    velocity_scale: 0.0       # <=0 表示使用 world_scale
+    action_mapping: 'heading' # heading | projection | direct
+    turn_gain: 2.0
+    min_action_norm: 0.02
+    allow_reverse: false
+    allow_reverse_goal_distance: 0.6
+    diagnostics_period: 2.0

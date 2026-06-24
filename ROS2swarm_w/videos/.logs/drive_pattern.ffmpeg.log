@@ -1,0 +1,3 @@
+[x11grab @ 0x560355f8f4c0] Stream #0: not enough frames to estimate rate; consider increasing probesize
+[swscaler @ 0x560355fbb6c0] Warning: data is not aligned! This can lead to a speed loss
+Error writing trailer of videos/drive_pattern.mp4: Immediate exit requested

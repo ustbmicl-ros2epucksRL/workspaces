@@ -1,244 +1,276 @@
-# RoboSAR × Webots 桥接实现说明（按当前代码重写）
+# RoboSAR × Webots 双容器桥接说明（当前项目口径）
+
+本文描述当前项目中 ROS1 RoboSAR 与 ROS2 Webots 的真实桥接方式。这里的容器名和路径默认以 `4a6000` 设备上的现有部署为准；迁移到其他设备时，应通过镜像或重新构建环境恢复，而不是直接假设本机已有同名容器。
 
 ## 1. 目标与边界
 
-本方案描述的是当前实际运行的双容器系统，而不是早期设计草案。
+当前 Webots 搜救闭环采用双容器架构：
 
-- ROS1 容器：`/root/catkin_ws2`
+- ROS2 容器：`masar_ros2_bridge-w`
+  - 运行环境：ROS2 Humble + Webots + `ros1_bridge`
+  - 工作区：通常为 `/ROS2swarm_w`，对应本仓库的 `ROS2swarm_w`
+  - 入口脚本：`start_robosar_webots.sh`
+  - 主要职责：启动 Webots，生成 `robot_N` 机器人节点，运行 `robosar_bridge_adapter`，启动 `ros1_bridge dynamic_bridge --bridge-all-topics`
+- ROS1 容器：`masar_ros1_srv-g`
   - 运行环境：ROS1 Noetic
-  - 入口脚本：`/root/catkin_ws2/launch_robosar.sh`
-  - 主要职责：任务生成、任务分配、导航、控制、多机器人 SLAM、GUI
-- ROS2 容器：`/root/ROS2swarm_w`
-  - 运行环境：ROS2 Humble + Webots
-  - 入口脚本：`/root/ROS2swarm_w/start_robosar_webots.sh`
-  - 主要职责：Webots 仿真、`robot_N` 机器人节点、ROS1/ROS2 桥接适配
-- 桥接方式：`ros1_bridge dynamic_bridge --bridge-all-topics`
+  - 工作区：通常为 `/masar` 或 catkin workspace，对应本仓库的 `masar_ws`
+  - 入口脚本：`launch_robosar_w.sh`
+  - 主要职责：启动 RoboSAR 主任务流，包括 SLAM、任务生成、任务分配、导航、控制、多机器人 GUI
 
 当前设计原则：
 
-- ROS1 侧继续保留 RoboSAR 既有话题名和节点组织。
-- ROS2 侧继续保留 ROS2swarm/Webots 的 `robot_N` 话题命名。
-- 两侧不直接改业务节点，全部命名映射与 TF 适配放在 `robosar_bridge_adapter.py`。
-- 两侧统一使用 Webots 的仿真时钟，不再采用 `use_sim_time=false` 的旧方案。
+- ROS1 侧保留 RoboSAR 既有话题名、节点组织和任务流。
+- ROS2 侧保留 Webots/ROS2swarm 的 `robot_N` 话题命名。
+- 两侧业务节点不互相侵入，话题命名映射与 TF 适配集中在 `robosar_bridge_adapter.py`。
+- 两侧统一使用 Webots `/clock`，ROS1 侧必须在 `/use_sim_time=true` 的前提下启动。
 
-## 2. 部署前提
+## 2. 部署与迁移口径
 
-ROS2 容器当前按下面命令启动：
-
-```bash
-docker run -it --name robosar_ros2_bridge \
-  --gpus all \
-  -e DISPLAY=$DISPLAY \
-  -e NVIDIA_DRIVER_CAPABILITIES=all \
-  -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
-  --ipc=host \
-  --network=host \
-  --group-add video \
-  --device=/dev/dri \
-  osrf/ros:humble-desktop-full
-```
-
-这带来两个直接结论：
-
-- 由于使用了 `--network=host`，ROS1 容器和 ROS2 容器可以直接通过主机网络通信，`ROS1_MASTER_IP` 默认可设为 `localhost`。
-- 不要再额外引入独立的跨容器时钟同步方案，系统已经以 `/clock` 为统一时钟源。
-
-## 3. 当前真实架构
-
-### 3.1 ROS1 侧
-
-`launch_robosar.sh` 会先启动 `roscore`，然后立即执行：
+当前容器环境是在 `4a6000` 上已经配置好的运行环境。早期文档中的裸命令：
 
 ```bash
-rosparam set /use_sim_time true
+docker run ... osrf/ros:humble-desktop-full
 ```
 
-之后再启动以下核心节点：
+已经不能代表当前 ROS2 侧完整环境，因为它不包含当前 Webots、bridge、工作区依赖、VNC/GPU 对齐脚本和项目内构建结果。不要再把这条旧命令作为可复现部署步骤。
 
-- `robosar_agent_bringup`
-- `map_server`（发布 `/sim_map`）
-- `AprilTagSim.py`
-- `slam_toolbox`（`robosar_mapping_sim.launch`）
-- `robosar_task_generator`
-- `robosar_navigation`
-- `robosar_controller`
-- `mission_commander.py -s=true`
-- `robosar_gui.py`
+如果需要把环境迁移到其他设备，建议在 `4a6000` 上把当前容器提交为镜像并推送到 Docker Hub：
 
-注意：当前 ROS1 侧已经是 `/sim_map` 的权威来源，因此 ROS2 侧不应默认再起一个同名 `map_server`。
+```bash
+docker commit masar_ros2_bridge-w <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
+docker push <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
 
-### 3.2 ROS2 侧
+docker commit masar_ros1_srv-g <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
+docker push <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
+```
 
-`start_robosar_webots.sh` 会：
+迁移到新设备时再用 `docker pull` 拉取镜像，并按目标设备的 GPU、X11/VNC、网络和工作区挂载策略启动容器。Webots 与 ROS1/ROS2 桥接建议继续使用 host network，否则需要额外处理 ROS master、DDS 发现和 GUI 显示。
 
-1. `colcon build --packages-select launch_webots`
-2. 启动 `robosar_webots_sim.launch.py`
-3. 等待 Webots 就绪
-4. 启动 `ros1_bridge dynamic_bridge --bridge-all-topics`
+注意：`docker commit` 只保存容器文件系统，不会保存通过 volume 绑定挂载进容器的宿主目录；迁移时仍需要同步本工作区代码和需要保留的结果文件。
+
+## 3. 启动顺序
+
+推荐固定启动顺序：先 ROS2 Webots + bridge，再 ROS1 RoboSAR。
+
+### 3.1 ROS2 侧
+
+在 `masar_ros2_bridge-w` 容器中：
+
+```bash
+cd /ROS2swarm_w
+./start_robosar_webots.sh
+```
+
+常用 dry-run：
+
+```bash
+./start_robosar_webots.sh --dry-run
+```
+
+`start_robosar_webots.sh` 当前会做这些事：
+
+1. 加载 `run_vnc_gpu.sh`，对齐容器内 VNC/GPU/X11 环境。
+2. 解析场景状态和地图路径，并写入共享 scene state 文件。
+3. `colcon build --symlink-install --packages-select launch_webots`。
+4. `source ./install/setup.bash`。
+5. 启动 `ros2 launch launch_webots robosar_webots_sim.launch.py ...`。
+6. 设置 `ROS_MASTER_URI=http://${ROS1_MASTER_IP}:11311`。
+7. 启动 `ros2 run ros1_bridge dynamic_bridge --bridge-all-topics`。
+
+当前脚本默认值：
+
+| 变量 | 默认值 | 说明 |
+| --- | --- | --- |
+| `NUM_ROBOTS` | `5` | Webots 中生成 `robot_0 ... robot_4` |
+| `ROBOT_TYPE` | `e_puck` | 可按当前代码切换到 burger |
+| `WEBOTS_WORLD` | `robosar_apartment_smallv1.wbt` | Webots world 模板 |
+| `PUBLISH_STATIC_MAP` | `false` | ROS2 侧默认不发布 `/sim_map`，ROS1 侧是地图权威来源 |
+| `ROS1_MASTER_IP` | `localhost` | host network 下通常可用 |
+
+注意：`STATIC_MAP` 仍会被解析并传入 launch，用于场景上下文和共享状态；只有 `PUBLISH_STATIC_MAP=true` 时 ROS2 侧才会额外启动 `nav2_map_server` 发布 `/sim_map`。
+
+### 3.2 ROS1 侧
+
+在 `masar_ros1_srv-g` 容器中：
+
+```bash
+cd /masar
+./launch_robosar_w.sh
+```
+
+常用 dry-run：
+
+```bash
+./launch_robosar_w.sh --dry-run
+```
+
+`launch_robosar_w.sh` 当前会做这些事：
+
+1. 加载 `run_vnc_gpu.sh`，对齐 VNC/GPU 环境。
+2. 启动 `roscore`。
+3. 设置 `rosparam set /use_sim_time true`。
+4. 启动 `robosar_agent_bringup`。
+5. 启动 `robosar_sim_bringup robosar_sim_w.launch`，其中包含 `/sim_map` map server、`AprilTagSim.py`、`bootstrap_map_tf.py` 和可选 RViz。
+6. 启动 `slam_toolbox robosar_mapping_sim_w.launch`。
+7. 启动 `robosar_task_generator`、`robosar_navigation`、`robosar_controller`、`mission_commander.py` 和 `robosar_gui.py`。
+
+这样启动的原因是：ROS1 侧节点需要在 `/use_sim_time=true` 且 `/clock` 已可用的条件下进入运行，否则容易出现 TF extrapolation、epoch 时间戳和 scan 队列积压问题。
+
+## 4. 当前架构
+
+### 4.1 ROS2 Webots 侧
 
 `robosar_webots_sim.launch.py` 当前负责：
 
-- 随机生成 Webots 世界中的机器人初始位姿
-- 为每个 `robot_N` 启动对应控制器节点
-- 启动 `robosar_bridge_adapter`
-- 可选启动 ROS2 本地 `nav2_map_server`
+- 基于 world 模板生成 `generated_robosar.wbt`。
+- 随机生成机器人初始位姿，并避开 world 中的障碍和任务对象。
+- 为每个 `robot_N` 启动 Webots 控制器节点。
+- 启动 `robosar_bridge_adapter`，传入 `spawn_x/spawn_y/spawn_yaw`、`apply_spawn_offset`、`normalize_scan` 等参数。
+- 可选启动 ROS2 本地 `nav2_map_server`，但默认关闭。
 
-当前脚本已修改为：
+### 4.2 ROS1 RoboSAR 侧
 
-- `STATIC_MAP` 默认关闭，避免与 ROS1 侧 `/sim_map` 重复发布
-- 只有显式设置 `STATIC_MAP=tepper.yaml` 之类的参数时，才在 ROS2 侧额外起本地地图服务
+`robosar_sim_w.launch` 当前负责 Webots 桥接场景下的 ROS1 仿真上下文：
 
-## 4. 话题与 TF 映射
+- 设置 `/use_sim_time=true`。
+- 用 `map_server` 发布 `/sim_map`。
+- 启动 `AprilTagSim.py` 发布 victim/fire/transport 等仿真对象与 marker。
+- 启动 `bootstrap_map_tf.py`，在 SLAM 初期临时发布 identity `map -> agent_N/odom`，避免导航控制链 TF 死锁。
+- 可选启动 RViz。
 
-### 4.1 话题映射
+`launch_robosar_w.sh` 在此基础上继续启动 SLAM、任务生成、导航、交通控制、任务分配和 GUI。
+
+## 5. 话题与 TF 映射
+
+### 5.1 话题映射
 
 每台机器人保持如下映射：
 
 | 方向 | ROS2 Webots 侧 | 中间适配层 | ROS1 RoboSAR 侧 |
-|------|----------------|------------|-----------------|
+| --- | --- | --- | --- |
 | 激光 | `/robot_N/scan` | `robosar_bridge_adapter` | `/robosar_agent_bringup_node/agent_N/feedback/scan` |
 | 里程计 | `/robot_N/odom` | `robosar_bridge_adapter` | `/robosar_agent_bringup_node/agent_N/odom` |
 | 速度控制 | `/robosar_agent_bringup_node/agent_N/cmd_vel` | `robosar_bridge_adapter` | `/robot_N/cmd_vel` |
 
-### 4.2 TF 链
+当前 `robosar_bridge_adapter` 不做速度裁剪，只负责把 RoboSAR 的 `cmd_vel` 转发给 Webots 侧 `robot_N/cmd_vel`。速度限制应由上游控制器、机器人模型或专门安全层处理。
+
+### 5.2 TF 责任划分
 
 当前系统中正确的 TF 责任划分如下：
 
 - `map -> agent_N/odom`
-  - 发布者：ROS1 `slam_toolbox`
-  - 说明：全局 SLAM 结果，ROS2 侧不应重复发布
+  - 责任侧：ROS1。
+  - 启动初期可由 `bootstrap_map_tf.py` 临时发布 identity TF。
+  - SLAM 收敛后由 `slam_toolbox` 发布校正后的全局关系。
+  - ROS2 侧不发布该 TF。
 - `agent_N/odom -> agent_N/base_link`
-  - 发布者：ROS2 `robosar_bridge_adapter`
-  - 说明：基于 Webots `/robot_N/odom`，并叠加机器人 spawn offset
+  - 发布者：ROS2 `robosar_bridge_adapter`。
+  - 来源：Webots `/robot_N/odom`，默认叠加 spawn offset。
+  - 时间戳：使用 odom 原始 stamp；stamp 缺失时才回退到节点时钟。
 - `agent_N/base_link -> agent_N/base_laser_link`
-  - 发布者：ROS2 `robosar_bridge_adapter`
-  - 说明：固定传感器外参，走 `/tf_static`
+  - 发布者：ROS2 `robosar_bridge_adapter`。
+  - 通道：`/tf_static`。
 - `agent_N/base_link -> agent_N/base_footprint`
-  - 发布者：ROS2 `robosar_bridge_adapter`
-  - 说明：固定 TF，走 `/tf_static`
+  - 发布者：ROS2 `robosar_bridge_adapter`。
+  - 通道：`/tf_static`。
 
-这里最关键的一点是：
+`robosar_bridge_adapter` 会周期性重发 `/tf_static`，目的是让后启动的 `ros1_bridge` 或晚订阅者也能收到静态 TF。这里仍然是静态 TF 语义，不应改成 `/tf` 上的动态 10 Hz 固定外参。
 
-- `map -> odom` 不在 ROS2 侧生成
-- 固定 TF 不应以 10 Hz 动态方式反复发布
-- `scan`、`odom`、动态 TF 必须共享同一个 Webots 仿真时间戳
+## 6. `robosar_bridge_adapter.py` 当前职责
 
-## 5. `robosar_bridge_adapter.py` 的当前职责
+当前文件：
 
-`/root/ROS2swarm_w/src/launch_webots/launch_webots/robosar_bridge_adapter.py`
+```text
+ROS2swarm_w/src/launch_webots/launch_webots/robosar_bridge_adapter.py
+```
 
-该节点当前承担四件事：
+该节点当前承担这些职责：
 
-1. 话题重命名：`robot_N` 与 `agent_N` 双向映射
-2. Odom 坐标修正：把 Webots 本地 odom 叠加 spawn offset，变成 RoboSAR 期望的全局起点
-3. TF 生成：从 odom 生成 `agent_N/odom -> agent_N/base_link`
-4. 速度裁剪：把 ROS1 给出的 `cmd_vel` 限制到 e-puck / burger 的可执行范围
+1. 话题重命名：`robot_N` 与 `agent_N` 双向映射。
+2. Odom 坐标修正：当 `apply_spawn_offset=true` 时，把 Webots 本地 odom 叠加 spawn offset，变成 RoboSAR 期望的全局起点。
+3. TF 生成：从 odom 生成 `agent_N/odom -> agent_N/base_link`。
+4. 静态 TF：发布并周期性重发 `base_laser_link`、`base_footprint`。
+5. scan 适配：保留 Webots 原始时间戳；必要时规范负 `angle_increment`，补齐 `scan_time/time_increment`。
 
-本轮修改后的约束：
+当前约束：
 
-- `scan.header.stamp` 保留 Webots 原始时间戳，不再强制改成 adapter 当前时间
-- `odom.header.stamp` 保留 Webots 原始时间戳；若上游 stamp 缺失才回退到节点时钟
-- `odom -> base_link` TF 与该 odom 使用同一 stamp
-- `base_laser_link`、`base_footprint` 改为一次性通过 `StaticTransformBroadcaster` 发布
+- `scan.header.stamp` 优先保留 Webots 原始时间戳。
+- `odom.header.stamp` 优先保留 Webots 原始时间戳。
+- `odom -> base_link` TF 与该 odom 使用同一 stamp。
+- `map -> agent_N/odom` 不在 ROS2 侧生成。
 
-这些改动的目的，是消除“scan 是一个时刻、TF 是另一个时刻”的问题。
+## 7. `/sim_map` 与场景状态
 
-## 6. ROS1 SLAM 侧的当前约束
+Webots 桥接模式下，ROS1 侧 `robosar_sim_w.launch` 的 `map_server` 是 `/sim_map` 的默认权威来源。ROS2 侧 `start_robosar_webots.sh` 会解析 `STATIC_MAP` 并写入共享 scene state，方便 ROS1 侧选择对应地图和任务上下文；但 `PUBLISH_STATIC_MAP=false` 时，ROS2 不发布 `/sim_map`。
 
-`/root/catkin_ws2/src/robosar/robosar_SLAM_toolbox/slam_toolbox/config/robosar_mapping.yaml`
-
-当前系统在 5 台机器人下，`sync_slam_toolbox_node` 很容易出现 scan 队列积压。为降低过期 scan 参与匹配的概率，当前配置已经做了保守收敛：
-
-- `throttle_scans: 8`
-- `tag_publish_period: 1.0`
-- `map_update_interval: 1.0`
-- `minimum_time_interval: 0.7`
-- `transform_timeout: 0.35`
-- `tf_buffer_duration: 90.0`
-- `minimum_travel_distance: 0.35`
-- `minimum_travel_heading: 0.35`
-- `loop_close_across_agents: false`
-
-设计意图：
-
-- 先保证时间一致性与轨迹稳定
-- 再追求跨机器人回环和更高刷新率
-
-如果后续仍有明显积压，再考虑两项进一步措施：
-
-1. 把 Webots 激光更新频率继续下调到 `6-8 Hz`
-2. 将 `robosar_mapping_sim.launch` 从 `sync_slam_toolbox_node` 切到 `async_slam_toolbox_node`
-
-## 7. 启动顺序
-
-推荐顺序如下：
-
-1. 启动 ROS2 容器
-2. 在 ROS2 容器中运行 `start_robosar_webots.sh`
-3. 确认 Webots 已启动，`robosar_bridge_adapter` 已运行
-4. 确认 `ros1_bridge` 已启动
-5. 确认 `/clock` 已经桥接成功
-6. 再启动 ROS1 容器中的 `launch_robosar.sh`
-
-原因：
-
-- ROS1 侧节点必须在 `/use_sim_time=true` 且 `/clock` 可用的前提下启动
-- `slam_toolbox` 如果先在 wall-time 下启动，再切到 sim-time，很容易留下 epoch 时间戳和 TF extrapolation 问题
+如果调试时显式设置 `PUBLISH_STATIC_MAP=true`，需要确认 ROS1 侧没有同时发布同名 `/sim_map`，否则会出现重复地图源。
 
 ## 8. 排障基线
 
-如果再次出现 RViz 中位姿漂移、地图重叠、墙体毛边，优先检查以下项目：
-
 ### 8.1 时钟
 
-- ROS1：`rostopic echo /clock -n 1`
-- ROS2：`ros2 topic echo /clock --once`
+检查两侧是否都能看到 Webots `/clock`：
 
-两边都必须能看到 Webots 时钟推进。
+```bash
+# ROS1
+rostopic echo /clock -n 1
+
+# ROS2
+ros2 topic echo /clock --once
+```
+
+两侧必须看到同一仿真时钟推进。ROS1 侧应确认：
+
+```bash
+rosparam get /use_sim_time
+```
+
+结果应为 `true`。
 
 ### 8.2 TF
 
-- `agent_N/odom -> agent_N/base_link` 必须连续更新
-- `agent_N/base_link -> agent_N/base_laser_link` 必须来自 `/tf_static`
-- 不允许 ROS2 侧再有额外的 `map -> agent_N/odom` 发布者
+重点检查：
+
+- `agent_N/odom -> agent_N/base_link` 连续更新。
+- `agent_N/base_link -> agent_N/base_laser_link` 来自 `/tf_static`。
+- `map -> agent_N/odom` 只由 ROS1 侧的 bootstrap/SLAM 链路负责。
+- ROS2 侧没有额外发布 `map -> agent_N/odom`。
 
 ### 8.3 scan 队列
 
-如果 `rosout` 中再次出现以下日志，说明 `slam_toolbox` 仍然过载：
+如果 ROS1 日志再次出现以下信息，说明 `slam_toolbox` 仍可能过载：
 
 - `Input scan queue saturated`
 - `Failed to compute odom pose`
 - `Lookup would require extrapolation into the past`
 
-此时不要先去改时钟方案，优先从以下方向收敛：
+优先从以下方向收敛：
 
-- 降低激光频率
-- 进一步提高 `throttle_scans`
-- 暂时禁用跨机器人回环
-- 必要时切 `async_slam_toolbox_node`
+- 降低 Webots 激光频率。
+- 提高 SLAM 的 `throttle_scans`。
+- 暂时禁用跨机器人回环。
+- 必要时从同步 SLAM 切到异步 SLAM。
 
 ## 9. 禁止继续沿用的旧假设
 
 以下内容已经不符合当前实现，不应再继续使用：
 
-- “ROS1 侧 `use_sim_time=false`”
-- “ROS2 侧发布静态 `map -> agent_N/odom`”
-- “固定 TF 通过 `/tf` 周期性发布即可”
-- “ROS2 侧默认应始终启动自己的 `/sim_map`”
-
-这些旧假设会直接导致时钟不一致、TF 树冲突或重复地图源。
+- 旧的 `docker run ... osrf/ros:humble-desktop-full` 可直接复现当前 ROS2 环境。
+- ROS1 侧入口是旧的 `launch_robosar.sh`。
+- ROS1 侧 `use_sim_time=false`。
+- ROS2 侧默认发布 `/sim_map`。
+- ROS2 侧发布 `map -> agent_N/odom`。
+- 固定传感器外参通过 `/tf` 周期性动态发布即可。
+- `robosar_bridge_adapter` 负责速度裁剪。
 
 ## 10. 关键文件
 
-- ROS2 适配层：
-  - `/root/ROS2swarm_w/src/launch_webots/launch_webots/robosar_bridge_adapter.py`
-- ROS2 启动脚本：
-  - `/root/ROS2swarm_w/start_robosar_webots.sh`
-- ROS2 Webots 主 launch：
-  - `/root/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
-- ROS1 总启动脚本：
-  - `/root/catkin_ws2/launch_robosar.sh`
-- ROS1 SLAM 参数：
-  - `/root/catkin_ws2/src/robosar/robosar_SLAM_toolbox/slam_toolbox/config/robosar_mapping.yaml`
+- ROS2 总入口：`ROS2swarm_w/start_robosar_webots.sh`
+- ROS2 Webots launch：`ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
+- ROS2 适配层：`ROS2swarm_w/src/launch_webots/launch_webots/robosar_bridge_adapter.py`
+- ROS1 Webots 总入口：`masar_ws/launch_robosar_w.sh`
+- ROS1 Webots 场景上下文：`masar_ws/src/robosar/robosar_sim_bringup/launch/robosar_sim_w.launch`
+- ROS1 Webots SLAM launch：`masar_ws/src/robosar/robosar_SLAM_toolbox/slam_toolbox/launch/robosar_mapping_sim_w.launch`
+- ROS1 Webots SLAM 参数：`masar_ws/src/robosar/robosar_SLAM_toolbox/slam_toolbox/config/robosar_mapping_w.yaml`
 
-以上五个文件共同定义了当前双容器系统的真实行为，应以它们为准，而不是以旧文档或旧启动习惯为准。
+以上文件共同定义当前双容器系统的真实行为，应以它们为准。

@@ -1,19 +1,19 @@
-import os
 import launch
-
-from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import ExecuteProcess
+from launch.actions import (
+    DeclareLaunchArgument,
+    EmitEvent,
+    OpaqueFunction,
+    RegisterEventHandler,
+)
+from launch.event_handlers import OnProcessExit
 from launch.substitutions import LaunchConfiguration
 from webots_ros2_driver.webots_launcher import WebotsLauncher
-from launch.substitutions.path_join_substitution import PathJoinSubstitution
-from launch_ros.actions import Node
-from launch.actions import DeclareLaunchArgument, OpaqueFunction, RegisterEventHandler, EmitEvent
-from launch.event_handlers import OnProcessExit
+
 
 def generate_launch_description():
     """
-    Starts a webots simulation in the mode, where elements could be added via command line
+    Starts a Webots simulation where elements can be added via command line.
     """
     declare_world = DeclareLaunchArgument(
         'world_path',
@@ -25,11 +25,23 @@ def generate_launch_description():
         default_value='true',
         description='Use simulation time'
     )
+    declare_mode = DeclareLaunchArgument(
+        'webots_mode',
+        default_value='realtime',
+        description='Webots run mode: pause, realtime, fast, or rendering'
+    )
+    declare_gui = DeclareLaunchArgument(
+        'webots_gui',
+        default_value='true',
+        description='Start Webots with GUI/rendering enabled'
+    )
 
     def launch_setup(context):
         world = LaunchConfiguration('world_path').perform(context)
         webots = WebotsLauncher(
             world=world,
+            gui=LaunchConfiguration('webots_gui'),
+            mode=LaunchConfiguration('webots_mode'),
             ros2_supervisor=True
         )
 
@@ -47,5 +59,7 @@ def generate_launch_description():
     return LaunchDescription([
         declare_world,
         declare_sim_time,
+        declare_mode,
+        declare_gui,
         OpaqueFunction(function=launch_setup)
     ])

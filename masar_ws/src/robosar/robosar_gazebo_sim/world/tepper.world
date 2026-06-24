@@ -2384,10 +2384,10 @@
         </link>
       </model>
       <model name='unit_cylinder'>
-        <pose>7.26381 3.77655 0.499993 -3e-06 -1e-06 1.1e-05</pose>
+        <pose>7.26381 3.57655 0.499993 -3e-06 -1e-06 1.1e-05</pose>
         <scale>1 1 1</scale>
         <link name='link'>
-          <pose>7.26381 3.77655 0.499993 -3e-06 -1e-06 1.1e-05</pose>
+          <pose>7.26381 3.57655 0.499993 -3e-06 -1e-06 1.1e-05</pose>
           <velocity>0 0 0 0 -0 0</velocity>
           <acceleration>0 0 -9.8 0 -0 0</acceleration>
           <wrench>0 0 -9.8 0 -0 0</wrench>
@@ -2398,7 +2398,7 @@
       </light>
     </state>
     <model name='unit_cylinder'>
-      <pose>7.32197 3.8685 0.5 0 -0 0</pose>
+      <pose>7.32197 3.5785 0.5 0 -0 0</pose>
       <link name='link'>
         <inertial>
           <mass>1</mass>
@@ -2658,7 +2658,7 @@
     </model>
     <gui fullscreen='0'>
       <camera name='user_camera'>
-        <pose>9.37 8.55 34.0 3.14159 1.57079 3.14159</pose>
+        <pose>10.30978775 8.49408722 40.21188736 -0.000000984 1.553796517 1.572024494</pose>
         <view_controller>ortho</view_controller>
         <projection_type>orthographic</projection_type>
       </camera>

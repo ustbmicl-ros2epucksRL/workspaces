@@ -1,341 +1,247 @@
 #!/usr/bin/env python3
-"""
-Transport Pattern - 使用NEAT神经网络控制机器人进行运输任务
+"""Transport pattern controlled by a VMAS-trained ``best_actor.pt`` policy."""
 
-该模式使用预训练的NEAT神经网络来生成控制命令，实现机器人协作运输物体的行为。
-网络输入通过订阅 /global_info 话题获取全局信息（机器人状态、包裹状态、目标位置）。
-输出为线速度和角速度，映射到 u_range 范围。
-
-观测结构（11维，对应1个包裹）：
-- 智能体自身状态（4维）：位置(2维) + 速度(2维)
-- 包裹信息（7维）：
-  - 包裹到目标的相对位置(2维)
-  - 包裹到智能体的相对位置(2维)
-  - 包裹的速度(2维)
-  - 包裹是否在目标上(1维)
-"""
-import os
-import pickle
-import numpy as np
 import json
+import os
 
-from geometry_msgs.msg import Twist
-from std_msgs.msg import String
-from ros2swarm.utils import setup_node
-from ros2swarm.movement_pattern.movement_pattern import MovementPattern
 from ament_index_python.packages import get_package_share_directory
-from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
+from geometry_msgs.msg import Twist
+from rclpy.qos import QoSDurabilityPolicy, QoSProfile, QoSReliabilityPolicy
+from std_msgs.msg import String
 
-try:
-    from neat.nn import RecurrentNetwork
-    NEAT_AVAILABLE = True
-except ImportError:
-    NEAT_AVAILABLE = False
+from ros2swarm.movement_pattern.movement_pattern import MovementPattern
+from ros2swarm.utils import setup_node
+from ros2swarm.vmas_actor_policy import VmasActorPolicy
+from ros2swarm.vmas_transport_adapter import (
+    build_transport_observation,
+    vmas_action_to_diff_drive,
+)
+
+
+CHECKPOINT_DIR = (
+    "launch/pattern/movement_pattern/basic/checkpoints/transport"
+)
+DEFAULT_ACTOR_PATH = "best_actor.pt"
 
 
 class TransportPattern(MovementPattern):
-    """
-    使用NEAT神经网络进行运输(Transport)任务的模式节点
-
-    通过订阅 /global_info 话题获取全局信息，计算观测向量，
-    使用NEAT网络计算控制命令，实现机器人协作运输物体到目标位置。
-
-    pattern_node >> publishing to the self.get_namespace()/drive_command topic
-    """
+    """Run a VMAS transport actor and publish diff-drive commands."""
 
     def __init__(self):
-        """初始化Transport模式节点"""
-        super().__init__('transport_pattern')
+        super().__init__("transport_pattern")
 
-        # 声明参数
         self.declare_parameters(
-            namespace='',
+            namespace="",
             parameters=[
-                ('genome_file', 'transport_genome_package.pkl'),  # 基因包文件名
-                ('max_linear_velocity', 0.12),  # 最大线速度 (m/s) - 差速驱动约束
-                ('max_angular_velocity', 1.0),  # 最大角速度 (rad/s) - 差速驱动约束
-                ('timer_period', 0.1),  # 控制周期（秒）
-                ('box_def_name', 'transport_box'),  # 包裹DEF名称
-                ('target_def_name', 'target_zone'),  # 目标区域DEF名称
-                ('world_scale', 1.75),  # 世界坐标归一化因子（Webots场景3.5x3.5即±1.75，VMAS训练时±1）
-                ('goal_threshold', 0.125),  # 判断包裹是否在目标上的距离阈值（米）
-            ])
+                ("actor_path", DEFAULT_ACTOR_PATH),
+                ("actor_device", "cpu"),
+                ("max_linear_velocity", 0.12),
+                ("max_angular_velocity", 1.0),
+                ("timer_period", 0.1),
+                ("box_def_name", "transport_box"),
+                ("target_def_name", "target_zone"),
+                ("world_scale", 1.75),
+                ("velocity_scale", 0.0),
+                ("goal_threshold", 0.22),
+                ("action_mapping", "heading"),
+                ("turn_gain", 2.0),
+                ("min_action_norm", 0.02),
+                ("allow_reverse", False),
+                ("allow_reverse_goal_distance", 0.6),
+                ("diagnostics_period", 2.0),
+            ],
+        )
 
-        # 获取参数值
-        self.genome_file = self.get_parameter(
-            'genome_file').get_parameter_value().string_value
-        self.max_linear_velocity = self.get_parameter(
-            'max_linear_velocity').get_parameter_value().double_value
-        self.max_angular_velocity = self.get_parameter(
-            'max_angular_velocity').get_parameter_value().double_value
-        self.timer_period = self.get_parameter(
-            'timer_period').get_parameter_value().double_value
-        self.box_def_name = self.get_parameter(
-            'box_def_name').get_parameter_value().string_value
-        self.target_def_name = self.get_parameter(
-            'target_def_name').get_parameter_value().string_value
-        self.world_scale = self.get_parameter(
-            'world_scale').get_parameter_value().double_value
-        self.goal_threshold = self.get_parameter(
-            'goal_threshold').get_parameter_value().double_value
+        self.actor_path = self._resolve_actor_path(
+            self._string_param("actor_path")
+        )
+        self.actor_device = self._string_param("actor_device")
+        self.max_linear_velocity = self._double_param("max_linear_velocity")
+        self.max_angular_velocity = self._double_param("max_angular_velocity")
+        self.timer_period = self._double_param("timer_period")
+        self.box_def_name = self._string_param("box_def_name")
+        self.target_def_name = self._string_param("target_def_name")
+        self.world_scale = self._double_param("world_scale")
+        self.velocity_scale = self._double_param("velocity_scale")
+        self.goal_threshold = self._double_param("goal_threshold")
+        self.action_mapping = self._string_param("action_mapping")
+        self.turn_gain = self._double_param("turn_gain")
+        self.min_action_norm = self._double_param("min_action_norm")
+        self.allow_reverse = self._bool_param("allow_reverse")
+        self.allow_reverse_goal_distance = self._double_param(
+            "allow_reverse_goal_distance"
+        )
+        self.diagnostics_period = self._double_param("diagnostics_period")
 
-        # NEAT网络
-        self.network = None
-        self.network_input_dim = 11  # 4 (自身状态) + 7 (1个包裹信息)
-
-        # 全局信息缓存
         self.global_info = None
-        self.robot_name = self.get_namespace().strip('/')
+        self.robot_name = self.get_namespace().strip("/")
+        self.actor_policy = None
+        self._last_diagnostics_ns = 0
+        self._missing_data_warn_counts = {}
+        self._goal_reached = False
+        self._started_near_goal = None
 
-        # 加载NEAT网络
-        if not NEAT_AVAILABLE:
-            self.get_logger().error('neat-python库未安装! 请运行: pip install neat-python')
-        else:
-            self._load_neat_network()
+        self._load_actor()
 
-        # 订阅全局信息话题
         qos = QoSProfile(
             depth=10,
             durability=QoSDurabilityPolicy.VOLATILE,
-            reliability=QoSReliabilityPolicy.BEST_EFFORT
+            reliability=QoSReliabilityPolicy.BEST_EFFORT,
         )
         self.global_info_sub = self.create_subscription(
             String,
-            '/global_info',
+            "/global_info",
             self._global_info_callback,
-            qos
+            qos,
         )
-        self.get_logger().info(f'订阅全局信息话题: /global_info')
 
-        # 定时器用于处理和发布控制命令
         self.timer = self.create_timer(
             self.timer_period,
-            self.swarm_command_controlled_timer(self.control_callback)
+            self.swarm_command_controlled_timer(self.control_callback),
         )
 
-        self.get_logger().info(
-            f'Transport模式初始化完成 [{self.robot_name}], 网络输入维度: {self.network_input_dim}, '
-            f'速度范围: linear=[-{self.max_linear_velocity}, {self.max_linear_velocity}], '
-            f'angular=[-{self.max_angular_velocity}, {self.max_angular_velocity}]'
+        self.get_logger().debug(
+            "Transport VMAS actor node ready "
+            f"[{self.robot_name}], actor={self.actor_path}, "
+            f"linear_max={self.max_linear_velocity:.3f}, "
+            f"angular_max={self.max_angular_velocity:.3f}, "
+            f"mapping={self.action_mapping}"
         )
 
-    def _load_neat_network(self):
-        """加载NEAT神经网络"""
-        # 构建基因包完整路径
-        package_dir = get_package_share_directory('ros2swarm')
-        checkpoint_dir = os.path.join(
-            package_dir, 'launch', 'pattern', 'movement_pattern', 'basic',
-            'checkpoints', 'transport'
-        )
-        
-        # 如果genome_file是完整路径则直接使用，否则在checkpoint目录下查找
-        if os.path.isabs(self.genome_file):
-            self.genome_package_path = self.genome_file
-        else:
-            self.genome_package_path = os.path.join(checkpoint_dir, self.genome_file)
+    def _string_param(self, name):
+        return self.get_parameter(name).get_parameter_value().string_value
 
-        self.get_logger().info(f'加载NEAT基因组包: {self.genome_package_path}')
+    def _double_param(self, name):
+        return self.get_parameter(name).get_parameter_value().double_value
 
+    def _bool_param(self, name):
+        return self.get_parameter(name).get_parameter_value().bool_value
+
+    def _load_actor(self):
         try:
-            with open(self.genome_package_path, 'rb') as f:
-                package = pickle.load(f)
-
-            genome = package['genome']
-            neat_config = package['neat_config']
-
-            self.network = RecurrentNetwork.create(genome, neat_config)
-            self.network.reset()
-
-            # 更新网络输入维度
-            self.network_input_dim = len(self.network.input_nodes)
-
-            self.get_logger().info(
-                f'NEAT网络加载成功 - 任务: {package.get("task_name", "unknown")}, '
-                f'适应度: {package.get("fitness", 0):.4f}, '
-                f'输入维度: {self.network_input_dim}, '
-                f'输出维度: {len(self.network.output_nodes)}'
+            self.actor_policy = VmasActorPolicy(
+                self.actor_path,
+                device=self.actor_device,
             )
-        except FileNotFoundError:
-            self.get_logger().error(f'NEAT基因组包不存在: {self.genome_package_path}')
-        except Exception as e:
-            self.get_logger().error(f'加载NEAT网络失败: {str(e)}')
+            info = self.actor_policy.info
+            self.get_logger().debug(
+                "Loaded VMAS actor "
+                f"kind={info.kind}, obs_dim={info.obs_dim}, "
+                f"action_dim={info.action_dim}, "
+                f"generation={info.generation}, fitness={info.fitness}"
+            )
+        except Exception as exc:
+            self.actor_policy = None
+            self.get_logger().error(f"Failed to load VMAS actor: {exc}")
+
+    def _resolve_actor_path(self, actor_path: str) -> str:
+        expanded = os.path.expanduser(actor_path)
+        if os.path.isabs(expanded):
+            return expanded
+        package_dir = get_package_share_directory("ros2swarm")
+        return os.path.join(package_dir, CHECKPOINT_DIR, expanded)
 
     def _global_info_callback(self, msg: String):
-        """接收全局信息"""
         try:
             self.global_info = json.loads(msg.data)
-        except json.JSONDecodeError as e:
-            self.get_logger().error(f'解析全局信息失败: {e}')
-
-    def _get_observation(self):
-        """
-        获取观测向量（从全局信息或随机生成）
-        
-        观测结构（11维）：
-        - 智能体位置 (2维): x, y (归一化)
-        - 智能体速度 (2维): vx, vy
-        - 包裹到目标的相对位置 (2维) (归一化)
-        - 智能体到包裹的相对位置 (2维) (归一化) - 注意：方向是 box - robot
-        - 包裹速度 (2维)
-        - 包裹是否在目标上 (1维)
-        
-        注意：NEAT网络在VMAS环境训练时使用的观测值范围较小（约±0.5），
-        需要对ROS2仿真的世界坐标进行归一化以匹配训练时的输入范围。
-        
-        Returns:
-            list: 观测向量
-        """
-        if self.global_info is None:
-            self.get_logger().debug('等待全局信息...')
-            return self._get_random_observation()
-        
-        try:
-            robots = self.global_info.get('robots', {})
-            objects = self.global_info.get('objects', {})
-            
-            # 获取自身信息
-            robot_info = robots.get(self.robot_name, None)
-            if robot_info is None:
-                self.get_logger().warn(f'未找到机器人 {self.robot_name} 的信息')
-                return self._get_random_observation()
-            
-            robot_x = robot_info['position']['x']
-            robot_y = robot_info['position']['y']
-            robot_vx = robot_info['velocity']['x']
-            robot_vy = robot_info['velocity']['y']
-            
-            # 获取机器人朝向（从3x3旋转矩阵提取yaw角）
-            # 旋转矩阵按行优先存储：[R00, R01, R02, R10, R11, R12, R20, R21, R22]
-            orientation = robot_info.get('orientation', [1, 0, 0, 0, 1, 0, 0, 0, 1])
-            # yaw = atan2(R10, R00) 对于绕z轴的旋转
-            robot_yaw = np.arctan2(orientation[3], orientation[0])
-            
-            # 获取包裹信息
-            box_info = objects.get(self.box_def_name, None)
-            if box_info:
-                box_x = box_info['position']['x']
-                box_y = box_info['position']['y']
-                box_vx = box_info['velocity']['x']
-                box_vy = box_info['velocity']['y']
-            else:
-                box_x, box_y = 0.0, 0.0
-                box_vx, box_vy = 0.0, 0.0
-            
-            # 获取目标信息
-            target_info = objects.get(self.target_def_name, None)
-            if target_info:
-                target_x = target_info['position']['x']
-                target_y = target_info['position']['y']
-            else:
-                target_x, target_y = 0.0, 0.0
-            
-            # 计算全局坐标系下的相对位置
-            box_to_target_x_global = box_x - target_x
-            box_to_target_y_global = box_y - target_y
-            robot_to_box_x_global = box_x - robot_x
-            robot_to_box_y_global = box_y - robot_y
-            
-            # 将相对位置转换到机器人本体坐标系（绕z轴旋转-yaw角）
-            # 这样网络看到的是：正x方向=机器人前方，正y方向=机器人左方
-            cos_yaw = np.cos(-robot_yaw)
-            sin_yaw = np.sin(-robot_yaw)
-            
-            # 转换robot_to_box到本体坐标系
-            robot_to_box_x = cos_yaw * robot_to_box_x_global - sin_yaw * robot_to_box_y_global
-            robot_to_box_y = sin_yaw * robot_to_box_x_global + cos_yaw * robot_to_box_y_global
-            
-            # 转换box_to_target到本体坐标系（可选，但保持一致性）
-            box_to_target_x = cos_yaw * box_to_target_x_global - sin_yaw * box_to_target_y_global
-            box_to_target_y = sin_yaw * box_to_target_x_global + cos_yaw * box_to_target_y_global
-            
-            # 转换速度到本体坐标系
-            robot_vx_body = cos_yaw * robot_vx - sin_yaw * robot_vy
-            robot_vy_body = sin_yaw * robot_vx + cos_yaw * robot_vy
-            box_vx_body = cos_yaw * box_vx - sin_yaw * box_vy
-            box_vy_body = sin_yaw * box_vx + cos_yaw * box_vy
-            
-            # 判断包裹是否在目标上
-            # 计算包裹中心到目标中心的距离
-            # 阈值应小于 (目标半径 - 包裹半边长)，确保包裹完全在目标区域内
-            # 默认：目标半径0.25m，包裹边长0.25m，阈值0.125m
-            distance_to_target = np.sqrt(box_to_target_x_global**2 + box_to_target_y_global**2)
-            on_goal = 1.0 if distance_to_target < self.goal_threshold else 0.0
-            
-            # 归一化因子（将世界坐标缩放到网络训练时的范围）
-            scale = self.world_scale
-            
-            # 构建观测向量（位置相关的维度需要归一化，使用本体坐标系）
-            observation = [
-                robot_x / scale,           # 智能体全局位置 x (归一化)
-                robot_y / scale,           # 智能体全局位置 y (归一化)
-                robot_vx_body,             # 智能体本体速度 vx
-                robot_vy_body,             # 智能体本体速度 vy
-                box_to_target_x / scale,   # 包裹到目标 x (本体坐标系，归一化)
-                box_to_target_y / scale,   # 包裹到目标 y (本体坐标系，归一化)
-                robot_to_box_x / scale,    # 智能体到包裹 x (本体坐标系，归一化)
-                robot_to_box_y / scale,    # 智能体到包裹 y (本体坐标系，归一化)
-                box_vx_body,               # 包裹本体速度 vx
-                box_vy_body,               # 包裹本体速度 vy
-                on_goal,                   # 是否在目标上
-            ]
-            
-            # 调试输出
-            self.get_logger().debug(
-                f'[{self.robot_name}] yaw={np.degrees(robot_yaw):.1f}°, '
-                f'robot_to_box(body)=({robot_to_box_x/scale:.3f},{robot_to_box_y/scale:.3f})'
+        except json.JSONDecodeError as exc:
+            self.get_logger().error(
+                f"Failed to parse /global_info JSON: {exc}"
             )
-            
-            return observation
-            
-        except Exception as e:
-            self.get_logger().error(f'获取观测失败: {str(e)}')
-            return self._get_random_observation()
-
-    def _get_random_observation(self):
-        """生成随机观测向量用于测试"""
-        return np.random.uniform(-1.0, 1.0, self.network_input_dim).tolist()
 
     def control_callback(self):
-        """控制回调函数，使用NEAT网络计算并发布控制命令"""
-        if self.network is None:
-            self.get_logger().warn('NEAT网络未初始化，无法控制')
+        if self.actor_policy is None:
+            self._publish_stop()
+            return
+        if self.global_info is None:
+            self._warn_missing_data("waiting for /global_info")
+            self._publish_stop()
             return
 
         try:
-            # 获取观测
-            observation = self._get_observation()
-            
-            # 通过NEAT网络计算输出
-            output = self.network.activate(observation)
-
-            # 将输出映射到动作空间
-            # NEAT输出在[0, 1]范围（sigmoid激活）
-            # 映射到 u_range: [-max, max]
-            linear_velocity = (output[0] * 2 - 1) * self.max_linear_velocity
-            angular_velocity = (output[1] * 2 - 1) * self.max_angular_velocity
-
-            # 创建并发布Twist消息
-            twist_msg = Twist()
-            twist_msg.linear.x = float(linear_velocity)
-            twist_msg.angular.z = float(angular_velocity)
-
-            self.command_publisher.publish(twist_msg)
-
-            self.get_logger().debug(
-                f'[{self.robot_name}] 控制输出 - 线速度: {linear_velocity:.4f} m/s, '
-                f'角速度: {angular_velocity:.4f} rad/s'
+            observation = build_transport_observation(
+                self.global_info,
+                robot_name=self.robot_name,
+                box_def_name=self.box_def_name,
+                target_def_name=self.target_def_name,
+                world_scale=self.world_scale,
+                velocity_scale=self.velocity_scale,
+                goal_threshold=self.goal_threshold,
             )
+            if self._goal_reached or observation.on_goal >= 1.0:
+                if not self._goal_reached:
+                    self.get_logger().info(
+                        "Transport goal reached "
+                        f"at distance={observation.distance_to_goal:.3f}; "
+                        "stopping actor commands"
+                    )
+                self._goal_reached = True
+                self._publish_stop()
+                return
 
-        except Exception as e:
-            self.get_logger().error(f'NEAT网络推理失败: {str(e)}')
+            if self._started_near_goal is None:
+                self._started_near_goal = (
+                    self.allow_reverse_goal_distance > 0.0
+                    and observation.distance_to_goal
+                    <= self.allow_reverse_goal_distance
+                )
 
+            action = self.actor_policy.act(observation.values)
+            command = vmas_action_to_diff_drive(
+                action,
+                robot_yaw=observation.robot_yaw,
+                max_linear_velocity=self.max_linear_velocity,
+                max_angular_velocity=self.max_angular_velocity,
+                turn_gain=self.turn_gain,
+                min_action_norm=self.min_action_norm,
+                allow_reverse=self._allow_reverse(observation),
+                mapping=self.action_mapping,
+            )
+        except Exception as exc:
+            self._warn_missing_data(f"transport actor step failed: {exc}")
+            self._publish_stop()
+            return
 
+        twist_msg = Twist()
+        twist_msg.linear.x = command.linear
+        twist_msg.angular.z = command.angular
+        self.command_publisher.publish(twist_msg)
+        self._log_diagnostics(observation, command)
+
+    def _allow_reverse(self, observation):
+        return self.allow_reverse or bool(self._started_near_goal)
+
+    def _publish_stop(self):
+        self.command_publisher.publish(Twist())
+
+    def _warn_missing_data(self, message: str):
+        count = self._missing_data_warn_counts.get(message, 0) + 1
+        self._missing_data_warn_counts[message] = count
+        if count == 1:
+            self.get_logger().warn(message)
+        else:
+            self.get_logger().debug(message)
+
+    def _log_diagnostics(self, observation, command):
+        if self.diagnostics_period <= 0.0:
+            return
+        now_ns = self.get_clock().now().nanoseconds
+        period_ns = int(self.diagnostics_period * 1_000_000_000)
+        if now_ns - self._last_diagnostics_ns < period_ns:
+            return
+        self._last_diagnostics_ns = now_ns
+        self.get_logger().debug(
+            f"[{self.robot_name}] dist={observation.distance_to_goal:.3f}, "
+            f"action=({command.action_x:.3f},{command.action_y:.3f}), "
+            f"body=({command.body_x:.3f},{command.body_y:.3f}), "
+            f"cmd=(v={command.linear:.3f},w={command.angular:.3f}), "
+            f"heading_error={command.heading_error:.3f}"
+        )
 
 
 def main(args=None):
-    """创建Transport模式节点，启动并处理销毁"""
     setup_node.init_and_spin(args, TransportPattern)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

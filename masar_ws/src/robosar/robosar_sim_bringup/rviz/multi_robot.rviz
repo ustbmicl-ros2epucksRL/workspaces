@@ -102,7 +102,7 @@ Visualization Manager:
         agent_4/base_link:
           Value: true
         agent_4/odom:
-          Value: false
+          Value: true
         tb_0/base_footprint:
           Value: false
         tb_0/base_link:
@@ -548,6 +548,14 @@ Visualization Manager:
     - Class: rviz/Marker
       Enabled: true
       Marker Topic: /lazy_traffic_controller/agent_3/vel_marker
+      Name: Marker
+      Namespaces:
+        vel_marker: true
+      Queue Size: 100
+      Value: true
+    - Class: rviz/Marker
+      Enabled: true
+      Marker Topic: /lazy_traffic_controller/agent_4/vel_marker
       Name: Marker
       Namespaces:
         vel_marker: true

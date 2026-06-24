@@ -47,7 +47,7 @@ DISTANCE_SENSOR_ANGLE = [
 class EPuckNode(Node):
     def __init__(self):
         super().__init__('epuck_node')
-        self.get_logger().info("Epuck node has been started.")
+        self.get_logger().debug("Epuck node has been started.")
 
         # Intialize distance sensors for LaserScan topic
         self.__subscriber_dist_sensors = {}

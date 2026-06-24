@@ -80,9 +80,9 @@ class RatSearchPattern(MovementPattern):
                 ('rat_search_left_distance', 0.0),
                 ('rat_search_distance_buffer', 0.0),
 
-                ('rat_search_wall_right_degree', 0.0),
-                ('rat_search_wall_degree', 0.0),
-                ('rat_search_wall_batch_size', 0.0),
+                ('rat_search_wall_right_degree', 0),
+                ('rat_search_wall_degree', 0),
+                ('rat_search_wall_batch_size', 0),
 
                 ('max_translational_velocity', 0.0),
                 ('max_rotational_velocity', 0.0),
@@ -235,12 +235,12 @@ class RatSearchPattern(MovementPattern):
                 'next leaf?{},num open segments: {}'.format(self.location_graph.is_next_location_leaf(), num))
             if self.location_graph.is_next_location_leaf() and num == 1:
                 # update to location_graph when turning in dead end
-                self.get_logger().info('turn counter {}'.format(self.invocation_counter))
+                self.get_logger().debug('turn counter {}'.format(self.invocation_counter))
                 if self.invocation_counter >= 150:
                     # TODO do only once --> next_node == leaf !! done already
-                    self.get_logger().info('ENDING-UPDATE-TIME:{}'.format(self.get_time_since_start()))
+                    self.get_logger().debug('ENDING-UPDATE-TIME:{}'.format(self.get_time_since_start()))
                     self.location_graph.update(State.ENDING, self.get_time_since_start())
-                    self.get_logger().info(self.location_graph)
+                    self.get_logger().debug(self.location_graph)
 
                     info = StringMessage()
                     info.data = 'Ending:{}, Location ID:{}'.format(self.get_time_since_start(),
@@ -529,7 +529,7 @@ class RatSearchPattern(MovementPattern):
         openings2, _, _ = self.identify_segments(dis)
         if openings >= 3 and openings2 >= 3:
             # really crossing?
-            self.get_logger().info('>>CROSSING-DETECTED')
+            self.get_logger().debug('>>CROSSING-DETECTED')
             direction = Twist()
             direction.linear.x = self.param_max_translational_velocity / 26.0
             next_state = State.CROSSING
@@ -657,9 +657,9 @@ class RatSearchPattern(MovementPattern):
 
         if self.invocation_counter >= 200:
             # expect this high number of invocation as that a new crossing could be reached
-            self.get_logger().info('CROSSING-UPDATE-TIME:{}'.format(self.get_time_since_start()))
+            self.get_logger().debug('CROSSING-UPDATE-TIME:{}'.format(self.get_time_since_start()))
             self.location_graph.update(state, self.get_time_since_start())
-            self.get_logger().info(self.location_graph)
+            self.get_logger().debug(self.location_graph)
 
             info = StringMessage()
             info.data = 'Node:{}, Location ID:{}, Turning:{}'.format(self.get_time_since_start(),

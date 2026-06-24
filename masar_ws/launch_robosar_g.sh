@@ -6,6 +6,10 @@
 # 常用示例：./launch_robosar_g.sh --dry-run --vglrun
 # 说明：会自动加载 run_vnc_gpu.sh 对齐 VNC/GPU 环境；运行 ./launch_robosar_g.sh --help 可查看完整参数；按 Ctrl+C 会关闭本脚本拉起的进程组。
 
+#指定运行 GPU/X screen命令：
+#ROBOSAR_VGLRUN_DEVICE=:0.0 ./launch_robosar_g.sh --vglrun  # GPU 0
+#ROBOSAR_VGLRUN_DEVICE=:0.1 ./launch_robosar_g.sh --vglrun  # GPU 1
+
 set -euo pipefail
 
 usage() {

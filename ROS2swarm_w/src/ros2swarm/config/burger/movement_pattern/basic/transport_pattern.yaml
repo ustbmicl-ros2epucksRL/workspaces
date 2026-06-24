@@ -1,7 +1,7 @@
 /**:
   ros__parameters:
     # ===== 运输模式配置 (Transport Pattern) =====
-    # 使用 NEAT 神经网络控制机器人协作搬运物体
+    # 使用 VMAS 训练得到的 best_actor.pt 控制机器人协作搬运物体
     # 
     # TurtleBot3 Burger 物理参数:
     #   - 轮径 r = 0.033m, 轮距 L = 0.16m
@@ -14,11 +14,9 @@
     # 运输任务需要接触包裹进行推动，跳过避障调整直接发布到 cmd_vel
     bypass_protection: true
     
-    # ===== NEAT 神经网络配置 =====
-    # 基因包文件名（在checkpoints/transport/目录下查找）
-    # 可指定文件名如: 'transport_genome_package.pkl'
-    # 留空则使用默认: 'transport_genome_package.pkl'
-    genome_file: 'transport_genome_package.pkl'
+    # ===== VMAS best_actor.pt 配置 =====
+    actor_path: 'best_actor.pt'
+    actor_device: 'cpu'
     
     # ===== 速度限制 =====
     max_linear_velocity: 0.15    # 最大线速度 (m/s)
@@ -34,4 +32,14 @@
     # ===== 任务完成判断配置 =====
     # 判断包裹是否在目标上的距离阈值（米）
     # 计算方式：包裹中心到目标中心的距离 < goal_threshold 则认为完成任务
-    goal_threshold: 0.15  # 任务完成判断阈值 (m)
+    goal_threshold: 0.22  # 任务完成判断阈值 (m)
+
+    # ===== VMAS -> 差速底盘动作适配 =====
+    world_scale: 1.75
+    velocity_scale: 0.0       # <=0 表示使用 world_scale
+    action_mapping: 'heading' # heading | projection | direct
+    turn_gain: 2.0
+    min_action_norm: 0.02
+    allow_reverse: false
+    allow_reverse_goal_distance: 0.6
+    diagnostics_period: 2.0

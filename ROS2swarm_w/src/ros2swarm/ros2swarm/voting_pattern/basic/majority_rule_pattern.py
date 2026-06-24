@@ -59,7 +59,7 @@ class MajorityRulePattern(VotingPattern):
         param_timer_period = self.get_parameter(
             "majority_rule_timer_period").get_parameter_value().double_value
 
-        print(str(self.get_namespace()))
+        self.get_logger().debug(str(self.get_namespace()))
         # get robot id
         self.id = super().get_robot_id()
 

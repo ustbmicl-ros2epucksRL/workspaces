@@ -1,6 +1,13 @@
 from pathlib import Path
 
-from launch_webots.environment_generator import generate_world_file
+import pytest
+
+from launch_webots.environment_generator import (
+    ROUND_FLOCKING_TARGET_CLEARANCE,
+    TRANSPORT_OBJECT_MASS,
+    generate_world_file,
+    inset_bounds_for_clearance,
+)
 
 
 WORLD_HEADER = """#VRML_SIM R2025a utf8
@@ -59,7 +66,7 @@ def test_generate_world_file_defaults_transport_object_shape_to_cube(tmp_path: P
 
     assert "geometry Box" in content
     assert "boundingObject Box" in content
-    assert "mass 0.5" in content
+    assert f"mass {TRANSPORT_OBJECT_MASS}" in content
 
 
 def test_generate_world_file_supports_cylinder_transport_object(tmp_path: Path):
@@ -84,7 +91,7 @@ def test_generate_world_file_supports_cylinder_transport_object(tmp_path: Path):
 
     assert "geometry Cylinder" in content
     assert "boundingObject Cylinder" in content
-    assert "mass 0.5" in content
+    assert f"mass {TRANSPORT_OBJECT_MASS}" in content
 
 
 def test_generate_world_file_supports_triangular_prism_transport_object(tmp_path: Path):
@@ -110,7 +117,7 @@ def test_generate_world_file_supports_triangular_prism_transport_object(tmp_path
     assert "IndexedFaceSet" in content
     assert "boundingObject Group" in content
     assert "transport_box_mesh" in content
-    assert "mass 0.5" in content
+    assert f"mass {TRANSPORT_OBJECT_MASS}" in content
 
 
 def test_generate_world_file_applies_shape_to_transport_box_lists(tmp_path: Path):
@@ -134,3 +141,21 @@ def test_generate_world_file_applies_shape_to_transport_box_lists(tmp_path: Path
     content = output_world.read_text()
 
     assert content.count("geometry Cylinder") == 2
+
+
+def test_roundflocking_target_bounds_keep_ring_clearance():
+    lower, upper = inset_bounds_for_clearance(
+        -1.0,
+        1.0,
+        ROUND_FLOCKING_TARGET_CLEARANCE,
+    )
+
+    assert lower == pytest.approx(-0.4)
+    assert upper == pytest.approx(0.4)
+
+
+def test_inset_bounds_falls_back_to_center_when_area_is_too_small():
+    lower, upper = inset_bounds_for_clearance(-0.5, 0.5, 0.6)
+
+    assert lower == 0.0
+    assert upper == 0.0

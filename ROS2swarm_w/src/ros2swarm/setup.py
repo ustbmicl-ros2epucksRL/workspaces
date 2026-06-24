@@ -145,10 +145,16 @@ setup(
             'ros2swarm.movement_pattern.basic.rat_search_pattern:main',
             'roundflocking_pattern = '
             'ros2swarm.movement_pattern.basic.roundflocking_pattern:main',
+            'roundflocking_pattern_neat = '
+            'ros2swarm.movement_pattern.basic.roundflocking_pattern_neat:main',
             'transport_pattern = '
             'ros2swarm.movement_pattern.basic.transport_pattern:main',
+            'transport_pattern_neat = '
+            'ros2swarm.movement_pattern.basic.transport_pattern_neat:main',
             'navigation_pattern = '
             'ros2swarm.movement_pattern.basic.navigation_pattern:main',
+            'navigation_pattern_neat = '
+            'ros2swarm.movement_pattern.basic.navigation_pattern_neat:main',
             # movement_pattern.combined
             'discussed_dispersion_pattern = '
             'ros2swarm.movement_pattern.combined.discussed_dispersion_pattern:main',

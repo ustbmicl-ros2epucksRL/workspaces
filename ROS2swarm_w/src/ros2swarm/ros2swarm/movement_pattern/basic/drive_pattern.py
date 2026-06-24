@@ -44,10 +44,6 @@ class DrivePattern(MovementPattern):
         self.param_z = float(
             self.get_parameter("drive_angular").get_parameter_value().double_value)
 
-        self.get_logger().warn('Logger is: ' + self.get_logger().get_effective_level().name)
-        self.get_logger().info('Logger is: info ')
-        self.get_logger().debug('Logger is: debug')
-
     def timer_callback(self):
         """Publish the configured twist message when called."""
 
