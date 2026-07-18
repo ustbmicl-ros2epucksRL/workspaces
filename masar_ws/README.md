@@ -110,13 +110,22 @@ cd /masar
 ./run_response_controller_demo.sh transport-checkpoint
 ```
 
-这些 demo 不经过 DEFORM 导航和应急任务队列，直接验证 roundflocking/transport 控制器与 `/tb_i/task_cmd_vel` 输出。
+这些 demo 不经过 DEFORM 导航和应急任务队列，直接验证生产任务控制器与 `/tb_i/task_cmd_vel`、最终 `/tb_i/cmd_vel` 输出。普通 `roundflocking` 使用 Tepper 的 `heuristic` 控制器，普通 `transport` 使用 `synchronized_slots`；显式 `*-checkpoint`/`*-heuristic` 名称用于算法对照。独立 world 没有探索组，因此不会查询 `agent_i` TF；fixture 会直接打开本 demo 的运动门。
 
 ### 6. 跑 Tepper + 响应组完整叠加
 
 ```bash
 cd /masar
 ./run_tepper_response_demo.sh --vglrun
+```
+
+该入口默认使用标准 ROS/Gazebo master（未另行设置时为 `11311/11345`），启动前通过 ROS API 关闭旧节点、清除失效注册和旧参数，并确认 `/clock` 无发布者后再启动 Gazebo。这样 ROS2 侧 `ros1_bridge` 仍可按标准 `11311` 连接，不需要知道 Tepper 专用端口。若已有 ROS 图由外部进程管理，可显式使用 `--shared-master`，此模式不清理节点，但发现已有 `/clock` 时会拒绝启动。完整 Tepper 入口不再维护独立端口分支，避免形成第二套主系统运行语义。
+
+需要与 `/root/workspace/ROS2swarm_w` 桥接时，推荐先启动默认 Tepper 入口完成清理，再启动 `ros1_bridge`；若桥已经启动且图中没有其他仿真时钟，则使用 `--shared-master`。第二个终端按标准主站观测即可：
+
+```bash
+export ROS_MASTER_URI=http://127.0.0.1:11311
+export GAZEBO_MASTER_URI=http://127.0.0.1:11345
 ```
 
 第一阶段只验证“到达后切任务控制器”时，可用 6 秒自转占位：
@@ -138,7 +147,11 @@ masar_ws/
 ├── run_tepper_response_demo.sh        # Tepper 主系统 + 响应组 overlay
 ├── run_response_controller_demo.sh    # roundflocking/transport 独立控制器 demo
 ├── docs/
-│   └── ROBOSAR_DEFORM_INTEGRATION_DESIGN.md
+│   ├── ROBOSAR_DEFORM_INTEGRATION_DESIGN.md
+│   ├── RESPONSE_FORMATION_REQUIREMENTS.md
+│   ├── RESPONSE_FORMATION_REFACTOR_PLAN.md
+│   ├── RESPONSE_FORMATION_REFACTOR_PROGRESS.md
+│   └── superpowers/                    # 已确认的历史需求与完整实施计划快照
 ├── videos/                            # 搜救系统演示视频
 └── src/
     ├── robosar/                       # RoboSAR 主系统与响应组包装层
@@ -178,20 +191,25 @@ src/robosar/robosar_emergency_response/
 ```text
 搜索组发现 victim/fire/box
 -> emergency_task_manager_node.py 生成 EmergencyTask
--> deform_dispatch_bridge_node.py 发布 /move_base_simple/goal
--> DEFORM plan_manager_node x4 编队导航
--> response_group_coordinator_node.py 判定到达
--> response_cmd_mux_node.py 切换 NAV_FORMATION / TASK_CONTROL
--> response_task_controller_node.py 执行 roundflocking / transport / spin
+-> formation_navigation_node 统一规划编队中心路径和连续形变槽位
+-> response_cmd_mux_node.py 输出 NAV_FORMATION 速度
+-> 导航到 staging pose 后切换 TASK_CONTROL
+-> response_task_controller_node.py 执行 coordinated roundflocking / synchronized transport
 -> /response_group/task_result 回传 DONE/FAILED
+-> 全部任务完成后等待显式响应组 HOME
 ```
+
+当前只有一条响应组运行主链：一个中心规划器、一个共享形变状态和一个
+`/tb_i/cmd_vel` 最终发布者。旧的目标转发桥、四车独立规划器和独立到达协调器
+已经退出运行链。
 
 关键文件：
 
 ```text
 src/robosar/robosar_emergency_response/launch/response_deform_demo.launch
+src/robosar/robosar_emergency_response/launch/response_group_deform.launch
 src/robosar/robosar_emergency_response/launch/tepper_response_demo.launch
-src/robosar/robosar_emergency_response/launch/response_plan_manager_one_run.xml
+src/robosar/robosar_emergency_response/config/formation_navigation.yaml
 src/robosar/robosar_emergency_response/config/response_group.yaml
 src/robosar/robosar_emergency_response/config/tepper_response_group.yaml
 src/robosar/robosar_emergency_response/config/response_safety.yaml
@@ -222,13 +240,14 @@ src/robosar_deform_vendor/
 └── utility/to_visualize
 ```
 
-响应组使用专用 4 机器人配置：
+响应组共享一套中心规划与连续形变配置：
 
 ```text
-src/robosar/robosar_emergency_response/config/deform/frm_shape_response4.yaml
+src/robosar/robosar_emergency_response/config/formation_navigation.yaml
 ```
 
-当前 DEFORM 输出不会直接写 `/tb_i/cmd_vel`，而是写 `/tb_i/deform_cmd_vel`，由 `response_cmd_mux_node.py` 统一选择和过滤。
+`formation_navigation_node` 不会直接写 `/tb_i/cmd_vel`，而是写
+`/tb_i/deform_cmd_vel`，由 `response_cmd_mux_node.py` 统一选择和过滤。
 
 ## Webots 双容器口径
 
@@ -370,10 +389,10 @@ videos/
 ./run_response_controller_demo.sh --dry-run transport
 ```
 
-当前 `robosar_emergency_response` 中显式保留的源码测试主要是：
+当前 `robosar_emergency_response` 的源码回归可直接运行：
 
 ```bash
-pytest src/robosar/robosar_emergency_response/test/test_checkpoint_controller.py
+python3 -m pytest -q src/robosar/robosar_emergency_response/test
 ```
 
 运行测试前需要先 source ROS/catkin 环境：
@@ -411,7 +430,9 @@ Webots 模式 TF 报错：
 
 响应组不动：
 
+- 未点击 START 时 `/response_group/motion_enabled=false` 且不动属于正确行为。
 - 查看 `/response_group/behavior_mode`。
+- 查看 `/response_group/motion_enabled`。
 - NAV_FORMATION 看 `/tb_i/deform_cmd_vel`。
 - TASK_CONTROL 看 `/tb_i/task_cmd_vel`。
 - 最终确认 `/tb_i/cmd_vel` 是否被 `response_cmd_mux_node.py` 发布。
@@ -419,6 +440,6 @@ Webots 模式 TF 报错：
 响应组目标不推进：
 
 - 查看 `/response_group/status`。
-- 查看 `/tb_i/deform_reached`。
-- 检查 `response_group.yaml` 或 `tepper_response_group.yaml` 中的 goal region 半径和 timeout。
-
+- 查看 `/response_group/center_path` 和 `/response_group/formation_slots`。
+- 检查 `/sim_map` 是否存在、`/response_group/active_task` 是否有效，以及状态中是否明确报告 `MAP_UNAVAILABLE` 或 `NO_STATIC_PATH`。
+- 子任务阶段查看 `/response_group/task_result`；surround 必须四车分别完成两圈，transport 必须形成前排—箱体、后排—前排实体接触链。

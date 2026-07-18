@@ -26,6 +26,8 @@ class Scenario(BaseScenario):
         self.collision_reward = kwargs.pop("collision_reward", -0.1)
         self.dist_shaping_factor = kwargs.pop("dist_shaping_factor", 1)
         self.target_radius = kwargs.pop("target_radius", 0.6)
+        self.target_radius_tolerance = kwargs.pop("target_radius_tolerance", 0.0)
+        self.target_dist_reward_factor = kwargs.pop("target_dist_reward_factor", 0.5)
         self.surround_arc_reward_factor = kwargs.pop("surround_arc_reward_factor", 0.05)
         # Added: optional static target placed at the origin
         self.static_at_origin = kwargs.pop("static_at_origin", False)
@@ -275,7 +277,11 @@ class Scenario(BaseScenario):
             agent.state.pos - self._target.state.pos, dim=-1
         )
         # 奖励在半径0.6左右运动（类似HeuristicPolicy的圆周运动）
-        target_dist_reward = -torch.abs(dist_to_target - self.target_radius) * 0.5
+        target_dist_error = torch.abs(dist_to_target - self.target_radius)
+        target_dist_reward = (
+            -torch.relu(target_dist_error - self.target_radius_tolerance).pow(2)
+            * self.target_dist_reward_factor
+        )
 
         # ========== 返回总奖励 ==========
         # 总奖励 = 碰撞惩罚 + 距离奖励

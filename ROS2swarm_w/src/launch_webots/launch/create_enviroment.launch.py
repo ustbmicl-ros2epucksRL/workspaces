@@ -33,6 +33,8 @@ from launch_webots.environment_generator import (
     inset_bounds_for_clearance,
     parse_world_file_objects,
     generate_random_positions_with_obstacles,
+    generate_grid_positions,
+    navigation_grid_columns,
     generate_world_file,
     get_task_type_from_pattern,
     normalize_transport_object_shape,
@@ -63,6 +65,7 @@ def generate_launch_description():
     transport_object_shape = 'cube'
     webots_mode = 'realtime'
     webots_gui = 'true'
+    navigation_target_layout = 'random'     #random or columns
 
     # 随机位置生成参数
     random_seed = None
@@ -104,6 +107,8 @@ def generate_launch_description():
             webots_mode = arg.split(":=")[1]
         elif arg.startswith("webots_gui:="):
             webots_gui = arg.split(":=")[1]
+        elif arg.startswith("navigation_target_layout:="):
+            navigation_target_layout = arg.split(":=")[1]
         elif arg.startswith("random_seed:="):
             random_seed = int(arg.split(":=")[1])
         elif arg.startswith("x_min:="):
@@ -228,10 +233,40 @@ def generate_launch_description():
         print(f"环绕目标位置: ({flocking_pos[0]:.3f}, {flocking_pos[1]:.3f})")
 
     elif task_type == 'navigation':
-        # 导航任务：为每个机器人生成专属目标点（可进入，不同颜色）
-        navigation_targets = generate_random_positions_with_obstacles(
-            number_robots, x_min, x_max, y_min, y_max, min_distance, None, occupied_positions
-        )
+        # 导航任务：navigation_target_layout 仅支持 random 或 columns。
+        # columns 启用规则列布局；列数按机器人数量自动选择，便于展示和可复现实验。
+        normalized_layout = navigation_target_layout.strip().lower()
+        if normalized_layout == 'random':
+            navigation_targets = generate_random_positions_with_obstacles(
+                number_robots,
+                x_min,
+                x_max,
+                y_min,
+                y_max,
+                min_distance,
+                None,
+                occupied_positions
+            )
+        elif normalized_layout == 'columns':
+            navigation_targets = generate_grid_positions(
+                number_robots,
+                x_min,
+                x_max,
+                y_min,
+                y_max,
+            )
+        else:
+            raise ValueError(
+                'navigation_target_layout must be random or columns, '
+                f'got: {navigation_target_layout}'
+            )
+        if normalized_layout == 'columns':
+            print(
+                f"导航目标布局: {normalized_layout}, "
+                f"自动列数: {navigation_grid_columns(number_robots)}"
+            )
+        else:
+            print(f"导航目标布局: {normalized_layout}")
         task_objects['navigation_targets'] = navigation_targets
         for i, pos in enumerate(navigation_targets):
             # 目标点可进入，不需要添加碰撞半径，但要避免与机器人初始位置重叠
@@ -253,7 +288,6 @@ def generate_launch_description():
     positions = generate_random_positions_with_obstacles(
         number_robots, x_min, x_max, y_min, y_max, min_distance, None, occupied_positions
     )
-
     # 打印位置信息
     print("机器人位置:")
     for i, (x, y) in enumerate(positions):
@@ -271,7 +305,7 @@ def generate_launch_description():
         number_robots,
         positions,
         z_height,
-        task_objects
+        task_objects,
     )
 
     # 添加日志级别参数

@@ -6,11 +6,19 @@ import sys
 
 try:
     from robosar_emergency_response.checkpoint_controller import MatrixPose, RobotInfo, SceneObjectInfo
-    from robosar_emergency_response.global_info import build_global_info_payload, yaw_to_orientation_matrix
+    from robosar_emergency_response.global_info import (
+        GlobalInfoStateBuffer,
+        build_global_info_payload,
+        yaw_to_orientation_matrix,
+    )
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
     from robosar_emergency_response.checkpoint_controller import MatrixPose, RobotInfo, SceneObjectInfo
-    from robosar_emergency_response.global_info import build_global_info_payload, yaw_to_orientation_matrix
+    from robosar_emergency_response.global_info import (
+        GlobalInfoStateBuffer,
+        build_global_info_payload,
+        yaw_to_orientation_matrix,
+    )
 
 import rospy
 from gazebo_msgs.msg import ModelStates
@@ -29,11 +37,9 @@ class ResponseGlobalInfoNode:
         self.global_info_topic = rospy.get_param("~global_info_topic", "/global_info")
         self.active_task_topic = rospy.get_param("~active_task_topic", "/response_group/active_task")
 
-        self.robot_odom = {}
+        self.state = GlobalInfoStateBuffer()
         self.prev_positions = {}
         self.prev_time = None
-        self.model_states = None
-        self.active_task = None
 
         self.global_info_pub = rospy.Publisher(self.global_info_topic, String, queue_size=10)
         self.odom_subs = [
@@ -61,27 +67,28 @@ class ResponseGlobalInfoNode:
         rospy.Timer(rospy.Duration(1.0 / self.rate_hz), self._timer_callback)
 
     def _odom_callback(self, msg, robot_name):
-        self.robot_odom[robot_name] = msg
+        self.state.update_robot(robot_name, msg)
 
     def _model_states_callback(self, msg):
-        self.model_states = msg
+        self.state.update_model_states(msg)
 
     def _active_task_callback(self, msg):
-        self.active_task = msg
+        self.state.update_active_task(msg)
 
     def _timer_callback(self, _event):
         now = rospy.Time.now().to_sec()
         dt = max(1e-3, now - self.prev_time) if self.prev_time is not None else 0.1
         self.prev_time = now
 
-        robots = self._build_robot_infos(now, dt)
-        objects = self._build_object_infos(now, dt)
+        robot_odom, model_states, active_task = self.state.snapshot()
+        robots = self._build_robot_infos(now, dt, robot_odom, model_states)
+        objects = self._build_object_infos(now, dt, model_states, active_task)
         payload = build_global_info_payload(now, robots, objects)
         self.global_info_pub.publish(String(payload))
 
-    def _build_robot_infos(self, now, dt):
+    def _build_robot_infos(self, now, dt, robot_odom, model_states):
         robots = {}
-        for robot_name, odom in self.robot_odom.items():
+        for robot_name, odom in robot_odom.items():
             q = odom.pose.pose.orientation
             yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
             x = odom.pose.pose.position.x
@@ -94,11 +101,11 @@ class ResponseGlobalInfoNode:
                 orientation=yaw_to_orientation_matrix(yaw),
             )
 
-        if self.model_states is not None:
+        if model_states is not None:
             for name, pose, _twist in zip(
-                self.model_states.name,
-                self.model_states.pose,
-                self.model_states.twist,
+                model_states.name,
+                model_states.pose,
+                model_states.twist,
             ):
                 if name in robots:
                     continue
@@ -115,13 +122,13 @@ class ResponseGlobalInfoNode:
                 )
         return robots
 
-    def _build_object_infos(self, now, dt):
+    def _build_object_infos(self, now, dt, model_states, active_task):
         objects = {}
-        if self.model_states is not None:
+        if model_states is not None:
             for name, pose, _twist in zip(
-                self.model_states.name,
-                self.model_states.pose,
-                self.model_states.twist,
+                model_states.name,
+                model_states.pose,
+                model_states.twist,
             ):
                 if name.startswith(self.search_robot_prefix) or name.startswith(self.response_robot_prefix):
                     continue
@@ -136,12 +143,11 @@ class ResponseGlobalInfoNode:
                     velocity_y=vy,
                 )
 
-        if self.active_task is not None:
-            self._add_active_task_aliases(objects, now, dt)
+        if active_task is not None:
+            self._add_active_task_aliases(objects, now, dt, active_task)
         return objects
 
-    def _add_active_task_aliases(self, objects, now, dt):
-        task = self.active_task
+    def _add_active_task_aliases(self, objects, now, dt, task):
         precise = task.precise_pose.pose.position
 
         if task.task_type == EmergencyTask.BOX:

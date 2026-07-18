@@ -7,7 +7,7 @@ usage() {
 Usage:
   run_response_deform_demo.sh [options] [roslaunch_arg:=value ...]
 
-Starts the ROS1 + Gazebo response-demo emergency response DEFORM demo:
+Starts the ROS1 + Gazebo response-demo fixed-square response formation demo:
   roslaunch robosar_emergency_response response_deform_demo.launch
 
 Options:

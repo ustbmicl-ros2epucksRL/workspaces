@@ -252,8 +252,8 @@ RVO::Vector2 Agent::getCurrentHeading()
   return heading;
 }
 
-void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const nav_msgs::OccupancyGrid& ocm,
-                      const std::vector<rvo_agent_obstacle_info_s>& external_obstacles) {
+void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map,
+                      const nav_msgs::OccupancyGrid& ocm) {
   // Dont invoke RVO if the preferred velocity is zero
   // or if there is no path to follow
   if ((AreSame(preferred_velocity_.x(), 0.0) && AreSame(preferred_velocity_.y(), 0.0)) ||
@@ -264,7 +264,7 @@ void Agent::invokeRVO(std::unordered_map<std::string, Agent> agent_map, const na
   bool isCollision = false;
   bool isHoming = homing_;
   // Calculate dynamic and static neighbours
-  isCollision = computeNearestNeighbors(agent_map, isHoming, external_obstacles);
+  isCollision = computeNearestNeighbors(agent_map, isHoming);
   computeStaticObstacles(ocm);
 
   RVO::Vector2 current_position(current_pose_.transform.translation.x, current_pose_.transform.translation.y);
@@ -378,8 +378,8 @@ void Agent::computeStaticObstacles(const nav_msgs::OccupancyGrid& new_map) {
   staticObstacleBfs(current_position, map_data, map_width, map_height, map_resolution, map_origin);
 
 }
-bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map, bool isHoming,
-                                    const std::vector<rvo_agent_obstacle_info_s>& external_obstacles)
+bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent_map,
+                                    bool isHoming)
 {
   bool result = false;
   priority_queue<AgentDistPair, vector<AgentDistPair>, greater<AgentDistPair>> all_neighbors;
@@ -435,28 +435,6 @@ bool Agent::computeNearestNeighbors(std::unordered_map<std::string, Agent> agent
     neigh.preferred_velocity = agent_map[neigh.agent_name].preferred_velocity_;
     neigh.max_vel = agent_map[neigh.agent_name].v_max_;
     neighbors_list_.push_back(neigh);
-  }
-
-  for (const auto& external_obstacle : external_obstacles) {
-    const float euc_distance = euclidean_dist(external_obstacle.current_position, my_pose);
-    if (euc_distance >= external_obstacle_neighbor_distance_) {
-      continue;
-    }
-    rvo_agent_obstacle_info_s obs = external_obstacle;
-    obs.max_vel = 0.0;
-    obs.preferred_velocity = RVO::Vector2(0.0, 0.0);
-    obs.homing = false;
-    if (obs.collision_radius <= 0.0) {
-      obs.collision_radius = RVO_AGENT_RADIUS;
-    }
-    if (obs.repulsion_radius <= 0.0) {
-      obs.repulsion_radius = external_obstacle_repulsion_radius_;
-    }
-    neighbors_list_.push_back(obs);
-    if (euc_distance < external_obstacle_repulsion_radius_) {
-      repulsion_list_.push_back(obs);
-    }
-    result = true;
   }
 
   for(int i=0;i<repulsion_neighbours.size();i++) {

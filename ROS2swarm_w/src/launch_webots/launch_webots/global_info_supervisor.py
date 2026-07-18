@@ -15,7 +15,7 @@ GlobalInfoSupervisor - Webots Supervisor 节点，发布全局信息到 ROS2 话
 import rclpy
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, QoSDurabilityPolicy, QoSReliabilityPolicy
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 import json
 import os
 from pathlib import Path
@@ -62,6 +62,7 @@ class GlobalInfoSupervisor(Node):
         self.prev_time = 0.0
         self.nodes_found = False
         self._warned_no_robot_nodes = False
+        self._last_node_refresh_time = float('-inf')
         self.running = True
         self.viewpoint_node = None
 
@@ -70,6 +71,20 @@ class GlobalInfoSupervisor(Node):
         self.movie_stopped = False
         self.movie_start_failed = False
         self.viewpoint_configured = False
+        self.movie_control_topic = os.environ.get(
+            'ROS2SWARM_WEBOTS_MOVIE_CONTROL_TOPIC',
+            '',
+        ).strip()
+        self.movie_start_requested = not bool(self.movie_control_topic)
+        self.movie_stop_requested = False
+        self.movie_control_sub = None
+        if self.movie_control_topic:
+            self.movie_control_sub = self.create_subscription(
+                Bool,
+                self.movie_control_topic,
+                self._movie_control_callback,
+                10,
+            )
         if self.movie_path:
             self.movie_path = os.path.abspath(self.movie_path)
             self.movie_width = self._read_int_env('ROS2SWARM_WEBOTS_MOVIE_WIDTH', 1280)
@@ -155,10 +170,24 @@ class GlobalInfoSupervisor(Node):
 
         return values
 
+    def _movie_control_callback(self, msg):
+        if msg.data:
+            if not self.movie_started and not self.movie_stopped:
+                self.movie_start_requested = True
+                self.get_logger().info(
+                    f'收到 Webots 录制开始指令: {self.movie_control_topic}'
+                )
+        elif self.movie_started and not self.movie_stopped:
+            self.movie_stop_requested = True
+            self.get_logger().info(
+                f'收到 Webots 录制停止指令: {self.movie_control_topic}'
+            )
+
     def _find_all_nodes(self):
         """查找场景中的所有机器人和物体节点"""
-        self.robot_nodes.clear()
-        self.object_nodes.clear()
+        previous_counts = (len(self.robot_nodes), len(self.object_nodes))
+        robot_nodes = {}
+        object_nodes = {}
         
         try:
             root = self.supervisor.getRoot()
@@ -192,10 +221,10 @@ class GlobalInfoSupervisor(Node):
                 
                 # 根据 DEF 名称分类
                 if def_name.startswith('robot_'):
-                    self.robot_nodes[def_name] = node
+                    robot_nodes[def_name] = node
                     self.get_logger().debug(f'找到机器人: {def_name}')
                 elif def_name in ['transport_box', 'target_zone', 'flocking_target']:
-                    self.object_nodes[def_name] = node
+                    object_nodes[def_name] = node
                     self.get_logger().debug(f'找到物体: {def_name}')
                 elif any(
                     def_name.startswith(prefix)
@@ -206,22 +235,26 @@ class GlobalInfoSupervisor(Node):
                         'target_zone_',
                     )
                 ):
-                    self.object_nodes[def_name] = node
+                    object_nodes[def_name] = node
                     self.get_logger().debug(f'找到物体: {def_name}')
                 elif def_name.startswith('navigation_target_'):
-                    self.object_nodes[def_name] = node
+                    object_nodes[def_name] = node
                     self.get_logger().debug(f'找到导航目标: {def_name}')
                 elif def_name.startswith('obstacle_'):
-                    self.object_nodes[def_name] = node
+                    object_nodes[def_name] = node
                     self.get_logger().debug(f'找到障碍物: {def_name}')
-            
-            if len(self.robot_nodes) > 0:
+
+            self.robot_nodes = robot_nodes
+            self.object_nodes = object_nodes
+            current_counts = (len(robot_nodes), len(object_nodes))
+            if robot_nodes:
                 self._warned_no_robot_nodes = False
-                self.get_logger().info(
-                    f'GlobalInfoSupervisor 初始化完成 - '
-                    f'找到 {len(self.robot_nodes)} 个机器人, '
-                    f'{len(self.object_nodes)} 个物体'
-                )
+                if current_counts != previous_counts:
+                    self.get_logger().info(
+                        f'GlobalInfoSupervisor 场景更新 - '
+                        f'找到 {len(robot_nodes)} 个机器人, '
+                        f'{len(object_nodes)} 个物体'
+                    )
                 return True
             else:
                 if not self._warned_no_robot_nodes:
@@ -309,6 +342,7 @@ class GlobalInfoSupervisor(Node):
             not self.movie_path
             or self.movie_started
             or self.movie_start_failed
+            or not self.movie_start_requested
             or current_time < self.movie_start_delay
         ):
             return
@@ -341,12 +375,15 @@ class GlobalInfoSupervisor(Node):
             not self.movie_path
             or not self.movie_started
             or self.movie_stopped
-            or self.movie_duration <= 0
-            or self.movie_start_time is None
         ):
             return
 
-        if current_time - self.movie_start_time >= self.movie_duration:
+        duration_reached = (
+            self.movie_duration > 0
+            and self.movie_start_time is not None
+            and current_time - self.movie_start_time >= self.movie_duration
+        )
+        if self.movie_stop_requested or duration_reached:
             self._stop_movie_recording()
 
     def _stop_movie_recording(self):
@@ -382,9 +419,12 @@ class GlobalInfoSupervisor(Node):
         
         if current_time <= 0:
             return
-        
-        # 如果还没找到节点，尝试再次查找
-        if not self.nodes_found or len(self.robot_nodes) == 0:
+
+        # 动态添加机器人后刷新节点缓存，使下一次 spawn 能看到新占用位置。
+        if current_time - self._last_node_refresh_time >= 0.2:
+            self.nodes_found = self._find_all_nodes()
+            self._last_node_refresh_time = current_time
+        elif not self.nodes_found or len(self.robot_nodes) == 0:
             self.nodes_found = self._find_all_nodes()
             if not self.nodes_found:
                 return

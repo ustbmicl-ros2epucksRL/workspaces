@@ -17,11 +17,14 @@ import numpy as np
 import rospy
 import tf
 from apriltag_ros.msg import AprilTagDetection, AprilTagDetectionArray
+from gazebo_msgs.msg import ModelStates
 from gazebo_msgs.srv import DeleteModel, GetWorldProperties, SpawnModel
 from geometry_msgs.msg import Point, Pose, PoseStamped
 from robosar_messages.msg import EmergencyObject, EmergencyObjectArray
 from robosar_messages.srv import agent_status
 from visualization_msgs.msg import Marker
+
+from scene_state_sync import transport_pose_updates
 
 
 class EmergencyObjectRecord:
@@ -151,6 +154,12 @@ class AprilTagSim:
             EmergencyObjectArray,
             queue_size=1,
             latch=True,
+        )
+        self.model_states_sub = rospy.Subscriber(
+            "/gazebo/model_states",
+            ModelStates,
+            self.gazebo_model_states_callback,
+            queue_size=1,
         )
 
         rospy.loginfo(
@@ -292,6 +301,15 @@ class AprilTagSim:
         for record in self.victim_records + self.fire_records + self.box_records:
             msg.objects.append(self.build_emergency_object_msg(record))
         self.emergency_state_pub.publish(msg)
+
+    def gazebo_model_states_callback(self, msg):
+        updates = transport_pose_updates(
+            msg.name,
+            [(pose.position.x, pose.position.y) for pose in msg.pose],
+            len(self.box_records),
+        )
+        for index, position in updates.items():
+            self.box_records[index].pose = position
 
     def publish_ground_truth_victim(self, tag_id, pose):
         marker = Marker()
@@ -940,6 +958,9 @@ class AprilTagSim:
             self.get_active_agents()
             self.publish_static_scene_markers()
             self.check_agent_poses()
+            # Publish an authoritative physical-object snapshot at the scene
+            # rate so planners see movable boxes at their current pose.
+            self.publish_emergency_state_snapshot()
             self.rate.sleep()
 
 

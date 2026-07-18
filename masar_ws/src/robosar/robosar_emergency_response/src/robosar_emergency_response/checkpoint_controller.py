@@ -98,6 +98,27 @@ def sample_lidar_midpoints(
     return sampled
 
 
+def sample_lidar_sector_minima(
+    ranges: Sequence[float],
+    n_lidar_rays: int,
+    max_range: float,
+) -> List[float]:
+    """Conservatively compress a scan without losing narrow obstacles."""
+    if n_lidar_rays <= 0:
+        raise ValueError("n_lidar_rays must be positive")
+    if not ranges:
+        return [float(max_range)] * n_lidar_rays
+
+    values = np.array(ranges, dtype=np.float32)
+    values = np.where(np.isfinite(values), values, max_range)
+    values = np.clip(values, 0.0, max_range)
+    sectors = np.array_split(values, n_lidar_rays)
+    return [
+        float(np.min(sector)) if len(sector) else float(max_range)
+        for sector in sectors
+    ]
+
+
 def build_roundflocking_observation(
     robot: RobotInfo,
     target: SceneObjectInfo,
@@ -137,6 +158,29 @@ def build_roundflocking_observation(
     observation.extend(
         min(value, VMAS_FLOCKING_LIDAR_MAX_RANGE)
         for value in sample_lidar_midpoints(lidar_ranges, n_lidar_rays, max_range)
+    )
+    return observation
+
+
+def build_roundflocking_heuristic_observation(
+    robot: RobotInfo,
+    target: SceneObjectInfo,
+    lidar_ranges: Sequence[float],
+    n_lidar_rays: int,
+    max_range: float,
+    world_scale: float,
+) -> List[float]:
+    """Build heuristic input while preserving metric TB3 LiDAR distances."""
+    observation = build_roundflocking_observation(
+        robot=robot,
+        target=target,
+        lidar_ranges=lidar_ranges,
+        n_lidar_rays=n_lidar_rays,
+        max_range=max_range,
+        world_scale=world_scale,
+    )
+    observation[6:] = sample_lidar_sector_minima(
+        lidar_ranges, n_lidar_rays, max_range,
     )
     return observation
 

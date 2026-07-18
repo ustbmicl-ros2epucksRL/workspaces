@@ -1,8 +1,7 @@
-# 作用：第 0 阶段 DEFORM 编队导航 demo 的响应组基础配置。
+# 作用：响应组多航点 demo 的任务源和速度仲裁配置。
 # 使用范围：response_deform_demo.launch / run_response_deform_demo.sh。
 # 不用于 Tepper 大系统，也不用于 roundflocking/transport 独立控制器 demo。
-# 本文件由响应组协调节点和速度安全融合节点加载。
-# 编队规划器的部分参数仍在 response_plan_manager_one_run.xml 中配置。
+# 导航算法参数统一维护在 formation_navigation.yaml，本文件不再复制导航策略。
 # 五个阶段目标点在 response_goal_sequence.yaml 中配置。
 
 # 响应组四个机器人的命名空间；用于订阅 /tb_i/odom、发布 /tb_i/cmd_vel 并生成编队槽位。
@@ -11,43 +10,11 @@ robot_names: [tb_0, tb_1, tb_2, tb_3]
 # 状态、目标和可视化标记使用的全局坐标系；第 0 阶段 demo 中 map 与 Gazebo world 静态对齐。
 frame_id: map
 
-# 编队槽位间距和初始队形由 launch 统一传给 DEFORM 与协调节点。
-
-# 严格槽位到达判定半径，单位为米。
-# DEFORM 在窄队形和安全层约束下会稳定留下约 0.7m 的槽位残差，过小会导致目标超时而不是推进下一点。
-arrival_radius: 0.80
-
-# 启用朝向判定时使用的偏航角容差，单位为弧度。
-arrival_yaw_tolerance: 0.80
-
-# 严格槽位到达条件需要连续保持的时间，单位为秒。
-arrival_hold_seconds: 1.0
-
-# 是否在严格到达判定中检查机器人朝向。第 0 阶段默认关闭以提高鲁棒性。
-use_yaw_barrier: false
-
-# 是否启用较宽松的目标区域到达判定。
-enable_goal_region_arrival: true
-
-# 目标区域判定中，每个机器人距离目标点的最大允许距离，单位为米。
-# 槽位以编队中心为目标时，四机器人单列最大槽位半径约 1.2m；
-# 额外余量覆盖安全层临时脱离编队后的收敛残差。
-goal_region_robot_radius: 1.75
-
-# 目标区域判定中，响应组中心距离目标点的最大允许距离，单位为米。
-goal_region_center_radius: 0.85
-
-# 目标区域到达条件需要连续保持的时间，单位为秒。
-goal_region_hold_seconds: 1.0
-
-# 单个目标点允许导航的最长时间，超时后发布失败状态，单位为秒。
-navigation_timeout: 180.0
-
-# response_group_coordinator_node 和 response_cmd_mux_node 的定时更新频率，单位为赫兹。
+# response_cmd_mux_node 的定时更新频率，单位为赫兹。
 rate: 10.0
 
 # 速度指令新鲜度超时时间，超过该时间未收到新指令则该指令源置零，单位为秒。
 command_timeout: 0.6
 
-# response_cmd_mux_node 的初始行为模式；NAV_FORMATION 表示优先采用 /tb_i/deform_cmd_vel 编队导航指令。
-default_mode: NAV_FORMATION
+# response_cmd_mux_node 的初始行为模式。运动许可默认关闭，模式也必须从 STOP 起步。
+default_mode: STOP

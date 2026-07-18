@@ -35,7 +35,6 @@ def generate_launch_description():
         default_value='true',
         description='Start Webots with GUI/rendering enabled'
     )
-
     def launch_setup(context):
         world = LaunchConfiguration('world_path').perform(context)
         webots = WebotsLauncher(

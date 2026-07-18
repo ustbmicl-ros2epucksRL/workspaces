@@ -4,9 +4,42 @@ from __future__ import annotations
 
 import json
 import math
-from typing import Mapping
+import threading
+from typing import Any, Mapping
 
 from .checkpoint_controller import RobotInfo, SceneObjectInfo
+
+
+class GlobalInfoStateBuffer:
+    """Thread-safe handoff from ROS callbacks to the periodic JSON builder.
+
+    rospy invokes odometry, model-state and task callbacks on connection
+    threads while ``rospy.Timer`` runs independently. Returning a detached
+    odometry dictionary prevents a concurrent callback from invalidating an
+    in-progress iteration and killing the timer thread.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._robot_odom = {}
+        self._model_states = None
+        self._active_task = None
+
+    def update_robot(self, robot_name: str, odometry: Any) -> None:
+        with self._lock:
+            self._robot_odom[robot_name] = odometry
+
+    def update_model_states(self, model_states: Any) -> None:
+        with self._lock:
+            self._model_states = model_states
+
+    def update_active_task(self, active_task: Any) -> None:
+        with self._lock:
+            self._active_task = active_task
+
+    def snapshot(self):
+        with self._lock:
+            return dict(self._robot_odom), self._model_states, self._active_task
 
 
 def yaw_to_orientation_matrix(yaw: float) -> list[float]:

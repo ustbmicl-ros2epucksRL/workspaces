@@ -1,6 +1,6 @@
-# 作用：第 0 阶段 DEFORM 编队导航 demo 的顺序目标列表。
-# 使用范围：response_goal_sequence_node.py；该节点按 goals 顺序发布 /response_group/formation_goal
-# 和一个 EN_ROUTE 状态的 /response_group/active_task，等待 response_group_coordinator_node 报 DONE 后进入下一项。
+# 作用：第 0 阶段固定正方形编队导航 demo 的顺序目标列表。
+# 使用范围：response_goal_sequence_node.py；该节点按 goals 顺序只发布一个
+# EN_ROUTE 状态的 /response_group/active_task，等待统一编队导航节点报 DONE 后进入下一项。
 
 # 默认坐标系；每个 goal 条目未单独设置 frame_id 时使用该值。
 frame_id: map

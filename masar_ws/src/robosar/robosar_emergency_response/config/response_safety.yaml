@@ -1,68 +1,45 @@
-# 作用：响应组速度融合节点的安全层公共参数。
-# 使用范围：response_cmd_mux_node.py；由第 0 阶段 demo、Tepper 大场景、roundflocking/transport 独立 demo 的 cmd_mux 节点加载。
-# 本文件只控制安全仲裁、近障碍编队收缩信号和 transport 是否绕过安全仲裁；不控制 DEFORM/任务控制器本身。
+# Response command mux hard-safety boundary. Normal path following, deformation
+# and local steering belong to formation_navigation_node; the mux only selects
+# the authoritative source and prevents unsafe translation.
 
-# ROS2swarm hardware_protection_layer 风格的力场避障检测距离，单位为米。
-# DEFORM 走廊导航需要比 burger 默认值更早接管，避免后车贴墙后才触发。
-hardware_protection_layer_max_range: 0.50
+# Stop translation toward an unexpected LiDAR return inside this distance.
+hard_stop_distance: 0.20
 
-# 低于该距离的激光点视作近场盲区/自反射，不参与斥力计算，单位为米。
-hardware_protection_layer_min_range: 0.08
+# Half-width of the finite swept corridor in the commanded translation direction.
+# This matches the TB3 planar half-width and ignores harmless side returns.
+hard_stop_half_width: 0.11
 
-# 力场中沿机器人前方的吸引项，数值越大越不容易被侧向障碍过度拉偏。
-hardware_protection_layer_front_attraction: 1.0
+# Ignore returns within the observed Burger sensor/self-reflection footprint.
+# External returns from 0.18 m through hard_stop_distance remain protected.
+hard_stop_self_filter_radius: 0.18
 
-# 小于 max_range 的有效激光点数量超过该阈值时，才用避障命令替换原命令。
-hardware_protection_layer_threshold: 4
+# A missing or stale scan fails closed for non-zero commands.
+scan_timeout: 0.30
 
-# 落在机器人自身足迹内的扫描点视为模型/雷达自反射，不作为外部障碍。
-hardware_protection_layer_self_filter_radius: 0.08
+# Final velocity bounds at the unique cmd_vel owner.
+max_translational_velocity: 0.22
+max_rotational_velocity: 1.20
 
-# 安全层生成避障命令时使用的最大线速度，单位为米每秒；TB3 Burger 标称上限约 0.22。
-max_translational_velocity: 0.12
+# Center-distance invariant enforced in navigation and task-control modes.
+# Match the formation layer's physical body diameter (2*0.11) plus its single
+# shared 0.04 m safety gap, so command discretization cannot consume the whole
+# collision margin before the next mux cycle.
+teammate_min_center_distance: 0.26
 
-# 安全层生成避障/恢复转向命令时使用的最大角速度，单位为弧度每秒；TB3 Burger 标称上限约 2.84。
-max_rotational_velocity: 1.00
+# Exploration robots remain protected by the normal distance in every mode.
+external_robot_names: [agent_0, agent_1, agent_2, agent_3, agent_4]
 
-# 是否向 DEFORM 编队规划器发布 /tb_i/is_avoid 近障碍状态。
-publish_formation_avoid: true
+# 任务控制器切换后仍共享跨组优先权约束。该时间窗把实时距离裕量换算为
+# 允许接近速度，使探索车有时间执行让行；不是某个 Tepper 坐标点的恢复规则。
+external_priority_reaction_horizon: 1.0
 
-# 触发近障碍状态的真实最近激光距离阈值，单位为米。
-formation_reduce_distance: 0.62
+# During BOX/PUSH only response-response contact may close to the URDF body
+# length. The mux derives its deep-overlap guard from robot_length/robot_gap in
+# the shared response-group geometry; there is no independent contact tuning.
 
-# 解除近障碍状态的真实最近激光距离阈值，单位为米；大于收缩阈值形成滞回。
-formation_clear_distance: 0.82
-
-# NAV_FORMATION 中已知响应组队友方向的忽略半角，避免把编队近距离队友误判成障碍，单位为度。
-formation_ignore_robot_angle_deg: 24.0
-
-# 参与队友方向忽略的最大队友距离，单位为米；搜索组机器人不在此白名单内。
-formation_ignore_robot_max_distance: 1.5
-
-# 队友在激光雷达中占据角宽的近似半径，近距离队友会按该半径展开过滤角窗，单位为米。
-formation_ignore_robot_radius: 0.25
-
-# transport 推箱子需要接触箱体；BOX 任务默认直接采用控制器速度，绕过 LiDAR 与动态位姿安全仲裁。
-transport_task_bypass_safety: true
-
-# 势场安全层统一采用软混合：保留 ROS2swarm HPL 的势场方向，但不直接把原命令替换成大幅掉头。
-# 软混合中避障命令的权重；0 表示完全保留原命令，1 表示完全采用限制后的避障命令。
-potential_field_safety_blend: 0.65
-
-# 软混合前允许避障命令相对原命令改变的最大角速度增量，单位为弧度每秒。
-potential_field_safety_max_angular_delta: 0.80
-
-# 原命令前进时保留的最低前进速度比例；避免非极近障碍导致直接停车或倒退。
-potential_field_safety_min_forward_scale: 0.10
-
-# 近距离硬保护阈值，单位为米；小于该值且原命令前进时允许硬停止/后退。
-potential_field_safety_critical_stop_distance: 0.24
-
-# Gazebo 位姿动态避障的触发距离，单位为米；搜索组机器人可能因模型尺寸/激光高度没有形成近距离 scan 点。
-dynamic_obstacle_trigger_distance: 0.85
-
-# Gazebo 位姿动态避障的强制停车/后退距离，单位为米；应小于 trigger_distance。
-dynamic_obstacle_stop_distance: 0.42
-
-# Gazebo 位姿动态避障进入 stop_distance 内时使用的后退线速度，单位为米每秒。
-dynamic_obstacle_reverse_velocity: 0.08
+# Physical transport-box geometry for the sole permitted contact exclusion.
+# Only rays matching the live /global_info box bearing and range are excluded.
+# Circumscribed radius of the 0.50 m square box; using the half-side would
+# reject valid LiDAR returns from its corners during contact.
+transport_box_radius: 0.36
+transport_box_range_padding: 0.03

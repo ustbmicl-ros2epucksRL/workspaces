@@ -1,0 +1,50 @@
+# Shared response-formation navigation policy. Environment launch files may
+# select a map topic and spawn pose, but must not fork these algorithm defaults.
+robot_names: [tb_0, tb_1, tb_2, tb_3]
+external_robot_names: [agent_0, agent_1, agent_2, agent_3, agent_4]
+frame_id: map
+# Conservative circumscribed radius of the Burger collision bodies. The base
+# box reaches about 0.11 m from base_footprint; 0.18 m was a full-width value
+# and falsely rejected the valid Tepper spawn beside the upper corridor wall.
+robot_radius: 0.11
+inter_robot_safety_gap: 0.04
+formation_interval: 0.60
+formation_clearance: 0.06
+# Physical half-length of the transport cube along the push direction. This is
+# object geometry used to keep the front formation row behind the box, not an
+# environment-specific staging distance.
+transport_box_half_length: 0.25
+# Physical emergency-object footprints used when the simulation/perception
+# snapshot reports collision bodies that are not represented in the static map.
+# These are geometry, not behavior tuning values.
+emergency_victim_radius: 0.12
+emergency_fire_radius: 0.10
+treat_unknown_as_occupied: true
+clearance_cost_weight: 0.08
+map_startup_timeout: 5.0
+replan_backoff: 1.0
+control_rate: 10.0
+odom_timeout: 0.8
+scan_timeout: 0.8
+# Burger scans contain repeatable 0.12-0.17 m returns from its own upper body.
+# Discard only points inside this measured sensor footprint.
+scan_self_filter_radius: 0.18
+obstacle_timeout: 0.8
+lookahead_distance: 0.60
+center_speed: 0.16
+slot_gain: 0.85
+max_scale_rate: 0.25
+collision_time_horizon: 2.0
+max_linear_velocity: 0.20
+max_angular_velocity: 1.20
+angular_gain: 1.80
+max_linear_acceleration: 0.35
+max_angular_acceleration: 2.0
+
+arrival:
+  waypoint: {center_tolerance: 0.30, rms_slot_tolerance: 0.35, max_slot_tolerance: 0.55, hold_seconds: 0.8}
+  surround: {center_tolerance: 0.25, rms_slot_tolerance: 0.40, max_slot_tolerance: 0.60, hold_seconds: 0.8}
+  # Navigation only stages a coherent group behind the box. The physical
+  # transport controller performs the stricter front/rear contact alignment.
+  transport: {center_tolerance: 0.45, rms_slot_tolerance: 0.55, max_slot_tolerance: 0.85, hold_seconds: 0.8}
+  home: {center_tolerance: 0.30, rms_slot_tolerance: 0.40, max_slot_tolerance: 0.60, hold_seconds: 1.0}

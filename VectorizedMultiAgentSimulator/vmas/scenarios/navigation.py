@@ -56,7 +56,7 @@ class Scenario(BaseScenario):
             "pos_shaping_factor", 1
         )  # 位置 shaping 奖励的距离缩放系数
         self.final_reward = kwargs.pop(
-            "final_reward", 0.01
+            "final_reward", 0.04
         )  # 全部智能体到达目标后的终止奖励
 
         self.agent_collision_penalty = kwargs.pop(
@@ -288,7 +288,8 @@ class Scenario(BaseScenario):
             agent.state.pos - agent.goal.state.pos,
             dim=-1,
         )
-        agent.on_goal = agent.distance_to_goal < agent.goal.shape.radius
+        agent.on_goal = agent.distance_to_goal < agent.shape.radius       # 0.10
+        #agent.on_goal = agent.distance_to_goal < agent.goal.shape.radius  # 0.05
 
         pos_shaping = agent.distance_to_goal * self.pos_shaping_factor
         agent.pos_rew = agent.pos_shaping - pos_shaping
@@ -393,11 +394,98 @@ class Scenario(BaseScenario):
         return geoms
 
 
-class HeuristicPolicy(BaseHeuristicPolicy):
+class LegacyClfQpHeuristicPolicy(BaseHeuristicPolicy):
+    """Original VMAS CLF-QP heuristic kept as a comparison candidate."""
+
     def __init__(self, clf_epsilon=0.2, clf_slack=100.0, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.clf_epsilon = clf_epsilon  # Exponential CLF convergence rate
         self.clf_slack = clf_slack  # weights on CLF-QP slack variable
+        self._qp_controllers = {}
+
+    def _u_range_cache_key(self, u_range):
+        if torch.is_tensor(u_range):
+            if u_range.numel() == 1:
+                return float(u_range.detach().cpu().item())
+            return tuple(float(value) for value in u_range.detach().cpu().reshape(-1))
+        if isinstance(u_range, (int, float)):
+            return float(u_range)
+        try:
+            return float(u_range)
+        except (TypeError, ValueError):
+            return tuple(float(value) for value in u_range)
+
+    def _get_qp_controller(self, u_range):
+        u_range_key = self._u_range_cache_key(u_range)
+        cache_key = (u_range_key, float(self.clf_epsilon), float(self.clf_slack))
+        controller = self._qp_controllers.get(cache_key)
+        if controller is None:
+            controller = self._build_qp_controller(u_range_key)
+            self._qp_controllers[cache_key] = controller
+        return controller
+
+    def _build_qp_controller(self, u_range):
+        # Install it with: pip install cvxpylayers
+        import cvxpy as cp
+        from cvxpylayers.torch import CvxpyLayer
+
+        if isinstance(u_range, tuple):
+            u_range = cp.Constant(list(u_range))
+
+        # Define Quadratic Program (QP) based controller
+        u = cp.Variable(2)
+        V_param = cp.Parameter(1)  # Lyapunov Function: V(x): x -> R, dim: (1,1)
+        lfV_param = cp.Parameter(1)
+        lgV_params = cp.Parameter(
+            2
+        )  # Lie derivative of Lyapunov Function, dim: (1, action_dim)
+        clf_slack = cp.Variable(1)  # CLF constraint slack variable, dim: (1,1)
+
+        constraints = []
+
+        # QP Cost F = u^T @ u + clf_slack**2
+        qp_objective = cp.Minimize(cp.sum_squares(u) + self.clf_slack * clf_slack**2)
+
+        # control bounds between u_range
+        constraints += [u <= u_range]
+        constraints += [u >= -u_range]
+        # CLF constraint
+        constraints += [
+            lfV_param + lgV_params @ u + self.clf_epsilon * V_param + clf_slack <= 0
+        ]
+
+        QP_problem = cp.Problem(qp_objective, constraints)
+
+        # Initialize CVXPY layers
+        return CvxpyLayer(
+            QP_problem,
+            parameters=[V_param, lfV_param, lgV_params],
+            variables=[u],
+        )
+
+    def compute_actions(self, observations, u_ranges):
+        if len(observations) == 0:
+            return []
+
+        actions = [None] * len(observations)
+        groups = {}
+        for index, u_range in enumerate(u_ranges):
+            groups.setdefault(self._u_range_cache_key(u_range), []).append(index)
+
+        for indices in groups.values():
+            batch_sizes = [observations[index].shape[0] for index in indices]
+            batched_observation = torch.cat(
+                [observations[index] for index in indices],
+                dim=0,
+            )
+            batched_action = self.compute_action(
+                batched_observation,
+                u_range=u_ranges[indices[0]],
+            )
+            for index, action in zip(indices, batched_action.split(batch_sizes, dim=0)):
+                actions[index] = action
+
+        return actions
 
     def compute_action(self, observation: Tensor, u_range: Tensor) -> Tensor:
         """
@@ -413,10 +501,6 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         u: action
         CLF_slack: CLF constraint slack variable, 0 if CLF constraint is satisfied
         """
-        # Install it with: pip install cvxpylayers
-        import cvxpy as cp
-        from cvxpylayers.torch import CvxpyLayer
-
         self.n_env = observation.shape[0]
         self.device = observation.device
         agent_pos = observation[:, :2]
@@ -448,36 +532,7 @@ class HeuristicPolicy(BaseHeuristicPolicy):
             ],
             dim=1,
         )
-        # Define Quadratic Program (QP) based controller
-        u = cp.Variable(2)
-        V_param = cp.Parameter(1)  # Lyapunov Function: V(x): x -> R, dim: (1,1)
-        lfV_param = cp.Parameter(1)
-        lgV_params = cp.Parameter(
-            2
-        )  # Lie derivative of Lyapunov Function, dim: (1, action_dim)
-        clf_slack = cp.Variable(1)  # CLF constraint slack variable, dim: (1,1)
-
-        constraints = []
-
-        # QP Cost F = u^T @ u + clf_slack**2
-        qp_objective = cp.Minimize(cp.sum_squares(u) + self.clf_slack * clf_slack**2)
-
-        # control bounds between u_range
-        constraints += [u <= u_range]
-        constraints += [u >= -u_range]
-        # CLF constraint
-        constraints += [
-            lfV_param + lgV_params @ u + self.clf_epsilon * V_param + clf_slack <= 0
-        ]
-
-        QP_problem = cp.Problem(qp_objective, constraints)
-
-        # Initialize CVXPY layers
-        QP_controller = CvxpyLayer(
-            QP_problem,
-            parameters=[V_param, lfV_param, lgV_params],
-            variables=[u],
-        )
+        QP_controller = self._get_qp_controller(u_range)
 
         # Solve QP
         CVXpylayer_parameters = [
@@ -490,6 +545,128 @@ class HeuristicPolicy(BaseHeuristicPolicy):
         ]
 
         return action
+
+
+OriginalHeuristicPolicy = LegacyClfQpHeuristicPolicy
+
+
+class HeuristicPolicy(BaseHeuristicPolicy):
+    """Goal-seeking navigation heuristic with reciprocal local avoidance."""
+
+    def __init__(
+        self,
+        goal_gain: float = 2.5,
+        velocity_damping: float = 2.4,
+        repulsion_gain: float = 3.2,
+        sidestep_gain: float = 1.0,
+        yield_gain: float = 0.0,
+        avoid_radius: float = 0.55,
+        goal_stop_radius: float = 0.045,
+        stop_damping: float = 2.5,
+        *args,
+        **kwargs,
+    ):
+        super().__init__(*args, **kwargs)
+        self.goal_gain = goal_gain
+        self.velocity_damping = velocity_damping
+        self.repulsion_gain = repulsion_gain
+        self.sidestep_gain = sidestep_gain
+        self.yield_gain = yield_gain
+        self.avoid_radius = avoid_radius
+        self.goal_stop_radius = goal_stop_radius
+        self.stop_damping = stop_damping
+
+    def compute_actions(self, observations, u_ranges):
+        if len(observations) == 0:
+            return []
+
+        obs = torch.stack(list(observations), dim=1)
+        pos = obs[..., :2]
+        vel = obs[..., 2:4]
+        to_goal = -self._goal_relative_positions(obs)
+        goal_dist = torch.linalg.vector_norm(to_goal, dim=-1, keepdim=True).clamp_min(
+            1e-6
+        )
+        goal_dir = to_goal / goal_dist
+
+        action = self.goal_gain * to_goal - self.velocity_damping * vel
+        action = action + self._avoidance_action(pos, goal_dir)
+        action = torch.where(
+            goal_dist < self.goal_stop_radius,
+            -self.stop_damping * vel,
+            action,
+        )
+
+        return [
+            self._clamp_action(action[:, index], u_ranges[index])
+            for index in range(len(observations))
+        ]
+
+    def compute_action(self, observation: Tensor, u_range: Tensor) -> Tensor:
+        to_goal = -observation[:, 4:6]
+        vel = observation[:, 2:4]
+        action = self.goal_gain * to_goal - self.velocity_damping * vel
+        goal_dist = torch.linalg.vector_norm(to_goal, dim=-1, keepdim=True)
+        action = torch.where(
+            goal_dist < self.goal_stop_radius,
+            -self.stop_damping * vel,
+            action,
+        )
+        return self._clamp_action(action, u_range)
+
+    @staticmethod
+    def _goal_relative_positions(obs: Tensor) -> Tensor:
+        return obs[..., 4:6]
+
+    def _avoidance_action(self, pos: Tensor, goal_dir: Tensor) -> Tensor:
+        n_agents = pos.shape[1]
+        if n_agents <= 1:
+            return torch.zeros_like(pos)
+
+        rel_pos = pos.unsqueeze(2) - pos.unsqueeze(1)
+        distance = torch.linalg.vector_norm(rel_pos, dim=-1, keepdim=True).clamp_min(
+            1e-6
+        )
+        eye = torch.eye(
+            n_agents,
+            device=pos.device,
+            dtype=torch.bool,
+        ).view(1, n_agents, n_agents, 1)
+        active = (distance < self.avoid_radius) & (~eye)
+        proximity = ((self.avoid_radius - distance) / self.avoid_radius).clamp_min(0.0)
+
+        away = rel_pos / distance
+        repulsion = (
+            away * proximity.square() * active
+        ).sum(dim=2) * self.repulsion_gain
+
+        tangent = torch.stack([-away[..., Y], away[..., X]], dim=-1)
+        indices = torch.arange(n_agents, device=pos.device)
+        sidestep_sign = torch.where(
+            indices.view(1, n_agents, 1, 1) < indices.view(1, 1, n_agents, 1),
+            1.0,
+            -1.0,
+        )
+        sidestep = (
+            tangent * sidestep_sign * proximity.square() * active
+        ).sum(dim=2) * self.sidestep_gain
+
+        lower_priority = (
+            indices.view(1, n_agents, 1, 1) > indices.view(1, 1, n_agents, 1)
+        )
+        yield_term = (
+            goal_dir
+            * (proximity * active * lower_priority).sum(dim=2)
+            * self.yield_gain
+        )
+
+        return repulsion + sidestep - yield_term
+
+    @staticmethod
+    def _clamp_action(action: Tensor, u_range) -> Tensor:
+        if torch.is_tensor(u_range):
+            return torch.max(torch.min(action, u_range), -u_range)
+        return torch.clamp(action, -float(u_range), float(u_range))
 
 
 if __name__ == "__main__":

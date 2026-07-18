@@ -76,6 +76,18 @@ ros2 launch launch_webots create_enviroment.launch.py \
   x_min:=-1.0 x_max:=1.0 y_min:=-1.0 y_max:=1.0
 ```
 
+### 2.1 运行时追加机器人
+
+先通过 `start_simulation.sh` 启动普通仿真，再运行：
+
+```bash
+bash add_robots_to_simulation.sh
+```
+
+追加机器人会读取 `/global_info`，在 `[-1.0, 1.0]` 生成范围内避开已有机器人、任务物体和随机障碍物。该入口依赖 `create_enviroment.launch.py` 启动的 `GlobalInfoSupervisor`，不能单独配合 `start_webots.launch.py` 使用。默认 `command_world.wbt` 没有内部墙体，且生成范围位于 3.5 m arena 内部；使用带内部墙体的自定义 world 时，应配置不与墙体相交的生成范围。
+
+当区域无法容纳新机器人时，启动会报错并停止，不会使用重叠位置强制生成。
+
 ### 3. 运行 RoboSAR Webots 桥接侧
 
 先在 ROS2 容器启动 Webots 和 bridge：
@@ -281,14 +293,15 @@ export ROBOSAR_USE_VGLRUN=false
 
 ## 结果和视频
 
-`videos/` 中保留了当前各行为模式的演示视频，例如：
+`videos/` 中按行为类型和机器人型号保留各模式的演示视频，例如：
 
 ```text
-aggregation_pattern.mp4
-dispersion_pattern.mp4
-navigation_pattern_neat.mp4
-roundflocking_pattern_neat.mp4
-transport_pattern_neat.mp4
+movement_patterns/basic/e_puck/aggregation_pattern.mp4
+movement_patterns/basic/e_puck/navigation_pattern_neat.mp4
+movement_patterns/basic/e_puck/transport_pattern_neat.mp4
+movement_patterns/basic/burger/transport_pattern.mp4
+movement_patterns/combined/e_puck/discussed_dispersion_pattern.mp4
+voting_patterns/e_puck/voter_model_pattern.mp4
 ```
 
 这些视频适合快速判断每个行为模式的预期效果。`videos/.logs/` 是批量录制产生的日志。

@@ -4,7 +4,7 @@
 #include "robosar_messages/agent_status.h"
 
 
-LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), map_frame_id_("map"),
+LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_status_outdated_(false), motion_enabled_(false), map_frame_id_("map"),
                                             velocity_calc_period_s(0.2), controller_period_s(0.2), nh_("robosar_controller"),tf_listener_(tf_buffer_)  {
     external_dynamic_obstacle_names_ = {"tb_0", "tb_1", "tb_2", "tb_3"};
     nh_.param("enable_external_dynamic_obstacles", external_dynamic_obstacles_enabled_, true);
@@ -13,6 +13,9 @@ LazyTrafficController::LazyTrafficController(): controller_active_(true), fleet_
     nh_.param("external_dynamic_obstacle_repulsion_radius", external_dynamic_obstacle_repulsion_radius_, 0.85);
 
     status_subscriber_ = nh_.subscribe("/robosar_agent_bringup_node/status", 1, &LazyTrafficController::statusCallback, this);
+    mission_command_subscriber_ = nh_.subscribe(
+        "/system_mission_command", 5,
+        &LazyTrafficController::missionCommandCallback, this);
 
     // subscribe to occupancy grid map
     occupancy_grid_subscriber_ = nh_.subscribe("/map", 1, &LazyTrafficController::occupancyGridCallback, this);
@@ -51,12 +54,11 @@ void LazyTrafficController::occupancyGridCallback(const nav_msgs::OccupancyGrid 
 }
 
 void LazyTrafficController::modelStatesCallback(const gazebo_msgs::ModelStates &model_states_msg) {
-    std::lock_guard<std::mutex> lock(map_mutex);
     std::set<std::string> target_names(
         external_dynamic_obstacle_names_.begin(),
         external_dynamic_obstacle_names_.end()
     );
-    external_dynamic_obstacles_.clear();
+    std::vector<rvo_agent_obstacle_info_s> updated_obstacles;
 
     for (std::size_t i = 0; i < model_states_msg.name.size(); ++i) {
         const std::string& name = model_states_msg.name[i];
@@ -82,12 +84,44 @@ void LazyTrafficController::modelStatesCallback(const gazebo_msgs::ModelStates &
         obstacle.homing = false;
         obstacle.collision_radius = external_dynamic_obstacle_radius_;
         obstacle.repulsion_radius = external_dynamic_obstacle_repulsion_radius_;
-        external_dynamic_obstacles_.push_back(obstacle);
+        updated_obstacles.push_back(obstacle);
     }
+    std::lock_guard<std::mutex> lock(external_obstacles_mutex_);
+    external_dynamic_obstacles_.swap(updated_obstacles);
 }
 
 void LazyTrafficController::statusCallback(const std_msgs::Bool &status_msg) {
     fleet_status_outdated_ = true;
+}
+
+void LazyTrafficController::missionCommandCallback(
+    const robosar_messages::mission_command &command) {
+    if (command.data == robosar_messages::mission_command::START ||
+        command.data == robosar_messages::mission_command::HOME) {
+        // Do not acquire map_mutex here.  A map/RVO cycle can be expensive and
+        // used to make a GUI START appear lost for tens of seconds.
+        motion_enabled_.store(true, std::memory_order_release);
+        ROS_INFO(" [LT_CONTROLLER] Motion gate opened by mission command %d", command.data);
+        return;
+    }
+    if (command.data != robosar_messages::mission_command::STOP) {
+        return;
+    }
+    // Close the final-output gate before doing any other work and publish zero
+    // through publishers that are independent of the controller map lock.
+    // Paths deliberately remain intact so START really resumes a paused
+    // exploration mission instead of silently discarding it.
+    motion_enabled_.store(false, std::memory_order_release);
+    publishImmediateStop();
+    ROS_INFO(" [LT_CONTROLLER] Motion gate closed by mission STOP");
+}
+
+void LazyTrafficController::publishImmediateStop(void) {
+    const geometry_msgs::Twist zero;
+    std::lock_guard<std::mutex> lock(stop_publishers_mutex_);
+    for (auto &entry : immediate_stop_publishers_) {
+        entry.second.publish(zero);
+    }
 }
 
 
@@ -105,6 +139,11 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
         }
     }
     else {
+        if (!motion_enabled_.load(std::memory_order_acquire)) {
+            ROS_WARN(" [LT_CONTROLLER] Ignoring paths while mission motion gate is closed");
+            res.success = false;
+            return true;
+        }
         ROS_INFO(" [LT_CONTROLLER] New %ld paths received!", req.paths.size());
         for(int i = 0; i < req.paths.size(); i++) {
             
@@ -121,8 +160,11 @@ bool LazyTrafficController::controllerServiceCallback(robosar_messages::robosar_
                     agent_map_[req.agent_names[i]].goal_threshold_ = 0.4; // increase goal threshold for homing task
                     agent_map_[req.agent_names[i]].homing_ = true;
                 }
-                else
+                else {
                     agent_map_[req.agent_names[i]].goal_type_ = req.goal_type[i];
+                    agent_map_[req.agent_names[i]].goal_threshold_ = 0.2;
+                    agent_map_[req.agent_names[i]].homing_ = false;
+                }
                 
                 if(!req.goal_id.empty())
                     agent_map_[req.agent_names[i]].status.goal_id = req.goal_id[i];
@@ -168,8 +210,23 @@ void LazyTrafficController::RunController() {
 }
 
 void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
-    
+    std::vector<rvo_agent_obstacle_info_s> external_obstacles_snapshot;
+    {
+        std::lock_guard<std::mutex> lock(external_obstacles_mutex_);
+        external_obstacles_snapshot = external_dynamic_obstacles_;
+    }
     std::lock_guard<std::mutex> lock(map_mutex);
+
+    // This is the final exploration cmd_vel owner. Enforce STOP here on every
+    // cycle so stale paths, in-flight planners and RVO repulsion cannot
+    // synthesize motion after the GUI closes the gate.
+    if (!motion_enabled_.load(std::memory_order_acquire)) {
+        for (auto &agent : agent_map_) {
+            agent.second.stopAgent();
+            agent.second.publishStatus();
+        }
+        return;
+    }
 
     static int iter = 1;
     if(iter == (int)(velocity_calc_period_s/controller_period_s)) {
@@ -184,9 +241,46 @@ void LazyTrafficController::computeVelocities(const ros::TimerEvent&) {
         // Calculate preferred velocities for all agents
         for(auto &agent : agent_map_) {
             agent.second.updatePreferredVelocity();
-            agent.second.invokeRVO(agent_map_, occupancy_grid_map_, external_dynamic_obstacles_);
+            agent.second.invokeRVO(agent_map_, occupancy_grid_map_);
+            const RVO::Vector2 current_position(
+                agent.second.current_pose_.transform.translation.x,
+                agent.second.current_pose_.transform.translation.y);
+            const RVO::Vector2 unprojected_velocity = agent.second.rvo_velocity_;
+            const bool has_active_path = !agent.second.current_path_.empty();
+            const bool completed_home_hold = shouldLatchCompletedHome(
+                has_active_path, agent.second.homing_);
+            if (!motion_enabled_.load(std::memory_order_acquire)) {
+                agent.second.stopAgent();
+                agent.second.publishStatus();
+                continue;
+            }
+            // The response group has right of way and applies its own hard
+            // safety stop.  Exploration must therefore keep executing the
+            // separating velocity here, including at contact-range distances;
+            // making both groups hold creates an unrecoverable symmetric
+            // deadlock during response task alignment.
+            agent.second.rvo_velocity_ = projectVelocityForPriorityYield(
+                current_position,
+                agent.second.rvo_velocity_,
+                external_obstacles_snapshot,
+                external_dynamic_obstacle_repulsion_radius_,
+                external_dynamic_obstacle_radius_,
+                agent.second.maximumSpeed(),
+                !completed_home_hold);
 
-            agent.second.sendVelocity(agent.second.rvo_velocity_);
+            const bool priority_projection_stopped =
+                abs(unprojected_velocity) > 1e-9 &&
+                abs(agent.second.rvo_velocity_) <= 1e-9;
+            if (completed_home_hold || priority_projection_stopped ||
+                abs(agent.second.rvo_velocity_) <= 1e-9) {
+                // sendVelocity intentionally ignores a zero vector, so publish
+                // zero explicitly on every held/stopped cycle. A normally idle
+                // exploration robot still sends a synthesized priority-yield
+                // command when a response robot enters its yield radius.
+                agent.second.stopAgent();
+            } else {
+                agent.second.sendVelocity(agent.second.rvo_velocity_);
+            }
             // Inform other subsystems of the controller status
             agent.second.publishStatus();
         }
@@ -275,6 +369,11 @@ void LazyTrafficController::initialiseAgentMap(std::set<std::string> active_agen
     for (auto agent : active_agents) {
         ROS_INFO(" [LT_CONTROLLER] Initialising agent %s", agent.c_str());
         agent_map_[agent] = Agent(agent, nh_);
+        const std::string cmd_topic =
+            "/robosar_agent_bringup_node/" + agent + "/cmd_vel";
+        std::lock_guard<std::mutex> lock(stop_publishers_mutex_);
+        immediate_stop_publishers_[agent] =
+            nh_.advertise<geometry_msgs::Twist>(cmd_topic, 1, false);
     }
 }
 

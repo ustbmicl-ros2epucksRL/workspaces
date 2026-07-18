@@ -1,6 +1,7 @@
 #include "plan_env/grid_map.h"
 
 #include <algorithm>
+#include <string>
 
 void GridMap::initMap(ros::NodeHandle &nh)
 {
@@ -155,8 +156,10 @@ void GridMap::initMap(ros::NodeHandle &nh)
       node_.subscribe<sensor_msgs::PointCloud2>("grid_map/cloud", mp_.cloud_sub_queue_, &GridMap::cloudCallback, this);
   indep_odom_sub_ =
       node_.subscribe<nav_msgs::Odometry>("grid_map/odom", mp_.indep_odom_sub_queue_, &GridMap::odomCallback, this);
+  std::string active_goal_topic;
+  node_.param<std::string>("grid_map/active_goal_topic", active_goal_topic, "/move_base_simple/goal");
   active_goal_sub_ =
-      node_.subscribe("/move_base_simple/goal", 1, &GridMap::activeGoalCallback, this);
+      node_.subscribe(active_goal_topic, 1, &GridMap::activeGoalCallback, this);
 
   occ_timer_  = node_.createTimer(ros::Duration(0.05), &GridMap::updateOccupancyCallback, this);
   esdf_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::updateESDFCallback, this);

@@ -1,10 +1,11 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(plan_manager)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 ## Compile as C++11, supported in ROS Kinetic and newer
 # add_compile_options(-std=c++11)
-
-set(CMAKE_BUILD_TYPE Debug)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -12,17 +13,17 @@ set(CMAKE_BUILD_TYPE Debug)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   std_msgs
-  path_searching2d
-  plan_env2d
-  path_opti
-  width_check
-  traj_opti
-  ot_process
-  to_visualize
-  cv_bridge
-  message_generation
-  plan_rrt
+  geometry_msgs
+  gazebo_msgs
+  nav_msgs
+  sensor_msgs
+  visualization_msgs
+  robosar_messages
+  tf2
+  tf2_ros
+  tf2_geometry_msgs
 )
+find_package(Eigen3 REQUIRED)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -58,11 +59,6 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
- add_message_files(
-   FILES
-   RotationVec.msg
-   widthInfo.msg
- )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
@@ -79,10 +75,7 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs
- )
+## No custom messages are needed by the simplified fixed-square controller.
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -114,9 +107,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES plan_manager
-#  CATKIN_DEPENDS roscpp std_msgs
+  INCLUDE_DIRS include
+  CATKIN_DEPENDS roscpp std_msgs geometry_msgs gazebo_msgs nav_msgs sensor_msgs visualization_msgs robosar_messages tf2 tf2_ros tf2_geometry_msgs
 #  DEPENDS system_lib
 )
 
@@ -129,6 +121,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${EIGEN3_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -140,6 +133,36 @@ include_directories(
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
 # add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+add_library(${PROJECT_NAME}_formation_assignment
+  src/formation_assignment.cpp
+)
+target_link_libraries(${PROJECT_NAME}_formation_assignment
+  ${catkin_LIBRARIES}
+)
+
+add_library(${PROJECT_NAME}_navigation_core
+  src/clearance_grid.cpp
+  src/dynamic_obstacle_planning.cpp
+  src/formation_control.cpp
+  src/formation_navigation.cpp
+  src/formation_planner.cpp
+  src/velocity_safety.cpp
+)
+target_link_libraries(${PROJECT_NAME}_navigation_core
+  ${catkin_LIBRARIES}
+)
+
+add_executable(formation_navigation_node src/formation_navigation_node.cpp)
+add_dependencies(formation_navigation_node
+  ${catkin_EXPORTED_TARGETS}
+  robosar_messages_generate_messages_cpp
+)
+target_link_libraries(formation_navigation_node
+  ${PROJECT_NAME}_navigation_core
+  ${PROJECT_NAME}_formation_assignment
+  ${catkin_LIBRARIES}
+)
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -159,6 +182,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 
 ## Specify libraries to link a library or executable target against
  target_link_libraries(${PROJECT_NAME}_node
+   ${PROJECT_NAME}_formation_assignment
    ${catkin_LIBRARIES}
  )
 
@@ -209,10 +233,56 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_plan_manager.cpp)
-# if(TARGET ${PROJECT_NAME}-test)
-#   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
-# endif()
+add_executable(${PROJECT_NAME}_formation_assignment_test test/test_formation_assignment.cpp)
+target_link_libraries(${PROJECT_NAME}_formation_assignment_test
+  ${PROJECT_NAME}_formation_assignment
+  ${catkin_LIBRARIES}
+)
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+if(CATKIN_ENABLE_TESTING)
+  catkin_add_gtest(${PROJECT_NAME}_clearance_planner_test
+    test/test_clearance_grid.cpp
+    test/test_dynamic_obstacle_planning.cpp
+    test/test_formation_planner.cpp
+  )
+  if(TARGET ${PROJECT_NAME}_clearance_planner_test)
+    target_link_libraries(${PROJECT_NAME}_clearance_planner_test
+      ${PROJECT_NAME}_navigation_core
+      gtest_main
+      ${catkin_LIBRARIES}
+    )
+  endif()
+  catkin_add_gtest(${PROJECT_NAME}_formation_control_test
+    test/test_formation_control.cpp
+  )
+  if(TARGET ${PROJECT_NAME}_formation_control_test)
+    target_link_libraries(${PROJECT_NAME}_formation_control_test
+      ${PROJECT_NAME}_navigation_core
+      gtest_main
+      ${catkin_LIBRARIES}
+    )
+  endif()
+  catkin_add_gtest(${PROJECT_NAME}_velocity_safety_test
+    test/test_velocity_safety.cpp
+  )
+  if(TARGET ${PROJECT_NAME}_velocity_safety_test)
+    target_link_libraries(${PROJECT_NAME}_velocity_safety_test
+      ${PROJECT_NAME}_navigation_core
+      gtest_main
+      ${catkin_LIBRARIES}
+    )
+  endif()
+  catkin_add_gtest(${PROJECT_NAME}_navigation_state_test
+    test/test_navigation_state.cpp
+  )
+  if(TARGET ${PROJECT_NAME}_navigation_state_test)
+    target_link_libraries(${PROJECT_NAME}_navigation_state_test
+      ${PROJECT_NAME}_navigation_core
+      gtest_main
+      ${catkin_LIBRARIES}
+    )
+  endif()
+endif()

@@ -88,6 +88,8 @@ class TransportPattern(MovementPattern):
         self.global_info = None
         self.robot_name = self.get_namespace().strip('/')
         self._missing_data_warn_counts = {}
+        self._distance_to_target = None
+        self._goal_reached = False
 
         # 加载NEAT网络
         if not NEAT_AVAILABLE:
@@ -195,6 +197,7 @@ class TransportPattern(MovementPattern):
         Returns:
             list: 观测向量
         """
+        self._distance_to_target = None
         if self.global_info is None:
             self.get_logger().debug('等待全局信息...')
             return self._get_random_observation()
@@ -269,6 +272,7 @@ class TransportPattern(MovementPattern):
             # 阈值应小于 (目标半径 - 包裹半边长)，确保包裹完全在目标区域内
             # 默认：目标半径0.25m，包裹边长0.25m，阈值0.125m
             distance_to_target = np.sqrt(box_to_target_x_global**2 + box_to_target_y_global**2)
+            self._distance_to_target = float(distance_to_target)
             on_goal = 1.0 if distance_to_target < self.goal_threshold else 0.0
             
             # 归一化因子（将世界坐标缩放到网络训练时的范围）
@@ -309,11 +313,26 @@ class TransportPattern(MovementPattern):
         """控制回调函数，使用NEAT网络计算并发布控制命令"""
         if self.network is None:
             self._warn_missing_data('NEAT网络未初始化，无法控制')
+            self._publish_stop()
             return
 
         try:
             # 获取观测
             observation = self._get_observation()
+
+            if self._goal_reached or (
+                self._distance_to_target is not None
+                and self._distance_to_target < self.goal_threshold
+            ):
+                if not self._goal_reached:
+                    self.get_logger().info(
+                        'Transport NEAT goal reached '
+                        f'at distance={self._distance_to_target:.3f}; '
+                        'stopping network commands'
+                    )
+                self._goal_reached = True
+                self._publish_stop()
+                return
             
             # 通过NEAT网络计算输出
             output = self.network.activate(observation)
@@ -338,6 +357,10 @@ class TransportPattern(MovementPattern):
 
         except Exception as e:
             self.get_logger().error(f'NEAT网络推理失败: {str(e)}')
+            self._publish_stop()
+
+    def _publish_stop(self):
+        self.command_publisher.publish(Twist())
 
 
 

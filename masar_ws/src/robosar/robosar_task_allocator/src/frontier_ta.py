@@ -300,6 +300,15 @@ class FrontierAssignmentCommander(TaskCommander):
                         "k-",
                         zorder=90,
                     )
+                    # An assigned task leaves the available-task scatter set,
+                    # so redraw it with the same semantic circle instead of a
+                    # generic endpoint cross.
+                    task_marker = (
+                        "co"
+                        if self.robot_info_dict[id].curr.task_type == "coverage"
+                        else "go"
+                    )
+                    plt.plot(pix_goal[0], pix_goal[1], task_marker, zorder=110)
         self.publish_image(self.image_pub)
         plt.clf()
 

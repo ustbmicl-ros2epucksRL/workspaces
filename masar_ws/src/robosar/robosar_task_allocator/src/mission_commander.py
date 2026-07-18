@@ -32,9 +32,19 @@ class MissionCommander:
     def mission_main(self):
         rate = rospy.Rate(10)
         while not rospy.is_shutdown():
-            if self.launch_mission and self._tc_process is None:
-                rospy.loginfo("Starting mission")
-                self.execute()
+            # Normalize child-process state before consuming edge-triggered GUI
+            # commands. Otherwise a duplicate START can remain pending while a
+            # process is alive and unexpectedly relaunch exploration after HOME.
+            if self._tc_process and not self._tc_process.is_alive():
+                self._tc_process.stop()
+                self._tc_process = None
+
+            if self.launch_mission:
+                if self._tc_process is None:
+                    rospy.loginfo("Starting mission")
+                    self.execute()
+                else:
+                    rospy.loginfo("Exploration mission already running; START is idempotent")
                 self.launch_mission = False
             elif self.stop_mission:
                 self.stop()
@@ -42,19 +52,21 @@ class MissionCommander:
             elif self.home_mission:
                 self.homing()
                 self.home_mission = False
-
-            if self._tc_process and not self._tc_process.is_alive():
-                self._tc_process.stop()
-                self._tc_process = None
             rate.sleep()
 
     def handle_commands(self, msg):
         if msg.data == mission_command.START:
             rospy.loginfo("received start command")
+            self.stop_mission = False
+            self.home_mission = False
             self.launch_mission = True
         elif msg.data == mission_command.STOP:
+            self.launch_mission = False
+            self.home_mission = False
             self.stop_mission = True
         elif msg.data == mission_command.HOME:
+            self.launch_mission = False
+            self.stop_mission = False
             self.home_mission = True
         else:
             rospy.loginfo_throttle(1, "Invalid command published")
@@ -186,7 +198,26 @@ class MissionCommander:
     def stop(self):
         if self._tc_node and self._tc_process:
             self._tc_process.stop()
-        rospy.logwarn("Stopping task allocation.")
+        # Killing only the allocator leaves its last paths resident in the
+        # traffic controller, so exploration robots continue publishing
+        # cmd_vel. Clear those paths through the controller's stop API too.
+        service_name = "/robosar_controller/lazy_traffic_controller"
+        try:
+            rospy.wait_for_service(service_name, timeout=2.0)
+            stop_controller = rospy.ServiceProxy(service_name, robosar_controller)
+            response = stop_controller(
+                stop_controller=True,
+                agent_names=[],
+                paths=[],
+                goal_type=[],
+                goal_id=[],
+            )
+            if response.success:
+                rospy.logwarn("Task allocation and exploration motion stopped.")
+            else:
+                rospy.logerr("Traffic controller rejected STOP request")
+        except (rospy.ROSException, rospy.ServiceException) as error:
+            rospy.logerr("Unable to stop exploration traffic controller: %s", error)
 
 
 if __name__ == "__main__":

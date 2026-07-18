@@ -29,14 +29,14 @@ catkin_package(
 catkin_install_python(PROGRAMS
   scripts/emergency_task_manager_node.py
   scripts/response_goal_sequence_node.py
-  scripts/deform_dispatch_bridge_node.py
-  scripts/response_group_coordinator_node.py
   scripts/response_cmd_mux_node.py
   scripts/response_global_info_node.py
   scripts/response_task_controller_node.py
   scripts/response_task_fixture_node.py
   scripts/response_collision_debug_node.py
   scripts/dynamic_obstacle_cloud_node.py
+  scripts/response_demo_static_map_node.py
+  scripts/response_acceptance_monitor.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

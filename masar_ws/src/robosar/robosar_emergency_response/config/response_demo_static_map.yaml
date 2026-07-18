@@ -1,0 +1,21 @@
+# Static OccupancyGrid for deform_navigation_demo.world.
+# The fixed-square global planner inflates these obstacles by the full formation
+# envelope before planning the response-group center path.
+
+frame_id: map
+resolution: 0.10
+width: 140
+height: 140
+origin_x: -7.0
+origin_y: -7.0
+publish_period: 1.0
+
+obstacles:
+  - {type: rectangle, x: 0.0, y: 6.2, size_x: 12.4, size_y: 0.16}
+  - {type: rectangle, x: 0.0, y: -6.2, size_x: 12.4, size_y: 0.16}
+  - {type: rectangle, x: -6.2, y: 0.0, size_x: 0.16, size_y: 12.4}
+  - {type: rectangle, x: 6.2, y: 0.0, size_x: 0.16, size_y: 12.4}
+  - {type: rectangle, x: -2.35, y: 0.0, size_x: 1.8, size_y: 7.0}
+  - {type: rectangle, x: 2.35, y: 0.0, size_x: 1.8, size_y: 6.0}
+  - {type: circle, x: 2.35, y: -2.8, radius: 1.0}
+  - {type: circle, x: 2.35, y: 2.8, radius: 1.0}

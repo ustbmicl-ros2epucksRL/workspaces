@@ -32,6 +32,13 @@ typedef struct rvo_agent_obstacle_info {
   double repulsion_radius = 0.5;
 } rvo_agent_obstacle_info_s;
 
+// An empty path is only a terminal latch after the explicit HOME workflow.
+// Ordinary exploration paths are consumed between assignments; those idle
+// robots must remain able to yield to the higher-priority response group.
+inline bool shouldLatchCompletedHome(bool has_active_path, bool homing)
+{
+  return homing && !has_active_path;
+}
 
 inline float sqr(float a) {
     return a*a;
@@ -92,8 +99,9 @@ inline bool AreSameOrLess(double a, double b)
 
 
 //Function to compute New Velocity using Reciprocal Velocity obstacles
-inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_info, 
-                                   const std::vector<rvo_agent_obstacle_info_s>& neighbors_list, bool isHoming) {
+inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_info,
+                                   const std::vector<rvo_agent_obstacle_info_s>& neighbors_list,
+                                   bool isHoming = false) {
     
     //ROS_INFO(" ");
     //ROS_INFO(" ");
@@ -190,6 +198,73 @@ inline RVO::Vector2 rvoComputeNewVelocity(rvo_agent_obstacle_info_s ego_agent_in
     // ROS_INFO(" ");
 
     return vel_computed;
+}
+
+// Enforce asymmetric right-of-way after soft RVO scoring.  This is a small
+// velocity-level control barrier: as a priority response robot approaches, the
+// exploration command is constrained by one graded distance margin.  Outside
+// the margin the original RVO command is bit-for-bit unchanged; inside body
+// clearance it also produces a separating command for a stationary coverage
+// robot.  Response robots are intentionally not inserted into ordinary RVO,
+// avoiding duplicate symmetric and asymmetric avoidance of the same object.
+inline RVO::Vector2 projectVelocityForPriorityYield(
+    const RVO::Vector2& ego_position,
+    const RVO::Vector2& candidate_velocity,
+    const std::vector<rvo_agent_obstacle_info_s>& priority_obstacles,
+    double yield_radius,
+    double minimum_center_distance,
+    double maximum_speed,
+    bool motion_requested = true)
+{
+  // The caller disables yielding only for an explicit terminal HOME hold.
+  // A normal exploration agent can be temporarily pathless between task
+  // assignments and must still synthesize an escape command when needed.
+  if (!motion_requested) {
+    return RVO::Vector2(0.0, 0.0);
+  }
+  RVO::Vector2 projected = candidate_velocity;
+  const double radius = std::max(0.0, yield_radius);
+  const double minimum_distance = std::max(0.0, minimum_center_distance);
+  const double speed_limit = std::max(0.0, maximum_speed);
+  bool constrained = false;
+  for (int pass = 0; pass < 3; ++pass) {
+    for (const auto& obstacle : priority_obstacles) {
+      const RVO::Vector2 delta = obstacle.current_position - ego_position;
+      const double distance = abs(delta);
+      if (distance <= 1e-9 || distance > radius) {
+        continue;
+      }
+      constrained = true;
+      const RVO::Vector2 toward = delta / distance;
+      const double toward_speed = projected * toward;
+      const double obstacle_radial_speed = obstacle.currrent_velocity * toward;
+      double allowed_relative_closing_speed = 0.0;
+      if (distance >= minimum_distance) {
+        const double transition_width = std::max(1e-9, radius - minimum_distance);
+        const double clearance_fraction = std::max(
+            0.0,
+            std::min(1.0, (distance - minimum_distance) / transition_width));
+        allowed_relative_closing_speed = speed_limit * clearance_fraction;
+      } else {
+        const double penetration_fraction = minimum_distance <= 1e-9
+            ? 1.0
+            : std::max(
+                0.0,
+                std::min(1.0, (minimum_distance - distance) / minimum_distance));
+        allowed_relative_closing_speed = -speed_limit * penetration_fraction;
+      }
+      const double maximum_toward_speed =
+          obstacle_radial_speed + allowed_relative_closing_speed;
+      if (toward_speed > maximum_toward_speed) {
+        projected -= (toward_speed - maximum_toward_speed) * toward;
+      }
+    }
+  }
+  const double projected_speed = abs(projected);
+  if (constrained && projected_speed > speed_limit && projected_speed > 1e-12) {
+    projected *= speed_limit / projected_speed;
+  }
+  return projected;
 }
 
 inline RVO::Vector2 flockControlVelocity(rvo_agent_obstacle_info_s ego_agent_info,

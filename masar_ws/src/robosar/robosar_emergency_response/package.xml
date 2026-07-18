@@ -2,7 +2,7 @@
 <package format="2">
   <name>robosar_emergency_response</name>
   <version>0.0.0</version>
-  <description>RoboSAR emergency response group orchestration for DEFORM-based formation navigation.</description>
+  <description>RoboSAR emergency response orchestration with clearance-aware group formation navigation.</description>
   <maintainer email="ros-workstation@todo.todo">ros-workstation</maintainer>
   <license>LGPLv2.1</license>
 
@@ -25,9 +25,7 @@
   <exec_depend>visualization_msgs</exec_depend>
   <exec_depend>robosar_messages</exec_depend>
   <exec_depend>tf</exec_depend>
-  <exec_depend>drone_detect</exec_depend>
   <exec_depend>plan_manager</exec_depend>
-  <exec_depend>ot_process</exec_depend>
   <exec_depend>multi_turtlebot3_simulation</exec_depend>
   <exec_depend>turtlebot3_description</exec_depend>
   <exec_depend>realsense2_description</exec_depend>

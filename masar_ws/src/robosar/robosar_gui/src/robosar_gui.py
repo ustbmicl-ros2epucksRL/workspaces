@@ -85,6 +85,9 @@ class Ui(QtWidgets.QDialog):
         self.tc_pub = rospy.Publisher(
             "/system_mission_command", mission_command, queue_size=5
         )
+        self.response_home_pub = rospy.Publisher(
+            "/response_group/return_home", Bool, queue_size=1
+        )
         rospy.Subscriber("/task_allocation_image", Image, self.display_task_allocation)
         self.get_active_agents()
         rospy.Subscriber(
@@ -117,6 +120,7 @@ class Ui(QtWidgets.QDialog):
         self.ui.start_mission_button.clicked.connect(self.send_mission)
         self.ui.e_stop_button.clicked.connect(self.send_estop)
         self.ui.homing_button.clicked.connect(self.send_homing)
+        self.ui.response_homing_button.clicked.connect(self.send_response_homing)
         self.ui.start_timer_button.clicked.connect(self.start_timer)
         self.ui.stop_timer_button.clicked.connect(self.pause_timer)
         self.ui.restart_timer_button.clicked.connect(self.restart_timer)
@@ -246,7 +250,10 @@ class Ui(QtWidgets.QDialog):
 
     def send_mission(self):
         # publish start mission msg
-        print("sending start mission command")
+        rospy.loginfo(
+            "GUI sending START to %d mission-command subscriber(s)",
+            self.tc_pub.get_num_connections(),
+        )
         start_msg = mission_command()
         start_msg.data = mission_command.START
         self.tc_pub.publish(start_msg)
@@ -257,19 +264,33 @@ class Ui(QtWidgets.QDialog):
         self.mission_timer.start(1000)
 
     def send_estop(self):
-        print("sending e-stop command")
+        rospy.loginfo(
+            "GUI sending STOP to %d mission-command subscriber(s)",
+            self.tc_pub.get_num_connections(),
+        )
         print("{}/{} victims found".format(self.tot_victims_found, self.n_victims))
         print("time taken to find: ", self.life_scores)
         print("total score: ", sum(self.life_scores))
         start_msg = mission_command()
         start_msg.data = mission_command.STOP
         self.tc_pub.publish(start_msg)
+        self.pause_timer()
 
     def send_homing(self):
-        print("sending homing command")
+        rospy.loginfo(
+            "GUI sending exploration HOME to %d mission-command subscriber(s)",
+            self.tc_pub.get_num_connections(),
+        )
         start_msg = mission_command()
         start_msg.data = mission_command.HOME
         self.tc_pub.publish(start_msg)
+
+    def send_response_homing(self):
+        rospy.loginfo(
+            "GUI sending response HOME to %d subscriber(s)",
+            self.response_home_pub.get_num_connections(),
+        )
+        self.response_home_pub.publish(Bool(data=True))
 
     def start_timer(self):
         self.start = True

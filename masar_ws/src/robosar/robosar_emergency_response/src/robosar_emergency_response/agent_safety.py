@@ -1,12 +1,12 @@
-"""Small dynamic-obstacle safety helpers for Tepper search robots."""
+"""Pose-based hard-safety helpers for response robots."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
-from typing import Sequence
+from typing import Collection, Mapping
 
-from .cmd_mux import Twist2D
+from .cmd_mux import RangeExclusion, Twist2D
 
 
 @dataclass(frozen=True)
@@ -28,55 +28,105 @@ def relative_bearing(from_pose: AgentSafetyPose, to_pose: AgentSafetyPose) -> fl
     return _normalize_angle(math.atan2(to_pose.y - from_pose.y, to_pose.x - from_pose.x) - from_pose.yaw)
 
 
-def closest_obstacle(
-    agent_pose: AgentSafetyPose,
-    obstacle_poses: Sequence[AgentSafetyPose],
-) -> tuple[float, AgentSafetyPose | None]:
-    closest_distance = float("inf")
-    closest_pose = None
-    for obstacle_pose in obstacle_poses:
-        distance = math.hypot(obstacle_pose.x - agent_pose.x, obstacle_pose.y - agent_pose.y)
-        if distance < closest_distance:
-            closest_distance = distance
-            closest_pose = obstacle_pose
-    return closest_distance, closest_pose
+def circle_range_exclusion(
+    observer_pose: AgentSafetyPose,
+    circle_pose: AgentSafetyPose,
+    radius: float,
+    range_padding: float = 0.03,
+) -> RangeExclusion:
+    return RangeExclusion(
+        bearing=relative_bearing(observer_pose, circle_pose),
+        center_distance=math.hypot(
+            circle_pose.x - observer_pose.x,
+            circle_pose.y - observer_pose.y,
+        ),
+        radius=max(0.0, float(radius)),
+        range_padding=max(0.0, float(range_padding)),
+    )
 
 
-def apply_dynamic_obstacle_pose_safety(
+def apply_teammate_hard_safety(
     command: Twist2D,
-    agent_pose: AgentSafetyPose | None,
-    obstacle_poses: Sequence[AgentSafetyPose],
-    trigger_distance: float,
-    stop_distance: float,
-    max_rotational_velocity: float,
-    reverse_velocity: float = 0.0,
+    robot_name: str,
+    robot_poses: Mapping[str, AgentSafetyPose],
+    minimum_center_distance: float,
+    allowed_controlled_contact_names: Collection[str] = (),
+    controlled_contact_min_center_distance: float = 0.0,
 ) -> Twist2D:
-    if agent_pose is None or trigger_distance <= 0.0 or not obstacle_poses:
+    agent_pose = robot_poses.get(robot_name)
+    if agent_pose is None or abs(command.linear_x) <= 1e-9:
+        return command
+    normal_distance_limit = max(0.0, float(minimum_center_distance))
+    controlled_distance_limit = max(
+        0.0, float(controlled_contact_min_center_distance),
+    )
+    controlled_names = set(allowed_controlled_contact_names)
+    for name, teammate_pose in robot_poses.items():
+        if name == robot_name:
+            continue
+        distance_limit = (
+            controlled_distance_limit
+            if name in controlled_names
+            else normal_distance_limit
+        )
+        distance = math.hypot(
+            teammate_pose.x - agent_pose.x,
+            teammate_pose.y - agent_pose.y,
+        )
+        if distance >= distance_limit:
+            continue
+        bearing = relative_bearing(agent_pose, teammate_pose)
+        if command.linear_x * math.cos(bearing) > 0.0:
+            return Twist2D(0.0, command.angular_z)
+    return command
+
+
+def apply_external_priority_safety(
+    command: Twist2D,
+    robot_name: str,
+    robot_poses: Mapping[str, AgentSafetyPose],
+    protected_names: Collection[str],
+    minimum_center_distance: float,
+    reaction_horizon: float,
+    maximum_other_speed: float,
+) -> Twist2D:
+    """Limit approach speed so a lower-priority mobile robot has time to yield.
+
+    The normal task controller remains responsible for steering.  This final
+    velocity-level barrier only consumes the available center-distance margin:
+    over ``reaction_horizon`` it reserves enough distance for the other robot
+    to move at the configured system speed bound.  It therefore scales or
+    stops forward translation without inventing reverse motion or modifying
+    the task controller's angular command.
+    """
+    agent_pose = robot_poses.get(robot_name)
+    if agent_pose is None or command.linear_x <= 1e-9:
         return command
 
-    distance, closest_pose = closest_obstacle(agent_pose, obstacle_poses)
-    if closest_pose is None or distance > trigger_distance:
-        return command
+    horizon = max(1e-6, float(reaction_horizon))
+    distance_limit = max(0.0, float(minimum_center_distance))
+    other_speed = max(0.0, float(maximum_other_speed))
+    protected = set(protected_names)
+    limited_linear = float(command.linear_x)
 
-    bearing = relative_bearing(agent_pose, closest_pose)
+    for name, other_pose in robot_poses.items():
+        if name not in protected:
+            continue
+        dx = other_pose.x - agent_pose.x
+        dy = other_pose.y - agent_pose.y
+        distance = math.hypot(dx, dy)
+        if distance <= 1e-9:
+            limited_linear = 0.0
+            continue
 
-    speed = abs(float(max_rotational_velocity))
-    if speed <= 0.0:
-        return Twist2D(min(command.linear_x, 0.0), 0.0)
+        bearing = relative_bearing(agent_pose, other_pose)
+        forward_projection = math.cos(bearing)
+        if forward_projection <= 1e-9:
+            continue
 
-    closeness = 1.0 - max(0.0, min(distance, trigger_distance)) / trigger_distance
-    turn_speed = speed * max(0.35, closeness)
-    angular = -turn_speed if bearing >= 0.0 else turn_speed
-    escape_speed = abs(float(reverse_velocity))
-    stop_closeness = 1.0 - max(0.0, min(distance, stop_distance)) / max(stop_distance, 1e-6)
-    escape_speed *= max(0.5, stop_closeness) if escape_speed > 0.0 else 0.0
+        distance_margin = max(0.0, distance - distance_limit)
+        allowed_closing_speed = max(0.0, distance_margin / horizon - other_speed)
+        allowed_linear = allowed_closing_speed / forward_projection
+        limited_linear = min(limited_linear, allowed_linear)
 
-    if abs(bearing) >= (0.75 * math.pi):
-        linear = max(command.linear_x, escape_speed)
-    elif abs(bearing) <= (0.5 * math.pi):
-        linear = min(command.linear_x, 0.0)
-        if distance <= stop_distance and escape_speed > 0.0:
-            linear = -escape_speed
-    else:
-        linear = min(command.linear_x, 0.0)
-    return Twist2D(float(linear), float(angular))
+    return Twist2D(max(0.0, limited_linear), command.angular_z)

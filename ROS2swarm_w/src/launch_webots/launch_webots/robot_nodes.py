@@ -212,4 +212,3 @@ def create_burger_nodes(robot_index: int, use_sim_time: bool = True):
     actions.append(waiting_nodes)
     
     return actions
-

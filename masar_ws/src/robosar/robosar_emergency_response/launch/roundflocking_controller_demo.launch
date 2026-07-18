@@ -2,7 +2,7 @@
   <arg name="model" default="burger"/>
   <arg name="gz_gui" default="true"/>
   <arg name="rviz" default="true"/>
-  <arg name="controller" default="checkpoint"/>
+  <arg name="controller" default="heuristic"/>
   <arg name="common_response_group_config" default="$(find robosar_emergency_response)/config/tepper_response_group.yaml"/>
   <arg name="demo_response_config" default="$(find robosar_emergency_response)/config/roundflocking_controller_demo.yaml"/>
   <arg name="safety_config" default="$(find robosar_emergency_response)/config/response_safety.yaml"/>
@@ -56,5 +56,7 @@
     <rosparam file="$(arg common_response_group_config)" command="load"/>
     <rosparam file="$(arg demo_response_config)" command="load"/>
     <rosparam file="$(arg safety_config)" command="load"/>
+    <!-- This standalone world has no exploration group. -->
+    <rosparam param="external_robot_names">[]</rosparam>
   </node>
 </launch>

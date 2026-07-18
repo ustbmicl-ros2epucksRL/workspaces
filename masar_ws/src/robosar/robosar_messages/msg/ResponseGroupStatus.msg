@@ -15,3 +15,12 @@ geometry_msgs/PoseStamped formation_center
 geometry_msgs/PoseStamped target_pose
 float32 hold_remaining
 string[] assigned_robots
+string planning_state
+float32 longitudinal_scale
+float32 lateral_scale
+float32 rms_slot_error
+float32 max_slot_error
+float32 minimum_clearance
+bool motion_enabled
+geometry_msgs/PoseStamped center_reference
+geometry_msgs/PoseStamped[] slot_targets

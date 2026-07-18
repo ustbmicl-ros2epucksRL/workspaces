@@ -14,3 +14,10 @@ fi
 export WORKSPACE_DIR="${WORKSPACE_DIR:-$SCRIPT_DIR}"
 
 exec "$WORKSPACE_DIR/src/robosar/robosar_emergency_response/scripts/start_response_tasks.sh" "$@"
+
+#回航命令:
+#cd /root/workspace/masar_ws
+#source devel/setup.bash
+#export ROS_MASTER_URI=http://127.0.0.1:11411
+
+#rostopic pub -1 /response_group/return_home std_msgs/Bool "data: true"

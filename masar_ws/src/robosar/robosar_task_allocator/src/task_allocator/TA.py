@@ -329,11 +329,16 @@ class TA_HIGH(TA):
                 e2_weights[i] = exploit_weight
         return e2_weights
 
-    def get_relevant_tasks(self, robot_pos, cost_calculator):
+    def get_relevant_tasks(self, robot_pos, cost_calculator, frontier_limit=5):
         dist_cost = []
         n_tasks = []
-        # closest euclidean frontier tasks
-        f_tasks = self.env.get_n_closest_tasks(5, robot_pos, "frontier")
+        # The base HIGH allocator keeps its local top-five behavior. The
+        # fleet-aware OA allocator uses all already-filtered frontier regions
+        # so co-located robots are not forced to choose from the same cluster.
+        if frontier_limit is None:
+            f_tasks = list(self.env.frontier_tasks)
+        else:
+            f_tasks = self.env.get_n_closest_tasks(frontier_limit, robot_pos, "frontier")
         
         # highest info gain coverage tasks
         c_tasks = self.env.get_highest_priority_coverage_tasks()[:5]
@@ -490,8 +495,9 @@ class TA_HIGH_OA(TA_HIGH):
         for i, robot_id in enumerate(names):
             for j, task in enumerate(task_list):
                 rp = self.robot_info_dict[robot_id].pos
-                if task.id in cached_dist[i]:
-                    cost = cached_dist[i][task.id]
+                task_key = (task.task_type, task.id)
+                if task_key in cached_dist[i]:
+                    cost = cached_dist[i][task_key]
                 else:
                     cost, _ = cost_calculator.a_star_cost(task.pos, rp, 5000)
                 C[i,j] = cost
@@ -523,14 +529,17 @@ class TA_HIGH_OA(TA_HIGH):
         for i, robot_id in enumerate(names):
             # closest tasks
             rp = self.robot_info_dict[robot_id].pos
-            n_tasks, dist_fn = self.get_relevant_tasks(rp, cost_calculator)
+            n_tasks, dist_fn = self.get_relevant_tasks(
+                rp, cost_calculator, frontier_limit=None,
+            )
             if len(n_tasks) == 0:
                 print("{} unused".format(robot_id))
                 continue
             # costs to each task
             for j in range(len(n_tasks)):
-                cached_dist[i][n_tasks[j].id] = dist_fn[j]
-            dist_cost_fn = dist_fn / np.max(dist_fn)
+                task_key = (n_tasks[j].task_type, n_tasks[j].id)
+                cached_dist[i][task_key] = dist_fn[j]
+            dist_cost_fn = dist_fn / max(float(np.max(dist_fn)), 1e-9)
             # calculate task priorities based on info_gain
             info_gain = np.array([n_tasks[i].info_gain for i in range(len(n_tasks))])
             utility_fn = np.array([n_tasks[i].utility for i in range(len(n_tasks))])
@@ -545,6 +554,11 @@ class TA_HIGH_OA(TA_HIGH):
                     if n_tasks[i].task_type == "frontier":
                         best_node.visited = True
                     best_node.assigned = True
+                    # Discount overlapping information before selecting the
+                    # next fleet goal, rather than after all goals are fixed.
+                    self.env.update_utility(
+                        best_node, cost_calculator.utility_discount_fn,
+                    )
                     # plot
                     # pix_rp = utils.m_to_pixels(
                     #     rp, cost_calculator.scale, cost_calculator.origin
@@ -562,7 +576,6 @@ class TA_HIGH_OA(TA_HIGH):
         print("C: ", C)
         assigned_dict = self.get_optimal_assignment(C, names, greedy_assigned_tasks)
         for robot_id, task in assigned_dict.items():
-            self.env.update_utility(task, cost_calculator.utility_discount_fn)
             avail_robots.remove(robot_id)
             assigned_names.append(robot_id)
             assigned_tasks.append(task)

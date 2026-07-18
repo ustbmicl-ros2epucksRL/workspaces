@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# 作用：根目录快捷入口，启动应急组 checkpoint/heuristic 控制器的独立 Gazebo 验证 demo。
-# 用法：./run_response_controller_demo.sh [选项] {roundflocking|transport|transport-checkpoint|transport-heuristic} [launch_arg:=value ...]
+# 作用：根目录快捷入口；普通任务名验证 Tepper 当前生产控制器，显式后缀用于对照旧控制器。
+# 用法：./run_response_controller_demo.sh [选项] {roundflocking|roundflocking-checkpoint|roundflocking-heuristic|transport|transport-checkpoint|transport-heuristic} [launch_arg:=value ...]
 # 常用示例：./run_response_controller_demo.sh roundflocking
 # 常用示例：./run_response_controller_demo.sh --headless transport
 # 说明：会自动加载 run_vnc_gpu.sh 对齐 VNC/GPU 环境；实际实现位于 src/robosar/robosar_emergency_response/scripts/run_response_controller_demo.sh。

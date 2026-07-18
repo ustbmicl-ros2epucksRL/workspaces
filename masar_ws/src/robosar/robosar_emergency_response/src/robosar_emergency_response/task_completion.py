@@ -9,6 +9,11 @@ from typing import Mapping, Sequence
 from .checkpoint_controller import object_info_from_global_info, robot_info_from_global_info
 
 
+def roundflocking_time_limit(configured_duration: float, task_hold_seconds: float) -> float:
+    """Return a task limit that cannot undercut the configured orbit budget."""
+    return max(0.0, float(configured_duration), float(task_hold_seconds))
+
+
 @dataclass(frozen=True)
 class RoundflockingCompletionEvidence:
     complete: bool
@@ -132,3 +137,48 @@ class RoundflockingCompletionMonitor:
             radius_by_robot=dict(self._radius),
             missing_robot_names=missing_robot_names,
         )
+
+
+class RoundflockingProgressWatchdog:
+    """Detect a genuinely stalled orbit without imposing an absolute deadline.
+
+    Completion is geometric (angular progress), so a fixed wall-time deadline
+    can reject a collision-free orbit merely because differential-drive turns
+    or local avoidance made it slower.  This watchdog instead times the lack
+    of new high-water progress among robots that are still required to finish.
+    Progress from an already-complete robot cannot hide a stuck teammate.
+    """
+
+    def __init__(self, min_angle_progress: float):
+        self.min_angle_progress = max(0.0, float(min_angle_progress))
+        self.reset()
+
+    def reset(self) -> None:
+        self._high_water = {}
+        self._last_progress_at = None
+
+    def stalled(
+        self,
+        evidence: RoundflockingCompletionEvidence,
+        now: float,
+        stall_window: float,
+    ) -> bool:
+        now = float(now)
+        window = max(0.0, float(stall_window))
+        if self._last_progress_at is None:
+            self._last_progress_at = now
+
+        made_progress = False
+        for robot_name, raw_progress in evidence.progress_by_robot.items():
+            progress = max(0.0, float(raw_progress))
+            previous = self._high_water.get(robot_name, 0.0)
+            if (
+                previous < self.min_angle_progress
+                and progress > previous + 1e-6
+            ):
+                made_progress = True
+            self._high_water[robot_name] = max(previous, progress)
+
+        if made_progress:
+            self._last_progress_at = now
+        return window > 0.0 and now - self._last_progress_at >= window

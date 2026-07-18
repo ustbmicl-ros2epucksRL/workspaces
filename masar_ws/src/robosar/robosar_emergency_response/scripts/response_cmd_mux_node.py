@@ -1,133 +1,132 @@
 #!/usr/bin/env python3
-"""Mux DEFORM and task controller velocity commands for each response robot."""
+"""Select the response command source and enforce final hard-safety invariants."""
 
-import math
+import json
 import os
 import sys
 
 try:
     from robosar_emergency_response.agent_safety import (
         AgentSafetyPose,
-        apply_dynamic_obstacle_pose_safety,
-        closest_obstacle,
+        apply_external_priority_safety,
+        apply_teammate_hard_safety,
+        circle_range_exclusion,
     )
     from robosar_emergency_response.cmd_mux import (
-        MODE_NAV_FORMATION,
-        RangeExclusion,
+        MODE_TASK_CONTROL,
+        MODE_STOP,
         Twist2D,
-        apply_soft_potential_field_safety,
-        hysteresis_avoid_state,
-        potential_field_safety,
+        apply_hard_scan_safety,
+        clamp_command,
         select_command,
-        should_bypass_transport_safety,
     )
 except ImportError:
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
     from robosar_emergency_response.agent_safety import (
         AgentSafetyPose,
-        apply_dynamic_obstacle_pose_safety,
-        closest_obstacle,
+        apply_external_priority_safety,
+        apply_teammate_hard_safety,
+        circle_range_exclusion,
     )
     from robosar_emergency_response.cmd_mux import (
-        MODE_NAV_FORMATION,
-        RangeExclusion,
+        MODE_TASK_CONTROL,
+        MODE_STOP,
         Twist2D,
-        apply_soft_potential_field_safety,
-        hysteresis_avoid_state,
-        potential_field_safety,
+        apply_hard_scan_safety,
+        clamp_command,
         select_command,
-        should_bypass_transport_safety,
     )
 
 import rospy
-from gazebo_msgs.msg import ModelStates
-from geometry_msgs.msg import Twist
+import tf2_geometry_msgs  # noqa: F401  Register geometry message conversions.
+import tf2_ros
+from geometry_msgs.msg import PoseStamped, Twist
 from nav_msgs.msg import Odometry
 from robosar_messages.msg import EmergencyTask
 from sensor_msgs.msg import LaserScan
-from std_msgs.msg import Int16, String
+from std_msgs.msg import Bool, String
 from tf.transformations import euler_from_quaternion
 
 
 class ResponseCmdMuxNode:
     def __init__(self):
         self.robot_names = rospy.get_param("~robot_names", ["tb_0", "tb_1", "tb_2", "tb_3"])
-        self.mode = rospy.get_param("~default_mode", MODE_NAV_FORMATION)
-        self.command_timeout = float(rospy.get_param("~command_timeout", 0.6))
-        self.rate_hz = float(rospy.get_param("~rate", 20.0))
-        self.hpl_max_range = float(rospy.get_param("~hardware_protection_layer_max_range", 0.30))
-        self.hpl_min_range = float(rospy.get_param("~hardware_protection_layer_min_range", 0.12))
-        self.hpl_front_attraction = float(
-            rospy.get_param("~hardware_protection_layer_front_attraction", 2.0)
-        )
-        self.hpl_threshold = int(rospy.get_param("~hardware_protection_layer_threshold", 5))
-        self.hpl_self_filter_radius = float(
-            rospy.get_param("~hardware_protection_layer_self_filter_radius", 0.0)
-        )
-        self.safety_max_translational_velocity = float(
-            rospy.get_param("~max_translational_velocity", 0.22)
-        )
-        self.safety_max_rotational_velocity = float(rospy.get_param("~max_rotational_velocity", 2.84))
-        self.publish_formation_avoid = bool(rospy.get_param("~publish_formation_avoid", True))
-        self.formation_reduce_distance = float(rospy.get_param("~formation_reduce_distance", 0.45))
-        self.formation_clear_distance = float(rospy.get_param("~formation_clear_distance", 0.60))
-        self.ignore_robot_half_angle = math.radians(
-            float(rospy.get_param("~formation_ignore_robot_angle_deg", 24.0))
-        )
-        self.ignore_robot_max_distance = float(
-            rospy.get_param("~formation_ignore_robot_max_distance", 1.5)
-        )
-        self.ignore_robot_radius = float(rospy.get_param("~formation_ignore_robot_radius", 0.25))
-        self.transport_task_bypass_safety = bool(
-            rospy.get_param("~transport_task_bypass_safety", False)
-        )
-        self.potential_field_safety_blend = float(
-            rospy.get_param("~potential_field_safety_blend", 0.4)
-        )
-        self.potential_field_safety_max_angular_delta = float(
-            rospy.get_param("~potential_field_safety_max_angular_delta", 0.55)
-        )
-        self.potential_field_safety_min_forward_scale = float(
-            rospy.get_param("~potential_field_safety_min_forward_scale", 0.35)
-        )
-        self.potential_field_safety_critical_stop_distance = float(
-            rospy.get_param("~potential_field_safety_critical_stop_distance", 0.10)
-        )
-        self.dynamic_obstacle_names = rospy.get_param(
-            "~dynamic_obstacle_names",
+        self.external_robot_names = rospy.get_param(
+            "~external_robot_names",
             ["agent_0", "agent_1", "agent_2", "agent_3", "agent_4"],
         )
-        self.dynamic_obstacle_trigger_distance = float(
-            rospy.get_param("~dynamic_obstacle_trigger_distance", 0.95)
+        self.safety_agent_names = list(dict.fromkeys(
+            list(self.robot_names) + list(self.external_robot_names)
+        ))
+        self.mode = rospy.get_param("~default_mode", MODE_STOP)
+        self.motion_enabled = False
+        self.command_timeout = float(rospy.get_param("~command_timeout", 0.6))
+        self.rate_hz = float(rospy.get_param("~rate", 20.0))
+        self.frame_id = str(rospy.get_param("~frame_id", "map"))
+        self.hard_stop_distance = float(rospy.get_param("~hard_stop_distance", 0.20))
+        self.hard_stop_half_width = float(
+            rospy.get_param("~hard_stop_half_width", 0.11)
         )
-        self.dynamic_obstacle_stop_distance = float(
-            rospy.get_param("~dynamic_obstacle_stop_distance", 0.45)
+        self.hard_stop_self_filter_radius = float(
+            rospy.get_param("~hard_stop_self_filter_radius", 0.08)
         )
-        self.dynamic_obstacle_reverse_velocity = float(
-            rospy.get_param("~dynamic_obstacle_reverse_velocity", 0.08)
+        self.scan_timeout = float(rospy.get_param("~scan_timeout", 0.30))
+        self.max_translational_velocity = float(
+            rospy.get_param("~max_translational_velocity", 0.22)
+        )
+        self.max_rotational_velocity = float(rospy.get_param("~max_rotational_velocity", 1.20))
+        self.teammate_min_center_distance = float(
+            rospy.get_param("~teammate_min_center_distance", 0.22)
+        )
+        self.external_priority_reaction_horizon = float(
+            rospy.get_param("~external_priority_reaction_horizon", 1.0)
+        )
+        transport_robot_length = max(
+            0.0, float(rospy.get_param("~transport_tb3_robot_length", 0.13))
+        )
+        transport_robot_gap = max(
+            0.0, float(rospy.get_param("~transport_tb3_robot_gap", 0.04))
+        )
+        # PUSH intentionally closes response-response spacing to one physical
+        # body length. Keep only a geometry-derived deep-overlap guard instead
+        # of a second, independently tuned contact threshold.
+        self.transport_contact_min_center_distance = max(
+            0.0, transport_robot_length - 0.5 * transport_robot_gap
+        )
+        self.transport_box_radius = float(rospy.get_param("~transport_box_radius", 0.25))
+        self.transport_box_range_padding = float(
+            rospy.get_param("~transport_box_range_padding", 0.03)
         )
 
         self.deform_cmds = {name: Twist2D() for name in self.robot_names}
         self.task_cmds = {name: Twist2D() for name in self.robot_names}
         self.last_deform_times = {name: None for name in self.robot_names}
         self.last_task_times = {name: None for name in self.robot_names}
-        self.min_ranges = {name: None for name in self.robot_names}
-        self.safety_fields = {name: None for name in self.robot_names}
-        self.avoid_states = {name: False for name in self.robot_names}
+        self.scans = {name: None for name in self.robot_names}
+        self.last_scan_times = {name: None for name in self.robot_names}
         self.robot_poses = {}
-        self.dynamic_obstacle_poses = {}
+        self.transport_box_pose = None
+        self.transport_box_pose_time = None
         self.active_task_type = 0
 
+        self.tf_buffer = tf2_ros.Buffer(cache_time=rospy.Duration(10.0))
+        self.tf_listener = tf2_ros.TransformListener(self.tf_buffer)
         self.final_pubs = {}
         self.raw_pubs = {}
         self.safe_pubs = {}
-        self.avoid_pubs = {}
         self.subscribers = []
+
         self.mode_sub = rospy.Subscriber(
             rospy.get_param("~mode_topic", "/response_group/behavior_mode"),
             String,
             self._mode_callback,
             queue_size=10,
+        )
+        self.motion_enabled_sub = rospy.Subscriber(
+            rospy.get_param("~motion_enabled_topic", "/response_group/motion_enabled"),
+            Bool,
+            self._motion_enabled_callback,
+            queue_size=1,
         )
         self.active_task_sub = rospy.Subscriber(
             rospy.get_param("~active_task_topic", "/response_group/active_task"),
@@ -135,58 +134,46 @@ class ResponseCmdMuxNode:
             self._active_task_callback,
             queue_size=10,
         )
-        self.model_states_sub = rospy.Subscriber(
-            rospy.get_param("~model_states_topic", "/gazebo/model_states"),
-            ModelStates,
-            self._model_states_callback,
+        self.global_info_sub = rospy.Subscriber(
+            rospy.get_param("~global_info_topic", "/global_info"),
+            String,
+            self._global_info_callback,
             queue_size=1,
         )
 
         for name in self.robot_names:
             self.final_pubs[name] = rospy.Publisher("/{}/cmd_vel".format(name), Twist, queue_size=10)
-            self.raw_pubs[name] = rospy.Publisher("/{}/raw_selected_cmd_vel".format(name), Twist, queue_size=10)
-            self.safe_pubs[name] = rospy.Publisher("/{}/safety_filtered_cmd_vel".format(name), Twist, queue_size=10)
-            self.avoid_pubs[name] = rospy.Publisher("/{}/is_avoid".format(name), Int16, queue_size=10)
-            self.subscribers.append(
-                rospy.Subscriber(
-                    "/{}/deform_cmd_vel".format(name),
-                    Twist,
-                    self._deform_callback,
-                    callback_args=name,
-                    queue_size=20,
-                )
+            self.raw_pubs[name] = rospy.Publisher(
+                "/{}/raw_selected_cmd_vel".format(name), Twist, queue_size=10
             )
-            self.subscribers.append(
-                rospy.Subscriber(
-                    "/{}/task_cmd_vel".format(name),
-                    Twist,
-                    self._task_callback,
-                    callback_args=name,
-                    queue_size=20,
-                )
+            self.safe_pubs[name] = rospy.Publisher(
+                "/{}/safety_filtered_cmd_vel".format(name), Twist, queue_size=10
             )
-            self.subscribers.append(
+            self.subscribers.extend([
                 rospy.Subscriber(
-                    "/{}/scan".format(name),
-                    LaserScan,
-                    self._scan_callback,
-                    callback_args=name,
-                    queue_size=10,
-                )
-            )
-            self.subscribers.append(
+                    "/{}/deform_cmd_vel".format(name), Twist,
+                    self._deform_callback, callback_args=name, queue_size=20,
+                ),
                 rospy.Subscriber(
-                    "/{}/odom".format(name),
-                    Odometry,
-                    self._odom_callback,
-                    callback_args=name,
-                    queue_size=20,
-                )
-            )
-        rospy.Timer(rospy.Duration(1.0 / self.rate_hz), self._timer_callback)
+                    "/{}/task_cmd_vel".format(name), Twist,
+                    self._task_callback, callback_args=name, queue_size=20,
+                ),
+                rospy.Subscriber(
+                    "/{}/scan".format(name), LaserScan,
+                    self._scan_callback, callback_args=name, queue_size=10,
+                ),
+                rospy.Subscriber(
+                    "/{}/odom".format(name), Odometry,
+                    self._odom_callback, callback_args=name, queue_size=20,
+                ),
+            ])
+        self.timer = rospy.Timer(rospy.Duration(1.0 / self.rate_hz), self._timer_callback)
 
     def _mode_callback(self, msg):
         self.mode = msg.data
+
+    def _motion_enabled_callback(self, msg):
+        self.motion_enabled = bool(msg.data)
 
     def _active_task_callback(self, msg):
         self.active_task_type = int(msg.task_type)
@@ -200,100 +187,127 @@ class ResponseCmdMuxNode:
         self.last_task_times[robot_name] = rospy.Time.now().to_sec()
 
     def _scan_callback(self, msg, robot_name):
-        range_exclusions = []
-        if self.mode == MODE_NAV_FORMATION:
-            range_exclusions.extend(self._teammate_range_exclusions(robot_name))
-        field = potential_field_safety(
-            ranges=msg.ranges,
-            angle_min=msg.angle_min,
-            angle_increment=msg.angle_increment,
-            max_range=self.hpl_max_range,
-            min_range=self.hpl_min_range,
-            front_attraction=self.hpl_front_attraction,
-            threshold=self.hpl_threshold,
-            max_translational_velocity=self.safety_max_translational_velocity,
-            max_rotational_velocity=self.safety_max_rotational_velocity,
-            range_exclusions=range_exclusions,
-            self_filter_radius=self.hpl_self_filter_radius,
-        )
-        self.safety_fields[robot_name] = field
-        self.min_ranges[robot_name] = field.min_range
+        self.scans[robot_name] = msg
+        self.last_scan_times[robot_name] = rospy.Time.now().to_sec()
 
     def _odom_callback(self, msg, robot_name):
-        q = msg.pose.pose.orientation
+        source = PoseStamped()
+        source.header = msg.header
+        source.header.frame_id = source.header.frame_id or self.frame_id
+        source.pose = msg.pose.pose
+        try:
+            transformed = self.tf_buffer.transform(
+                source, self.frame_id, timeout=rospy.Duration(0.03)
+            )
+        except Exception as exc:  # tf2 exposes multiple runtime exception classes.
+            rospy.logwarn_throttle(
+                2.0, "Waiting for %s odom transform to %s: %s",
+                robot_name, self.frame_id, exc,
+            )
+            return
+        q = transformed.pose.orientation
         yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
         self.robot_poses[robot_name] = (
-            msg.pose.pose.position.x,
-            msg.pose.pose.position.y,
+            transformed.pose.position.x,
+            transformed.pose.position.y,
             yaw,
         )
 
-    def _model_states_callback(self, msg):
-        dynamic_names = set(self.dynamic_obstacle_names)
-        for name, pose in zip(msg.name, msg.pose):
-            if name not in dynamic_names:
-                continue
-            q = pose.orientation
-            yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
-            self.dynamic_obstacle_poses[name] = AgentSafetyPose(
-                pose.position.x,
-                pose.position.y,
-                yaw,
+    def _global_info_callback(self, msg):
+        try:
+            payload = json.loads(msg.data)
+            position = payload.get("objects", {}).get("transport_box", {}).get("position")
+            if position is None:
+                self.transport_box_pose = None
+                self.transport_box_pose_time = None
+                return
+            self.transport_box_pose = AgentSafetyPose(
+                float(position["x"]), float(position["y"]), 0.0
             )
-
-    def _teammate_range_exclusions(self, robot_name):
-        pose = self.robot_poses.get(robot_name)
-        if pose is None:
-            return []
-        x, y, yaw = pose
-        exclusions = []
-        for other_name, other_pose in self.robot_poses.items():
-            if other_name == robot_name:
-                continue
-            other_x, other_y, _other_yaw = other_pose
-            dx = other_x - x
-            dy = other_y - y
-            distance = math.hypot(dx, dy)
-            if 0.0 < distance <= self.ignore_robot_max_distance:
-                bearing = math.atan2(dy, dx) - yaw
-                exclusions.append(
-                    RangeExclusion(
-                        bearing=bearing,
-                        center_distance=distance,
-                        radius=self.ignore_robot_radius,
-                        extra_half_angle=self.ignore_robot_half_angle,
-                    )
-                )
-        return exclusions
+            self.transport_box_pose_time = float(
+                payload.get("timestamp", rospy.Time.now().to_sec())
+            )
+        except (TypeError, ValueError, KeyError, json.JSONDecodeError) as exc:
+            rospy.logwarn_throttle(
+                2.0, "Failed to parse transport box from /global_info: %s", exc
+            )
 
     def _robot_safety_pose(self, robot_name):
         pose = self.robot_poses.get(robot_name)
-        if pose is None:
-            return None
-        x, y, yaw = pose
-        return AgentSafetyPose(x, y, yaw)
+        return None if pose is None else AgentSafetyPose(*pose)
 
-    def _dynamic_obstacle_poses(self):
-        return [
-            self.dynamic_obstacle_poses[name]
-            for name in self.dynamic_obstacle_names
-            if name in self.dynamic_obstacle_poses
-        ]
+    def _teammate_safety_poses(self):
+        return {
+            name: pose
+            for name in self.safety_agent_names
+            for pose in [self._robot_safety_pose(name)]
+            if pose is not None
+        }
 
-    def _dynamic_obstacle_close(self, robot_name, obstacle_poses):
+    def _refresh_external_robot_poses(self):
+        for name in self.external_robot_names:
+            try:
+                transformed = self.tf_buffer.lookup_transform(
+                    self.frame_id,
+                    "{}/base_link".format(name),
+                    rospy.Time(0),
+                    timeout=rospy.Duration(0.01),
+                )
+            except Exception as exc:
+                rospy.logwarn_throttle(
+                    2.0, "Waiting for external robot %s TF in %s: %s",
+                    name, self.frame_id, exc,
+                )
+                continue
+            q = transformed.transform.rotation
+            yaw = euler_from_quaternion([q.x, q.y, q.z, q.w])[2]
+            translation = transformed.transform.translation
+            self.robot_poses[name] = (translation.x, translation.y, yaw)
+
+    def _teammate_scan_exclusions(self, robot_name):
         robot_pose = self._robot_safety_pose(robot_name)
         if robot_pose is None:
-            return False
-        distance, _pose = closest_obstacle(robot_pose, obstacle_poses)
-        return distance <= self.dynamic_obstacle_trigger_distance
+            return []
+        radius = 0.5 * self.teammate_min_center_distance
+        return [
+            circle_range_exclusion(
+                robot_pose,
+                teammate_pose,
+                radius=radius,
+                range_padding=0.02,
+            )
+            for name in self.robot_names
+            for teammate_pose in [self._robot_safety_pose(name)]
+            if name != robot_name and teammate_pose is not None
+        ]
+
+    def _transport_box_exclusions(self, robot_name, now):
+        if self.mode != MODE_TASK_CONTROL or self.active_task_type != EmergencyTask.BOX:
+            return []
+        robot_pose = self._robot_safety_pose(robot_name)
+        if (
+            robot_pose is None
+            or self.transport_box_pose is None
+            or self.transport_box_pose_time is None
+            or now - self.transport_box_pose_time > self.command_timeout
+        ):
+            return []
+        return [circle_range_exclusion(
+            robot_pose,
+            self.transport_box_pose,
+            radius=self.transport_box_radius,
+            range_padding=self.transport_box_range_padding,
+        )]
 
     def _timer_callback(self, _event):
         now = rospy.Time.now().to_sec()
-        dynamic_obstacle_poses = self._dynamic_obstacle_poses()
+        self._refresh_external_robot_poses()
+        teammate_poses = self._teammate_safety_poses()
         try:
             for name in self.robot_names:
                 raw = select_command(
                     mode=self.mode,
+                    motion_enabled=self.motion_enabled,
                     deform_cmd=self.deform_cmds[name],
                     task_cmd=self.task_cmds[name],
                     now=now,
@@ -301,58 +315,62 @@ class ResponseCmdMuxNode:
                     last_task_time=self.last_task_times[name],
                     command_timeout=self.command_timeout,
                 )
-                safe = raw
-                field = self.safety_fields[name]
-                bypass_safety = should_bypass_transport_safety(
-                    mode=self.mode,
-                    active_task_type=self.active_task_type,
-                    box_task_type=EmergencyTask.BOX,
-                    bypass_enabled=self.transport_task_bypass_safety,
+                raw = clamp_command(
+                    raw, self.max_translational_velocity, self.max_rotational_velocity
                 )
-                dynamic_close = False
-                if not bypass_safety:
-                    safe = apply_soft_potential_field_safety(
+                scan = self.scans[name]
+                scan_time = self.last_scan_times[name]
+                range_exclusions = self._teammate_scan_exclusions(name)
+                range_exclusions.extend(self._transport_box_exclusions(name, now))
+                safe = apply_hard_scan_safety(
+                    raw,
+                    [] if scan is None else scan.ranges,
+                    0.0 if scan is None else scan.angle_min,
+                    0.0 if scan is None else scan.angle_increment,
+                    hard_stop_distance=self.hard_stop_distance,
+                    motion_half_width=self.hard_stop_half_width,
+                    scan_age=None if scan_time is None else now - scan_time,
+                    scan_timeout=self.scan_timeout,
+                    range_exclusions=range_exclusions,
+                    self_filter_radius=self.hard_stop_self_filter_radius,
+                )
+                if self.mode == MODE_TASK_CONTROL:
+                    safe = apply_external_priority_safety(
                         safe,
-                        field,
-                        blend=self.potential_field_safety_blend,
-                        max_angular_delta=self.potential_field_safety_max_angular_delta,
-                        min_forward_scale=self.potential_field_safety_min_forward_scale,
-                        critical_stop_distance=(
-                            self.potential_field_safety_critical_stop_distance
-                        ),
+                        name,
+                        teammate_poses,
+                        protected_names=self.external_robot_names,
+                        minimum_center_distance=self.teammate_min_center_distance,
+                        reaction_horizon=self.external_priority_reaction_horizon,
+                        maximum_other_speed=self.max_translational_velocity,
                     )
-                    dynamic_close = self._dynamic_obstacle_close(name, dynamic_obstacle_poses)
-                    if dynamic_close and (abs(safe.linear_x) > 1e-3 or abs(safe.angular_z) > 1e-3):
-                        safe = apply_dynamic_obstacle_pose_safety(
-                            command=safe,
-                            agent_pose=self._robot_safety_pose(name),
-                            obstacle_poses=dynamic_obstacle_poses,
-                            trigger_distance=self.dynamic_obstacle_trigger_distance,
-                            stop_distance=self.dynamic_obstacle_stop_distance,
-                            max_rotational_velocity=self.safety_max_rotational_velocity,
-                            reverse_velocity=self.dynamic_obstacle_reverse_velocity,
-                        )
+                safe = apply_teammate_hard_safety(
+                    safe,
+                    name,
+                    teammate_poses,
+                    minimum_center_distance=self.teammate_min_center_distance,
+                    allowed_controlled_contact_names=(
+                        self.robot_names
+                        if self.mode == MODE_TASK_CONTROL
+                        and self.active_task_type == EmergencyTask.BOX
+                        else ()
+                    ),
+                    controlled_contact_min_center_distance=(
+                        self.transport_contact_min_center_distance
+                    ),
+                )
+
+                # The final owner may reject enabled motion but never synthesize
+                # motion while the authoritative task source has closed the gate.
+                if not self.motion_enabled:
+                    raw = Twist2D()
+                    safe = Twist2D()
                 raw_msg = self._to_twist(raw)
                 safe_msg = self._to_twist(safe)
                 self.raw_pubs[name].publish(raw_msg)
                 self.safe_pubs[name].publish(safe_msg)
                 self.final_pubs[name].publish(safe_msg)
-                if self.publish_formation_avoid:
-                    if bypass_safety:
-                        self.avoid_states[name] = False
-                        self.avoid_pubs[name].publish(Int16(0))
-                    else:
-                        self.avoid_states[name] = hysteresis_avoid_state(
-                            previous_state=self.avoid_states[name],
-                            min_range=self.min_ranges[name],
-                            reduce_distance=self.formation_reduce_distance,
-                            clear_distance=self.formation_clear_distance,
-                        )
-                        self.avoid_pubs[name].publish(
-                            Int16(1 if dynamic_close or self.avoid_states[name] else 0)
-                        )
         except rospy.ROSException:
-            # Topic shutdown during roslaunch teardown is expected.
             return
 
     @staticmethod

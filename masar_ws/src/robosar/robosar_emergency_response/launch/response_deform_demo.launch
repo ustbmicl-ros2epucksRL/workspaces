@@ -4,13 +4,16 @@
   <arg name="model" default="burger"/>
   <arg name="world_name" default="$(find robosar_emergency_response)/worlds/deform_navigation_demo.world"/>
   <arg name="goal_sequence_file" default="$(find robosar_emergency_response)/config/response_goal_sequence.yaml"/>
+  <arg name="static_map_file" default="$(find robosar_emergency_response)/config/response_demo_static_map.yaml"/>
   <arg name="response_group_config" default="$(find robosar_emergency_response)/config/response_group.yaml"/>
   <arg name="safety_config" default="$(find robosar_emergency_response)/config/response_safety.yaml"/>
+  <arg name="enable_static_demo_map" default="true"/>
   <arg name="wait_for_start" default="true"/>
   <arg name="start_delay" default="1.0"/>
-  <arg name="frm_type" default="3"/>
-  <arg name="max_frm_type" default="3"/>
-  <arg name="formation_interval" default="0.8"/>
+  <arg name="map_topic" default="/map"/>
+  <arg name="home_x" default="4.5"/>
+  <arg name="home_y" default="-4.9"/>
+  <arg name="home_yaw" default="1.5708"/>
 
   <param name="/use_sim_time" value="true"/>
 
@@ -25,26 +28,23 @@
   </include>
 
   <include file="$(find robosar_emergency_response)/launch/response_group_deform.launch">
-    <arg name="frm_type" value="$(arg frm_type)"/>
-    <arg name="max_frm_type" value="$(arg max_frm_type)"/>
-    <arg name="formation_interval" value="$(arg formation_interval)"/>
+    <arg name="map_topic" value="$(arg map_topic)"/>
   </include>
+
+  <node if="$(arg enable_static_demo_map)" pkg="robosar_emergency_response"
+        type="response_demo_static_map_node.py"
+        name="response_demo_static_map_node" output="screen">
+    <rosparam file="$(arg static_map_file)" command="load"/>
+  </node>
 
   <node pkg="robosar_emergency_response" type="response_goal_sequence_node.py"
         name="response_goal_sequence_node" output="screen">
     <param name="goal_sequence_file" value="$(arg goal_sequence_file)"/>
     <param name="wait_for_start" value="$(arg wait_for_start)"/>
     <param name="start_delay" value="$(arg start_delay)"/>
-  </node>
-
-  <node pkg="robosar_emergency_response" type="deform_dispatch_bridge_node.py"
-        name="deform_dispatch_bridge_node" output="screen"/>
-
-  <node pkg="robosar_emergency_response" type="response_group_coordinator_node.py"
-        name="response_group_coordinator_node" output="screen">
-    <rosparam file="$(arg response_group_config)" command="load"/>
-    <param name="formation_interval" value="$(arg formation_interval)"/>
-    <param name="formation_type" value="$(arg frm_type)"/>
+    <param name="home_x" value="$(arg home_x)"/>
+    <param name="home_y" value="$(arg home_y)"/>
+    <param name="home_yaw" value="$(arg home_yaw)"/>
   </node>
 
   <node pkg="robosar_emergency_response" type="response_cmd_mux_node.py"

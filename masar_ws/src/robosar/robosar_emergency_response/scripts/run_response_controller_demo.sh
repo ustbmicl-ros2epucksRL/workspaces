@@ -8,10 +8,10 @@ Usage:
   run_response_controller_demo.sh [options] {roundflocking|roundflocking-checkpoint|roundflocking-heuristic|transport|transport-checkpoint|transport-heuristic} [launch_arg:=value ...]
 
 Starts a standalone Gazebo controller validation demo:
-  roundflocking        Checkpoint roundflocking controller around a fixed target.
+  roundflocking        Production heuristic roundflocking controller around a fixed target.
   roundflocking-checkpoint Checkpoint roundflocking controller for the roundflocking demo.
   roundflocking-heuristic VMAS heuristic roundflocking controller for the roundflocking demo.
-  transport           Checkpoint transport pushing a box to a target zone.
+  transport           Production synchronized-slot transport controller pushing a box.
   transport-checkpoint Checkpoint transport controller for the transport demo.
   transport-heuristic Heuristic transport controller for the transport demo.
 
@@ -183,7 +183,7 @@ CONTROLLER=""
 case "$TASK" in
   roundflocking)
     LAUNCH_FILE="roundflocking_controller_demo.launch"
-    CONTROLLER="checkpoint"
+    CONTROLLER="heuristic"
     ;;
   roundflocking-heuristic)
     LAUNCH_FILE="roundflocking_controller_demo.launch"
@@ -195,7 +195,7 @@ case "$TASK" in
     ;;
   transport)
     LAUNCH_FILE="transport_controller_demo.launch"
-    CONTROLLER="checkpoint"
+    CONTROLLER="synchronized_slots"
     [[ "$COLLISION_DEBUG" == "auto" ]] && COLLISION_DEBUG=true
     ;;
   transport-checkpoint)

@@ -21,6 +21,7 @@ WEBOTS_WORLD="command_world.wbt"                # 例如：command_world.wbt
 # 行为模式 launch 名称。
 PATTERN="roundflocking_pattern"
 # 例如：transport_pattern、roundflocking_pattern、navigation_pattern、aggregation_pattern、attraction_pattern、dispersion_pattern、drive_pattern。
+#transport_pattern_neat、roundflocking_pattern_neat、navigation_pattern_neat
 # 当前实例中实际生成并启动的机器人数量。
 NUMBER_ROBOTS="5"                               # 正整数
 # 实验总机器人数量，主要用于测量/日志相关流程。

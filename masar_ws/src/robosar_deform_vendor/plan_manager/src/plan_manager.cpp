@@ -1,1714 +1,1093 @@
 #include "plan_manager/plan_manager.h"
+
+#include "plan_manager/formation_assignment.h"
+
 #include <algorithm>
+#include <array>
+#include <boost/bind/bind.hpp>
 #include <cmath>
 #include <limits>
-#include <numeric>
+#include <queue>
+#include <sstream>
+#include <unordered_set>
 
-PlanManager::PlanManager() : nh_(), nh_pri_("~"){
+namespace
+{
+constexpr double kPi = 3.14159265358979323846;
+}
 
-//    if( ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug) ) {
-//        ros::console::notifyLoggerLevelsChanged();
-//    }
+using boost::placeholders::_1;
 
+PlanManager::PlanManager() : nh_(), nh_pri_("~")
+{
     readParameters();
+    resetFormationSlots();
+    robot_states_.resize(static_cast<std::size_t>(fixed_num_));
+    has_robot_state_.assign(static_cast<std::size_t>(fixed_num_), false);
 
-    tb_id = fixed_id;
-    if (formation_max_num < 1 || formation_max_num > fixed_num)
-        formation_max_num = fixed_num;
-    formation_min_type = std::max(1, std::min(formation_min_type, formation_max_num));
-    if (start_frm_type < formation_min_type || start_frm_type > formation_max_num)
-        start_frm_type = formation_max_num;
-
-    grid_map_.reset(new GridMap);
-    grid_map_->initMap(nh_pri_);
-    aster_.reset(new AStar);
-    aster_->initGridMap(grid_map_,Eigen::Vector2d(80,80));
-    find_region_.reset(new FindMaxFreeRegion);
-    find_region_->initMapandMaxGap(grid_map_, (formation_max_num - 1) * formation_interval + formation_interval);
-    path_opti_.reset(new PathOptimizer);
-    path_opti_->setGridMapandObsClearance(grid_map_, obs_clearance, nh_pri_);
-    traj_opt_.reset(new TrajectoryOptimizer(nh_pri_));
-    ot_cli_.reset(new OT_Transfer);
-    ot_cli_->Init(nh_pri_);
-    to_vis_.reset(new toVisualization);
-    to_vis_->init(nh_pri_);
-
-    swarm_des_origin.resize(fixed_num);
-    swarm_alloc.resize(fixed_num);
-    tb_states_.resize(fixed_num);
-    odoms_sub.resize(fixed_num);
-    realloc_.resize(fixed_num);
-    all_width.resize(fixed_num,0.2);
-    is_avoid_obs.resize(fixed_num, 0);
-    is_avoid_obs_sub_.resize(fixed_num);
-
-    for (int i = 0; i < fixed_num; i++) {
-
-        realloc_[i] = i;
-
-        if(i != tb_id) {
-            other_idx.push_back(i);
-        }
-    }
-
-    goal_sub = nh_.subscribe("/move_base_simple/goal", 1, &PlanManager::subGlobalGoal, this);
-    vel_pub = nh_pri_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
-    is_avoid_obs_pub_ = nh_pri_.advertise<std_msgs::Int16>("/tb_" + std::to_string(fixed_id) + "/is_avoid", 1);
-    deform_reached_pub_ = nh_pri_.advertise<std_msgs::Bool>("/tb_" + std::to_string(fixed_id) + "/deform_reached", 1, true);
-    debug_pub_ = nh_pri_.advertise<std_msgs::String>("/tb_" + std::to_string(fixed_id) + "/deform_debug", 1);
-    for (int id = 0; id < fixed_num; id++) {
-        is_avoid_obs_sub_[id] = nh_.subscribe<std_msgs::Int16>("/tb_" + std::to_string(id) + "/is_avoid", 1, [=](const std_msgs::Int16ConstPtr& msg) {
-            // ROS_WARN("receive avoid_mode info");
-            is_avoid_obs[id] = msg->data;
-        });
-    }
-
-    //get all turtlebot position info
-    for (int id = 0; id < fixed_num; id++)
-        odoms_sub[id] = nh_.subscribe<nav_msgs::Odometry>("/tb_" + std::to_string(id) + "/odom", 1, [=](const nav_msgs::OdometryConstPtr& msg){
-            tb_states_[realloc_[id]].pos.x() = msg->pose.pose.position.x;
-            tb_states_[realloc_[id]].pos.y() = msg->pose.pose.position.y;
-            tb_states_[realloc_[id]].yaw = tf2::getYaw(msg->pose.pose.orientation);
-            tb_states_[realloc_[id]].vel.x() = msg->twist.twist.linear.x;
-            tb_states_[realloc_[id]].vel.y() = msg->twist.twist.angular.z;
-            Eigen::Quaterniond q;
-            tf2::fromMsg(msg->pose.pose.orientation, q);
-            Eigen::Matrix2d r_2d = q.toRotationMatrix().block<2,2>(0, 0);
-            Eigen::Vector2d unit_x_axis(1.0, 0.0);
-            tb_states_[realloc_[id]].orient_vec = r_2d * unit_x_axis;
-
-            if (realloc_[id] == tb_id) {
-                Eigen::Vector3d state(tb_states_[tb_id].pos.x(), tb_states_[tb_id].pos.y(), tb_states_[tb_id].yaw);
-                traj_opt_->updateState(state,tb_states_[tb_id].vel);
-                has_odom = true;
-            }
-        });
-
-    path_point_pub = nh_.advertise<geometry_msgs::Point>("/path_point_sharing", 1);
-    path_point_sub = nh_.subscribe<geometry_msgs::Point>("/path_point_sharing", 1, &PlanManager::setPathPoint, this);
-
-    frm_info_pub = nh_.advertise<plan_manager::RotationVec>("/formation_info", 1);
-    frm_info_sub = nh_.subscribe("/formation_info", 4, &PlanManager::updateFRMInfo, this);
-
-    width_pub = nh_.advertise<plan_manager::widthInfo>("/current_width", 1);
-    width_sub = nh_.subscribe<plan_manager::widthInfo>("/current_width", 1, [=](const plan_manager::widthInfoConstPtr& msg){
-        all_width[msg->id] = msg->width;
-    });
-
-    execTimer = nh_.createTimer(ros::Duration(0.2), &PlanManager::execCallback, this);
-    pathTimer = nh_.createTimer(ros::Duration(0.4),&PlanManager::pathPlanning, this, false, false);
-    exec_state_= FORMATION_EXEC_STATE::WAIT_ODOM_OR_TARGET;
-
-    // sorted the distance between other robot and current robot, used to reduce traj constraints
-    updateOtherTimer = nh_.createTimer(ros::Duration(0.4), &PlanManager::updateOtherCallback, this, false, false);
-
-    //If many robots enter obstacle avoidance mode, shrink the formation.
-    avoidModeTimer = nh_.createTimer(ros::Duration(2.0), &PlanManager::updateAvoidModeCallback, this, false, false);
-
-    timeoutTimer = nh_.createTimer(ros::Duration(2.0), &PlanManager::timeoutCallback, this, false, false);
-
-    if (task_type == TASK_TYPE::NAVIGATION) {
-        if (fixed_id == leader_id)
-            ROS_WARN("Task type is navigation");
-        formation_type = start_frm_type; // fixed_num : the widthest formation, 1 : the narrowest formation
-        setDesiredShape(formation_type);
-    } else if ( task_type ==  TASK_TYPE::DEFORM) {
-        if (fixed_id == leader_id)
-            ROS_WARN("Task type is deform");
-        for (int i = 1; i <= swarm_des_origin.size(); i++) {
-            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/x", swarm_des_origin[i - 1][0], -1.0);
-            nh_pri_.param("desired_shape_positions/vehicle_pos_" + to_string(i) + "/y", swarm_des_origin[i - 1][1], -1.0);
-        }
-    } else {
-        ROS_ERROR("task_type invalid");
-        throw std::runtime_error("task_type invalid");
-    }
-
-    //init foramtion type
-    swarm_des = swarm_des_origin;
-    formation_yaw = 0.0; //The initial formation orientation is aligned with the x-axis.
-
-    has_goal=false;
-    has_odom= false;
-    do_allocation=false;
-    first_start= false;//startup to one do_allocation
-    is_timeout = false;
-    reported_reached_current_slot_ = false;
-    reported_reached_slot_ = Eigen::Vector2d::Zero();
-    avoid_reduce_since_ = ros::Time(0);
-    width_reduce_since_ = ros::Time(0);
-    expand_clear_since_ = ros::Time(0);
-    last_formation_reduce_time_ = ros::Time(0);
-    last_reassignment_time_ = ros::Time(0);
-    last_slot_reassignment_check_time_ = ros::Time(0);
-    last_slot_reassignment_apply_time_ = ros::Time(0);
-}
-
-PlanManager::~PlanManager() {
-}
-
-void PlanManager::timeoutCallback(const ros::TimerEvent&) {
-
-    if(fixed_id != leader_id || !timeout_reassignment_enabled)
-        return;
-
-    if (is_timeout) {
-        const double since_reassignment = last_reassignment_time_.isZero()
-                                              ? std::numeric_limits<double>::infinity()
-                                              : (ros::Time::now() - last_reassignment_time_).toSec();
-        if (since_reassignment < reassignment_cooldown) {
-            ROS_WARN_THROTTLE(2.0,
-                              "suppress reassignment for %.1fs after the previous timeout reassignment",
-                              reassignment_cooldown - since_reassignment);
-            is_timeout = false;
-            return;
-        }
-        ROS_WARN("Timeout, reassignment!");
-        do_allocation= true;
-        last_reassignment_time_ = ros::Time::now();
-        is_timeout = false;
-        return;
-    }
-
-    // When the formation gets "stuck" during navigation
-    double cur_linear_vel = tb_states_[0].vel[0];
-    double cur_angular_vel = tb_states_[0].vel[1];
-
-    double linear_vel_th = 0.05;
-    double angular_vel_th = 0.07;
-
-    // ROS_WARN("Timeout true test, frm bias: %.2f, cur_lin_vel: %.2f, cur_ang_vel: %.2f ", cur_bias, cur_linear_vel, cur_angular_vel);
-    if (cur_bias > 0.6 &&
-        cur_linear_vel < linear_vel_th &&
-        abs(cur_angular_vel) < angular_vel_th ) {
-        is_timeout = true;
-    }
-}
-
-void PlanManager::updateAvoidModeCallback(const ros::TimerEvent&) {
-
-    if(fixed_id != leader_id)
-        return;
-
-    int in_avoid_num_th = std::max(
+    goal_sub_ = nh_.subscribe("/move_base_simple/goal", 1, &PlanManager::goalCallback, this);
+    odom_sub_ = nh_.subscribe<nav_msgs::Odometry>(
+        "/tb_" + std::to_string(fixed_id_) + "/odom",
         1,
-        static_cast<int>(std::ceil(std::max(0.0, formation_reduce_robot_fraction) * fixed_num)));
-    in_avoid_num_th = std::min(fixed_num, in_avoid_num_th);
-
-    int avoid_sum = 0;
-    for (int i = 0; i < is_avoid_obs.size(); i++) {
-        avoid_sum += is_avoid_obs[i];
+        &PlanManager::odomCallback,
+        this);
+    teammate_odom_subs_.reserve(static_cast<std::size_t>(fixed_num_));
+    for (int robot_id = 0; robot_id < fixed_num_; ++robot_id) {
+        teammate_odom_subs_.push_back(nh_.subscribe<nav_msgs::Odometry>(
+            "/tb_" + std::to_string(robot_id) + "/odom",
+            1,
+            boost::bind(&PlanManager::teammateOdomCallback, this, _1, robot_id)));
+    }
+    map_sub_ = nh_.subscribe(map_topic_, 1, &PlanManager::mapCallback, this);
+    if (use_dynamic_obstacle_models_) {
+        model_states_sub_ = nh_.subscribe(
+            model_states_topic_,
+            1,
+            &PlanManager::modelStatesCallback,
+            this);
     }
 
-    const bool sustained_pressure = conditionHeld(
-        avoid_reduce_since_,
-        avoid_sum > 0 && avoid_sum >= in_avoid_num_th,
-        formation_reduce_hold_time);
+    vel_pub_ = nh_pri_.advertise<geometry_msgs::Twist>("cmd_vel", 1);
+    reached_pub_ = nh_pri_.advertise<std_msgs::Bool>(
+        "/tb_" + std::to_string(fixed_id_) + "/deform_reached",
+        1,
+        true);
+    debug_pub_ = nh_pri_.advertise<std_msgs::String>(
+        "/tb_" + std::to_string(fixed_id_) + "/deform_debug",
+        1);
+    center_path_pub_ = nh_pri_.advertise<nav_msgs::Path>(
+        "/response_group/center_path",
+        1,
+        true);
 
-    if (sustained_pressure) {
+    const double rate = std::max(1.0, control_rate_hz_);
+    control_timer_ = nh_.createTimer(ros::Duration(1.0 / rate), &PlanManager::controlCallback, this);
 
-        if(formation_type > formation_min_type) {
-            formation_type -= 1;
-            setDesiredShape(formation_type);
-            do_allocation=true;
-            markFormationReduced();
-            rotateAndShareFRM();
-            ROS_WARN("near-obstacle pressure held by %d robot(s), reduce formation", avoid_sum);
-        } else {
-            ROS_WARN_THROTTLE(2.0,
-                              "near-obstacle pressure held by %d robot(s), already at minimum formation type",
-                              avoid_sum);
+    publishReached(false);
+    ROS_WARN("tb %d using simplified fixed-square response formation controller", fixed_id_);
+}
+
+void PlanManager::readParameters()
+{
+    nh_pri_.param("plan_manager/tb_id", fixed_id_, 0);
+    nh_pri_.param("plan_manager/tb_num", fixed_num_, 4);
+    nh_pri_.param("plan_manager/formation_interval", formation_interval_, 0.8);
+    nh_pri_.param("plan_manager/robot_radius", robot_radius_, 0.18);
+    nh_pri_.param("plan_manager/formation_clearance", formation_clearance_, 0.18);
+    nh_pri_.param("plan_manager/replanning_distance", replanning_distance_, 0.35);
+    nh_pri_.param("plan_manager/path_goal_tolerance", path_goal_tolerance_, 0.35);
+    nh_pri_.param("plan_manager/goal_tolerance", goal_tolerance_, 0.18);
+    nh_pri_.param("plan_manager/lookahead_distance", lookahead_distance_, 0.6);
+    nh_pri_.param("plan_manager/control_rate", control_rate_hz_, 10.0);
+    nh_pri_.param("plan_manager/max_linear_velocity", max_linear_velocity_, 0.22);
+    nh_pri_.param("plan_manager/max_angular_velocity", max_angular_velocity_, 1.4);
+    nh_pri_.param("plan_manager/linear_gain", linear_gain_, 0.45);
+    nh_pri_.param("plan_manager/angular_gain", angular_gain_, 1.8);
+    nh_pri_.param("plan_manager/angular_slowdown_threshold", angular_slowdown_threshold_, 1.57079632679);
+    nh_pri_.param("plan_manager/rotate_in_place_threshold", rotate_in_place_threshold_, 1.0471975512);
+    nh_pri_.param("plan_manager/rotate_slots_by_goal_yaw", rotate_slots_by_goal_yaw_, false);
+    nh_pri_.param("plan_manager/align_slots_to_path", align_slots_to_path_, false);
+    nh_pri_.param("plan_manager/use_occupancy_grid_planner", use_occupancy_grid_planner_, true);
+    nh_pri_.param("plan_manager/treat_unknown_as_occupied", treat_unknown_as_occupied_, false);
+    nh_pri_.param("plan_manager/map_topic", map_topic_, std::string("/map"));
+    nh_pri_.param("plan_manager/allow_formation_scaling", allow_formation_scaling_, true);
+    nh_pri_.param("plan_manager/min_formation_scale", min_formation_scale_, 0.75);
+    nh_pri_.param("plan_manager/formation_scale_step", formation_scale_step_, 0.10);
+    nh_pri_.param("plan_manager/formation_expand_distance", formation_expand_distance_, 1.0);
+    nh_pri_.param("plan_manager/blocked_recovery_linear_scale", blocked_recovery_linear_scale_, 0.6);
+    nh_pri_.param("plan_manager/allow_blocked_direct_recovery", allow_blocked_direct_recovery_, false);
+    nh_pri_.param("plan_manager/blocked_direct_recovery_max_distance", blocked_direct_recovery_max_distance_, 2.5);
+    nh_pri_.param("plan_manager/use_dynamic_obstacle_models", use_dynamic_obstacle_models_, true);
+    nh_pri_.param("plan_manager/model_states_topic", model_states_topic_, std::string("/gazebo/model_states"));
+    nh_pri_.param("plan_manager/dynamic_obstacle_radius", dynamic_obstacle_radius_, 0.40);
+    nh_pri_.param("plan_manager/dynamic_obstacle_replan_distance", dynamic_obstacle_replan_distance_, 0.20);
+    nh_pri_.param(
+        "plan_manager/dynamic_obstacle_model_prefixes",
+        dynamic_obstacle_model_prefixes_,
+        std::vector<std::string>{std::string("agent_")});
+    nh_pri_.param(
+        "plan_manager/dynamic_obstacle_model_names",
+        dynamic_obstacle_model_names_,
+        std::vector<std::string>());
+    nh_pri_.param(
+        "plan_manager/ignored_dynamic_obstacle_model_names",
+        ignored_dynamic_obstacle_model_names_,
+        std::vector<std::string>{
+            std::string("tb_0"),
+            std::string("tb_1"),
+            std::string("tb_2"),
+            std::string("tb_3"),
+        });
+    nh_pri_.param("plan_manager/occupied_threshold", occupied_threshold_, 65);
+
+    fixed_num_ = std::max(1, fixed_num_);
+    if (fixed_id_ < 0 || fixed_id_ >= fixed_num_) {
+        ROS_WARN("plan_manager/tb_id %d is outside [0, %d); clamping to 0", fixed_id_, fixed_num_);
+        fixed_id_ = 0;
+    }
+    formation_interval_ = std::max(0.05, formation_interval_);
+    robot_radius_ = std::max(0.0, robot_radius_);
+    formation_clearance_ = std::max(0.0, formation_clearance_);
+    replanning_distance_ = std::max(0.05, replanning_distance_);
+    path_goal_tolerance_ = std::max(0.05, path_goal_tolerance_);
+    goal_tolerance_ = std::max(0.01, goal_tolerance_);
+    lookahead_distance_ = std::max(0.05, lookahead_distance_);
+    max_linear_velocity_ = std::max(0.0, max_linear_velocity_);
+    max_angular_velocity_ = std::max(0.0, max_angular_velocity_);
+    linear_gain_ = std::max(0.0, linear_gain_);
+    angular_gain_ = std::max(0.0, angular_gain_);
+    angular_slowdown_threshold_ = std::max(0.05, angular_slowdown_threshold_);
+    rotate_in_place_threshold_ = std::max(0.0, rotate_in_place_threshold_);
+    min_formation_scale_ = clamp(min_formation_scale_, 0.30, 1.0);
+    formation_scale_step_ = clamp(formation_scale_step_, 0.02, 0.50);
+    formation_expand_distance_ = std::max(0.10, formation_expand_distance_);
+    blocked_recovery_linear_scale_ = clamp(blocked_recovery_linear_scale_, 0.10, 1.0);
+    blocked_direct_recovery_max_distance_ = std::max(0.10, blocked_direct_recovery_max_distance_);
+    dynamic_obstacle_radius_ = std::max(0.0, dynamic_obstacle_radius_);
+    dynamic_obstacle_replan_distance_ = std::max(0.02, dynamic_obstacle_replan_distance_);
+    occupied_threshold_ = std::min(std::max(occupied_threshold_, 1), 100);
+}
+
+void PlanManager::resetFormationSlots()
+{
+    slots_.clear();
+    slots_.reserve(static_cast<std::size_t>(fixed_num_));
+
+    if (fixed_num_ == 4) {
+        const double half = 0.5 * formation_interval_;
+        slots_.push_back(Eigen::Vector2d(half, half));
+        slots_.push_back(Eigen::Vector2d(half, -half));
+        slots_.push_back(Eigen::Vector2d(-half, -half));
+        slots_.push_back(Eigen::Vector2d(-half, half));
+    } else {
+        const int columns = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(fixed_num_))));
+        const int rows = static_cast<int>(std::ceil(static_cast<double>(fixed_num_) / columns));
+        const double x_origin = 0.5 * (columns - 1) * formation_interval_;
+        const double y_origin = 0.5 * (rows - 1) * formation_interval_;
+
+        for (int index = 0; index < fixed_num_; ++index) {
+            const int row = index / columns;
+            const int col = index % columns;
+            slots_.push_back(Eigen::Vector2d(
+                x_origin - col * formation_interval_,
+                y_origin - row * formation_interval_));
         }
-    } else if (avoid_sum > 0) {
-        ROS_WARN_THROTTLE(2.0,
-                          "near-obstacle pressure from %d robot(s), waiting for stable signal before formation change",
-                          avoid_sum);
+    }
+
+    assigned_slot_indices_.clear();
+    assigned_slot_indices_.reserve(static_cast<std::size_t>(fixed_num_));
+    for (int index = 0; index < fixed_num_; ++index) {
+        assigned_slot_indices_.push_back(index);
+    }
+    slot_assignment_ready_ = false;
+}
+
+void PlanManager::odomCallback(const nav_msgs::OdometryConstPtr& msg)
+{
+    self_state_.pos.x() = msg->pose.pose.position.x;
+    self_state_.pos.y() = msg->pose.pose.position.y;
+    self_state_.yaw = yawFromQuaternion(msg->pose.pose.orientation);
+    has_odom_ = true;
+    if (fixed_id_ >= 0 && fixed_id_ < static_cast<int>(robot_states_.size())) {
+        robot_states_[static_cast<std::size_t>(fixed_id_)] = self_state_;
+        has_robot_state_[static_cast<std::size_t>(fixed_id_)] = true;
     }
 }
 
-void PlanManager::execCallback(const ros::TimerEvent &) {
+void PlanManager::teammateOdomCallback(const nav_msgs::OdometryConstPtr& msg, int robot_id)
+{
+    if (robot_id < 0 || robot_id >= fixed_num_) {
+        return;
+    }
 
-    switch (exec_state_) {
+    RobotState state;
+    state.pos.x() = msg->pose.pose.position.x;
+    state.pos.y() = msg->pose.pose.position.y;
+    state.yaw = yawFromQuaternion(msg->pose.pose.orientation);
+    robot_states_[static_cast<std::size_t>(robot_id)] = state;
+    has_robot_state_[static_cast<std::size_t>(robot_id)] = true;
+    if (robot_id == fixed_id_) {
+        self_state_ = state;
+        has_odom_ = true;
+    }
+}
 
-        case FORMATION_EXEC_STATE::WAIT_ODOM_OR_TARGET:
-        {
-            if(has_goal && has_odom)
-                changeFRMExecState(FRM_INIT_PATH);
-            break;
+void PlanManager::mapCallback(const nav_msgs::OccupancyGridConstPtr& msg)
+{
+    occupancy_grid_ = *msg;
+    has_map_ = occupancy_grid_.info.width > 0 &&
+               occupancy_grid_.info.height > 0 &&
+               occupancy_grid_.info.resolution > 0.0 &&
+               occupancy_grid_.data.size() ==
+                   static_cast<std::size_t>(occupancy_grid_.info.width * occupancy_grid_.info.height);
+    if (has_map_) {
+        markPlanDirty();
+    }
+}
+
+void PlanManager::modelStatesCallback(const gazebo_msgs::ModelStatesConstPtr& msg)
+{
+    std::vector<Eigen::Vector2d> positions;
+    positions.reserve(msg->name.size());
+
+    for (std::size_t i = 0; i < msg->name.size() && i < msg->pose.size(); ++i) {
+        const std::string& name = msg->name[i];
+        if (std::find(
+                ignored_dynamic_obstacle_model_names_.begin(),
+                ignored_dynamic_obstacle_model_names_.end(),
+                name) != ignored_dynamic_obstacle_model_names_.end()) {
+            continue;
         }
 
-        case FORMATION_EXEC_STATE::FRM_INIT_PATH:
-        {
-
-            pathPlanning(ros::TimerEvent{});
-
-            // frm_rrt need
-            // grid_map_->updateESDFMap(Eigen::Vector2d{60, 30});
-
-            pathTimer.start();
-            updateOtherTimer.start();
-            avoidModeTimer.start();
-            timeoutTimer.start();
-
-            changeFRMExecState(FRM_KEEP);
-            break;
-        }
-
-        case FORMATION_EXEC_STATE::FRM_KEEP:
-        {
-
-            if (task_type == TASK_TYPE::NAVIGATION) {
-                double dist_to_rotated_goal=((swarm_des[tb_id]+global_goal)-tb_states_[tb_id].pos).norm();
-                tb_global_goal=getApproachGoal();
-                double dist_to_final_goal=(tb_global_goal-tb_states_[tb_id].pos).norm();
-                const bool near_final_slot = dist_to_final_goal < approach_goal_dist;
-                const bool near_rotated_slot_and_final_area =
-                    dist_to_rotated_goal < approach_goal_dist &&
-                    dist_to_final_goal < approach_goal_dist + 0.5;
-                if (near_final_slot || near_rotated_slot_and_final_area) {
-                    if (isDirectGoalApproachSafe(tb_global_goal)) {
-                        changeFRMExecState(APPROACH_GOAL);
-                    } else {
-                        ROS_WARN_THROTTLE(1.0,
-                                          "Direct goal approach blocked for tb %d; keep formation navigation.",
-                                          fixed_id);
-                        trajPlanning();
-                    }
-                }
-                else {
-                        trajPlanning();
-                }
-            } else if (task_type == TASK_TYPE::DEFORM) {
-                double traj_e;
-                FRMBias(traj_e);
-                // ROS_INFO("current bias: %.2f", traj_e);
-                if (traj_e < 0.4) {
-                    ROS_WARN("Convergence success!");
-                    std::vector<double> c;
-                    c.push_back(0.0);
-                    c.push_back(0.0);
-                    pubVelCmd(c);
-                    execTimer.stop();
-                    timeoutTimer.stop();
-                }
-                else
-                    trajPlanningDeform();
-            }
-
-            break;
-        }
-
-        case FORMATION_EXEC_STATE::FRM_DEFORM:
-        {
-            break;
-        }
-
-        case FORMATION_EXEC_STATE::AVOID_OBS:
-        {
-            std_msgs::Int16 temp_avoid_mode;
-            temp_avoid_mode.data = 1;
-
-            double esdf_dist=grid_map_->getDistance(tb_states_[tb_id].pos);
-            // std::cout<<"avoid current dist="<<esdf_dist<<std::endl;
-            if (esdf_dist < 0.35)
-            {
-                if (publish_esdf_avoid_state) {
-                    is_avoid_obs_pub_.publish(temp_avoid_mode);
-                }
-                Eigen::Vector2d avoid_pt = tb_states_[tb_id].pos;
-                path_opti_->setWeightToLocalOpt(1.0,2.0);
-                path_opti_->ESDFAndLocalPointOpt(avoid_pt,0.4);
-                to_vis_->showGlobalGoal(avoid_pt);
-                trajController(avoid_pt);
-            } else {
-                changeFRMExecState(FRM_KEEP);
-                if (publish_esdf_avoid_state) {
-                    std_msgs::Int16 temp_avoid_mode;
-                    temp_avoid_mode.data = 0;
-                    is_avoid_obs_pub_.publish(temp_avoid_mode);
-                }
-            }
-            break;
-        }
-
-        // 1m obstacle-free environment around goal
-        case FORMATION_EXEC_STATE::APPROACH_GOAL:
-        {
-            tb_global_goal=getApproachGoal();
-            traj_opt_->setGlobalGoal(tb_global_goal);
-            if ((tb_global_goal - reported_reached_slot_).norm() > 0.05) {
-                reported_reached_current_slot_ = false;
-            }
-
-            if (!isDirectGoalApproachSafe(tb_global_goal)) {
-                ROS_WARN_THROTTLE(1.0,
-                                  "Direct goal approach blocked for tb %d during approach; return to formation navigation.",
-                                  fixed_id);
-                changeFRMExecState(FRM_KEEP);
+        const bool exact_match =
+            std::find(
+                dynamic_obstacle_model_names_.begin(),
+                dynamic_obstacle_model_names_.end(),
+                name) != dynamic_obstacle_model_names_.end();
+        bool prefix_match = false;
+        for (const std::string& prefix : dynamic_obstacle_model_prefixes_) {
+            if (!prefix.empty() && startsWith(name, prefix)) {
+                prefix_match = true;
                 break;
             }
-
-            if(trajController(tb_global_goal))
-            {
-                std_msgs::Bool reached_msg;
-                reached_msg.data = true;
-                deform_reached_pub_.publish(reached_msg);
-                if (!reported_reached_current_slot_) {
-                    reported_reached_current_slot_ = true;
-                    reported_reached_slot_ = tb_global_goal;
-                    ROS_WARN("tb %d reached current slot; keep participating until the group coordinator publishes the next goal.", fixed_id);
-                }
-            }
-            break;
         }
-
-        case FORMATION_EXEC_STATE::EMERGENCY_STOP:
-        {
-            std::vector<double> v_cmd={0.0,0.0};
-            pubVelCmd(v_cmd);
-            break;
-        }
-
-        default:
-            std::cout<<"formation_exec_state error"<<std::endl;
-    }
-}
-
-void PlanManager::updateOtherCallback(const ros::TimerEvent&) {
-
-    auto cur_pos = tb_states_[tb_id].pos;
-    auto cmp = [&cur_pos](Eigen::Vector2d pos1, Eigen::Vector2d pos2) {
-        double dist1 = (pos1 - cur_pos).norm();
-        double dist2 = (pos2 - cur_pos).norm();
-        return dist1 > dist2;
-    };
-    std::priority_queue<Eigen::Vector2d, std::vector<Eigen::Vector2d>, decltype(cmp)> pq(cmp);
-
-    for (int i = 0; i < fixed_num - 1; i++) {
-        pq.push(tb_states_[realloc_[other_idx[i]]].pos);
-    }
-
-    for(int i = 0; i < other_num_to_opti; i++) {
-
-        traj_opt_->updateOtherOdom(pq.top(), i);
-        pq.pop();
-    }
-
-}
-
-void PlanManager::trajPlanningDeform() {
-
-        if(fixed_id == leader_id) {
-            rotateAndShareDeform();
-        }
-
-        Eigen::Vector2d temp_pt = global_goal+swarm_des[tb_id];
-        to_vis_->showGlobalGoal(temp_pt);
-
-        FRMConsensus(local_goal);
-        trajController(local_goal);
-}
-
-// main logic
-void PlanManager::trajPlanning() {
-
-    double esdf_dist = grid_map_->getDistance(tb_states_[tb_id].pos);
-
-    if(avoid_obs_distance_threshold > 0.0 && esdf_dist < avoid_obs_distance_threshold)
-    {
-       changeFRMExecState(AVOID_OBS);
-      return;
-    }
-
-    findPointInPath(fwd_dist, local_goal);
-
-    bool widthHandleResult;
-    widthHandleResult=widthHandle(tb_states_[tb_id].pos,local_goal);
-    if (widthHandleResult) {
-
-        widthHandleInExtend();
-
-        //test: check current shap in RViz
-        Eigen::Vector2d temp_pt=global_goal+swarm_des[tb_id];
-        to_vis_->showGlobalGoal(temp_pt);
-
-            if (fixed_id == leader_id) {
-
-            // ROS_WARN("leader robot: %d, current width:%f",fixed_id, find_region_->getWidth());
-
-            // DEBUG width result
-            to_vis_->showUpdateArea(find_region_->getBox());
-            std::vector<Eigen::Vector2d> one_line, other_line;
-            find_region_->test(one_line, other_line);
-            to_vis_->showWidthLineOne(one_line);
-            to_vis_->showWidthLineOther(other_line);
-
-            double traj_e;
-            FRMBias(traj_e);
-            cur_bias = traj_e;
-
-            isReduceFRM();
-
-            // running this function is not considered
-            isExtendFRM();
-
-            rotateAndShareFRM();
-        }
-
-        FRMConsensus(local_goal);
-
-        //show formation consensus local point and line
-        std::vector<Eigen::Vector2d> odom_and_local_line;
-        odom_and_local_line.push_back(tb_states_[tb_id].pos);
-        odom_and_local_line.push_back(local_goal);
-        to_vis_->showOdomAndLocalLine(odom_and_local_line);
-
-        trajController(local_goal);
-    }
-    else
-    {
-        // follow the path
-        trajController(local_goal);
-    }
-}
-
-bool PlanManager::trajController(Eigen::Vector2d goal) {
-
-    goal = sanitizeControllerGoal(goal);
-    goal = recoverNavigationTarget(goal, tb_states_[tb_id].pos, "controller goal");
-
-    //nmpc controller
-    double w_des, v_des;
-    calcDesireLinearVel(v_des,goal);
-    calcDesireAngularVel(w_des,goal);
-
-    Eigen::Vector2d x_ref={goal.x(),goal.y()};
-    Eigen::Vector2d u_ref={v_des,w_des};
-    if (!traj_opt_->safeSetLocalGoal(x_ref,u_ref)) {
-        const std::vector<double> fallback_cmd = traj_opt_->fallbackVelocity();
-        pubVelCmd(fallback_cmd);
-        publishDebugInfo(goal, v_des, w_des, false, fallback_cmd);
-        to_vis_->showPath(traj_opt_->getState());
-        return false;
-    }
-
-    bool reach_goal;
-    reach_goal=traj_opt_->run();
-    const std::vector<double> control_velocity = traj_opt_->getControlVelocity();
-    pubVelCmd(control_velocity);
-    publishDebugInfo(goal, v_des, w_des, reach_goal, control_velocity);
-
-    // show predict traj
-    to_vis_->showPath(traj_opt_->getState());
-
-    return reach_goal;
-}
-
-bool PlanManager::isDirectGoalApproachSafe(const Eigen::Vector2d& goal) {
-    const Eigen::Vector2d start = tb_states_[tb_id].pos;
-    const Eigen::Vector2d delta = goal - start;
-    const double length = delta.norm();
-
-    if (length < 1e-3) {
-        return true;
-    }
-
-    const double sample_step = std::max(0.05, std::min(0.10, grid_map_->getResolution()));
-    const int sample_count = std::max(1, static_cast<int>(std::ceil(length / sample_step)));
-    const double min_clearance = std::max(0.30, obs_clearance);
-
-    for (int i = 0; i <= sample_count; ++i) {
-        const double ratio = static_cast<double>(i) / static_cast<double>(sample_count);
-        const Eigen::Vector2d sample = start + ratio * delta;
-
-        if (!grid_map_->isInMap(sample)) {
-            return false;
-        }
-
-        const int inflated_occ = grid_map_->getInflateOccupancy(sample);
-        if (inflated_occ != 0) {
-            return false;
-        }
-
-        const double dist = grid_map_->getDistance(sample);
-        if (std::isnan(dist) || (std::isfinite(dist) && dist < min_clearance)) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-Eigen::Vector2d PlanManager::getApproachGoal() const {
-    return approach_center_goal ? global_goal : global_goal + swarm_des[tb_id];
-}
-
-Eigen::Vector2d PlanManager::sanitizeControllerGoal(const Eigen::Vector2d& goal) const {
-    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
-        return std::isfinite(value.x()) && std::isfinite(value.y());
-    };
-
-    Eigen::Vector2d sanitized = goal;
-    if (!is_finite_vec(sanitized)) {
-        sanitized = tb_global_goal;
-    }
-
-    Eigen::Vector2d to_goal = sanitized - tb_states_[tb_id].pos;
-    double to_goal_dist = to_goal.norm();
-    if (!is_finite_vec(to_goal) || !std::isfinite(to_goal_dist) || to_goal_dist < 1e-3) {
-        Eigen::Vector2d fallback_dir = tb_global_goal - tb_states_[tb_id].pos;
-        if (!is_finite_vec(fallback_dir) || fallback_dir.norm() < 1e-3) {
-            fallback_dir = global_goal - tb_states_[tb_id].pos;
-        }
-        if (!is_finite_vec(fallback_dir) || fallback_dir.norm() < 1e-3) {
-            fallback_dir = tb_states_[tb_id].orient_vec;
-        }
-        if (!is_finite_vec(fallback_dir) || fallback_dir.norm() < 1e-3) {
-            fallback_dir = Eigen::Vector2d(1.0, 0.0);
-        }
-
-        sanitized = tb_states_[tb_id].pos + fallback_dir.normalized() * 0.20;
-        ROS_WARN_THROTTLE(1.0,
-                          "Controller goal for tb %d was degenerate; nudging goal to %.3f %.3f.",
-                          fixed_id,
-                          sanitized.x(),
-                          sanitized.y());
-    }
-
-    return sanitized;
-}
-
-bool PlanManager::isNavigationTargetSafe(const Eigen::Vector2d& target, double clearance) const {
-    if (!std::isfinite(target.x()) || !std::isfinite(target.y())) {
-        return false;
-    }
-    if (!grid_map_->isInMap(target)) {
-        return false;
-    }
-    if (grid_map_->getInflateOccupancy(target) != 0) {
-        return false;
-    }
-    const double dist = grid_map_->getDistance(target);
-    return !std::isnan(dist) && (!std::isfinite(dist) || dist >= clearance);
-}
-
-Eigen::Vector2d PlanManager::recoverNavigationTarget(const Eigen::Vector2d& target,
-                                                     const Eigen::Vector2d& reference,
-                                                     const char* label) const {
-    const double clearance = std::max(0.0, target_recovery_clearance);
-    if (isNavigationTargetSafe(target, clearance)) {
-        return target;
-    }
-
-    const double resolution = std::max(0.05, grid_map_->getResolution());
-    const double max_radius = std::max(resolution, target_recovery_search_radius);
-    const int max_cells = static_cast<int>(std::ceil(max_radius / resolution));
-    Eigen::Vector2d best = target;
-    double best_score = std::numeric_limits<double>::infinity();
-    bool found = false;
-
-    for (int radius = 1; radius <= max_cells; ++radius) {
-        for (int dx = -radius; dx <= radius; ++dx) {
-            for (int dy = -radius; dy <= radius; ++dy) {
-                if (std::max(std::abs(dx), std::abs(dy)) != radius) {
-                    continue;
-                }
-
-                Eigen::Vector2d candidate = target + resolution * Eigen::Vector2d(dx, dy);
-                if (!isNavigationTargetSafe(candidate, clearance)) {
-                    continue;
-                }
-
-                const double target_dist = (candidate - target).norm();
-                const double reference_dist = (candidate - reference).norm();
-                const double free_dist = grid_map_->getDistance(candidate);
-                const double score = target_dist + 0.05 * reference_dist -
-                                     0.05 * std::min(free_dist, clearance + 0.5);
-                if (score < best_score) {
-                    best_score = score;
-                    best = candidate;
-                    found = true;
-                }
-            }
-        }
-
-        if (found) {
-            ROS_WARN_THROTTLE(1.0,
-                              "Recovered unsafe %s for tb %d from %.2f %.2f to %.2f %.2f.",
-                              label,
-                              fixed_id,
-                              target.x(),
-                              target.y(),
-                              best.x(),
-                              best.y());
-            return best;
-        }
-    }
-
-    ROS_WARN_THROTTLE(1.0,
-                      "Unable to recover unsafe %s for tb %d near %.2f %.2f; using original target.",
-                      label,
-                      fixed_id,
-                      target.x(),
-                      target.y());
-    return target;
-}
-
-double PlanManager::normalizeFormationYaw(double yaw) const {
-    while (yaw > M_PI) {
-        yaw -= 2.0 * M_PI;
-    }
-    while (yaw < -M_PI) {
-        yaw += 2.0 * M_PI;
-    }
-    return yaw;
-}
-
-double PlanManager::snapFormationYawForCorridor(double yaw) const {
-    if (!formation_corridor_yaw_snap_enabled) {
-        return normalizeFormationYaw(yaw);
-    }
-
-    const double free_width = find_region_->getWidth();
-    if (!std::isfinite(free_width) || free_width > formation_corridor_yaw_snap_max_width) {
-        return normalizeFormationYaw(yaw);
-    }
-
-    const double axis = M_PI / 2.0;
-    const double snapped = std::round(yaw / axis) * axis;
-    const double error = normalizeFormationYaw(yaw - snapped);
-    if (std::abs(error) > std::max(0.0, formation_corridor_yaw_snap_tolerance)) {
-        return normalizeFormationYaw(yaw);
-    }
-
-    return normalizeFormationYaw(snapped);
-}
-
-bool PlanManager::conditionHeld(ros::Time& since, bool condition, double hold_time) const {
-    if (!condition) {
-        since = ros::Time(0);
-        return false;
-    }
-
-    const ros::Time now = ros::Time::now();
-    if (since.isZero()) {
-        since = now;
-    }
-    return (now - since).toSec() >= std::max(0.0, hold_time);
-}
-
-void PlanManager::markFormationReduced() {
-    last_formation_reduce_time_ = ros::Time::now();
-    width_reduce_since_ = ros::Time(0);
-    avoid_reduce_since_ = ros::Time(0);
-    expand_clear_since_ = ros::Time(0);
-}
-
-void PlanManager::pathPlanning(const ros::TimerEvent&) {
-    const Eigen::Vector2d desired_path_end = fixed_id != leader_id ? leader_path_point : tb_global_goal;
-    const Eigen::Vector2d path_end = recoverNavigationTarget(
-        desired_path_end,
-        tb_states_[tb_id].pos,
-        fixed_id == leader_id ? "leader path end" : "follower path end");
-
-    if(fixed_id != leader_id) {
-        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, path_end);
-    } else {
-        path_ = aster_->astarSearchAndGetSimplePath(grid_map_->getResolution(), tb_states_[tb_id].pos, path_end);
-    }
-
-    if (path_.empty()) {
-        ROS_WARN_THROTTLE(1.0, "A* returned an empty path; using current pose and target as fallback path.");
-        path_.push_back(tb_states_[tb_id].pos);
-        path_.push_back(path_end);
-    }
-
-    const std::vector<Eigen::Vector2d> astar_fallback_path = path_;
-    const int opt_ret = path_opti_->startOpt(path_);
-    if (opt_ret < 0) {
-        ROS_WARN_THROTTLE(1.0, "Path optimizer failed; keeping A* fallback path.");
-        path_ = astar_fallback_path;
-    }
-    path_ = aster_->refinePath(path_);
-
-    to_vis_->showAstarLists(path_);
-
-    if(fixed_id == leader_id) {
-        double perception_range = 5.5;
-        findPointInPath(perception_range, leader_path_point);
-        geometry_msgs::Point tmp_pt;
-        tmp_pt.x = leader_path_point.x();
-        tmp_pt.y = leader_path_point.y();
-        tmp_pt.z = 0.0;
-        path_point_pub.publish(tmp_pt);
-    }
-}
-
-void PlanManager::widthHandleInExtend() {
-
-    if(formation_type == formation_max_num)
-        return;
-
-    plan_manager::widthInfo temp_width;
-    temp_width.id = fixed_id;
-    temp_width.width = find_region_->getWidth();
-    width_pub.publish(temp_width);
-}
-
-bool PlanManager::widthHandle(const Eigen::Vector2d& start_pt, Eigen::Vector2d& end_pt) {
-
-        find_region_->updateFormationGap(formation_width+formation_interval);
-        find_region_->setEndpointandupdateBoundary(start_pt, end_pt);
-        find_region_->updatePointsRegion();
-        find_region_->solve_max_b();
-
-        // [Debug]: show width box and lines
-        to_vis_->showUpdateArea(find_region_->getBox());
-        std::vector<Eigen::Vector2d> one_line, other_line;
-        find_region_->test(one_line, other_line);
-        to_vis_->showWidthLineOne(one_line);
-        to_vis_->showWidthLineOther(other_line);
-
-        if(find_region_->getWidth() < 0.1) {
-            return false;
-        }
-
-        recenterLocalGoalInCorridor(end_pt);
-
-        // [Debug]:show width local point
-        to_vis_->showWidthMidPoint(end_pt);
-        return true;
-}
-
-void PlanManager::recenterLocalGoalInCorridor(Eigen::Vector2d& local_goal) {
-    if (!center_local_goal_in_corridor) {
-        return;
-    }
-
-    const double free_width = find_region_->getWidth();
-    if (!std::isfinite(free_width) || free_width > corridor_centering_max_width) {
-        return;
-    }
-
-    Eigen::Vector2d centered_goal = find_region_->getWidthBestPoint();
-    if (!std::isfinite(centered_goal.x()) || !std::isfinite(centered_goal.y())) {
-        return;
-    }
-
-    Eigen::Vector2d shift = centered_goal - local_goal;
-    const double shift_norm = shift.norm();
-    if (!std::isfinite(shift_norm) || shift_norm < 1e-3) {
-        return;
-    }
-
-    const double max_shift = std::max(0.0, corridor_centering_max_shift);
-    if (shift_norm > max_shift && max_shift > 1e-3) {
-        shift = shift / shift_norm * max_shift;
-    }
-
-    local_goal += shift;
-    ROS_WARN_THROTTLE(1.0,
-                      "Corridor centering adjusted local goal for tb %d by %.2f m.",
-                      fixed_id,
-                      shift.norm());
-}
-
-// if feasiable width less than formation width, to reset desired formation shape
-void PlanManager::isReduceFRM() {
-
-    const double free_width = find_region_->getWidth();
-    if (free_width < formation_width) {
-        int cur_type = std::floor(free_width / formation_interval) + 1;
-        cur_type = std::max(formation_min_type, std::min(cur_type, formation_type - 1));
-        std::cout << "[formation reconfiguration] current shape:" << cur_type<<std::endl;
-
-        if (cur_type == formation_type) {
-            conditionHeld(width_reduce_since_, false, formation_reduce_hold_time);
-            return;
-        }
-
-        if (!conditionHeld(width_reduce_since_, true, formation_reduce_hold_time)) {
-            ROS_WARN_THROTTLE(2.0,
-                              "narrow passage width %.2f detected, waiting for stable signal before reducing formation",
-                              free_width);
-            return;
-        }
-
-        formation_type = cur_type;
-        setDesiredShape(formation_type);
-
-        do_allocation = true;
-        markFormationReduced();
-    } else {
-        conditionHeld(width_reduce_since_, false, formation_reduce_hold_time);
-    }
-}
-
-void PlanManager::isExtendFRM() {
-
-    int avoid_sum = std::accumulate(is_avoid_obs.begin(), is_avoid_obs.end(), 0);
-    if (avoid_sum > 0) {
-        conditionHeld(expand_clear_since_, false, formation_expand_hold_time);
-        ROS_WARN_THROTTLE(2.0, "suppress formation expansion while %d robot(s) report near-obstacle pressure", avoid_sum);
-        return;
-    }
-
-    const double since_reduce = last_formation_reduce_time_.isZero()
-                                    ? std::numeric_limits<double>::infinity()
-                                    : (ros::Time::now() - last_formation_reduce_time_).toSec();
-    if (since_reduce < formation_expansion_cooldown) {
-        conditionHeld(expand_clear_since_, false, formation_expand_hold_time);
-        ROS_WARN_THROTTLE(2.0,
-                          "suppress formation expansion for %.1fs after reduction",
-                          formation_expansion_cooldown - since_reduce);
-        return;
-    }
-
-    // consider formation extend when the convergence of formation error less than threshold
-    double thresh=0.4;
-    double extend_e;
-    FRMBias(extend_e);
-    // ROS_WARN("current FrmBias:%f", extend_e);
-    if (extend_e > thresh) {
-        conditionHeld(expand_clear_since_, false, formation_expand_hold_time);
-        return;
-    }
-
-    // method 1
-    // consensus formation_width of all robots
-    double min = formation_interval * (formation_max_num - 1);
-    for (int i = 0; i < fixed_num; i++)
-        if (all_width[i] < min)
-            min = all_width[i];
-
-    // method 2
-    // std::vector<double> vec = all_width;
-    // double sum = std::accumulate(vec.begin(), vec.end(), 0.0);
-    // double min = sum / vec.size();
-
-    // method 3
-    // double min = all_width[fixed_id];
-
-    // ROS_WARN("min width:%f",min);
-    int new_type = std::max(formation_min_type, static_cast<int>(std::floor(min / formation_interval) + 1));
-
-    // new_formation greater than current_formation
-    if (new_type > formation_type) {
-        if (!conditionHeld(expand_clear_since_, true, formation_expand_hold_time)) {
-            ROS_WARN_THROTTLE(2.0,
-                              "clear width supports formation type %d, waiting for stable signal before expansion",
-                              new_type);
-            return;
-        }
-
-        ROS_WARN("formation expansion. type: %d", new_type);
-        formation_type = new_type;
-        setDesiredShape(formation_type);
-        do_allocation = true;
-        conditionHeld(expand_clear_since_, false, formation_expand_hold_time);
-    } else {
-        conditionHeld(expand_clear_since_, false, formation_expand_hold_time);
-    }
-}
-
-void PlanManager::rotateAndShareDeform() {
-
-    if (first_start) {
-        do_allocation= true;
-        first_start= false;
-    }
-
-    swarm_alloc = swarm_des;
-    if (do_allocation) {
-        do_allocation = false;
-        applyTaskAllocation(true, "deform event");
-    } else {
-        applyTaskAllocation(false, "deform online");
-    }
-
-    // update shape info
-    plan_manager::RotationVec temp_rotation;
-    temp_rotation.shape_type = formation_type;
-    temp_rotation.remap_id.resize(fixed_num);
-    for (int i = 0; i < fixed_num; i++)
-        temp_rotation.remap_id[i] = realloc_[i];
-    temp_rotation.yaw = 0.0;
-    frm_info_pub.publish(temp_rotation);
-}
-
-// rotate desired formation based on orientation, and share Frm infomation to other robots
-void PlanManager::rotateAndShareFRM() {
-
-    // compute the diff angle between formation and local goal
-    Eigen::Vector2d tb_center_(0.0, 0.0);
-    for (const auto& i : tb_states_)
-        tb_center_ += i.pos;
-    tb_center_ /= fixed_num;
-    auto diff_ = local_goal - tb_center_;
-    double yaw = atan2(diff_.y(), diff_.x());
-    yaw = snapFormationYawForCorridor(yaw);
-    double yaw_e = normalizeFormationYaw(yaw - formation_yaw);
-    bool force_allocation = do_allocation;
-    bool yaw_allocation_request = false;
-
-    if (first_start) {
-        force_allocation = true;
-        first_start = false;
-    }
-
-    if (abs(yaw_e) > M_PI / 2.5) {
-        ROS_WARN("rotation angle is %.2f, task allocation", yaw_e * 180);
-        yaw_allocation_request = true;
-    }
-
-    formation_yaw = yaw;
-    Eigen::Matrix2d r_mat = Eigen::AngleAxisd(yaw, Eigen::Vector3d::UnitZ()).toRotationMatrix().block<2, 2>(0, 0);
-    for (int i = 0; i < fixed_num; i++)
-        swarm_des[i] = r_mat * swarm_des_origin[i];
-
-    swarm_alloc = swarm_des;
-    if (force_allocation)
-    {
-        do_allocation = false;
-        applyTaskAllocation(true, "formation event");
-    }
-    else if (yaw_allocation_request)
-    {
-        applyTaskAllocation(false, "yaw improvement");
-    }
-    else
-    {
-        applyTaskAllocation(false, "online improvement");
-    }
-    tb_global_goal = getApproachGoal();
-
-    // update shape info
-    plan_manager::RotationVec temp_rotation;
-    temp_rotation.shape_type = formation_type;
-    temp_rotation.remap_id.resize(fixed_num);
-    for (int i = 0; i < fixed_num; i++)
-        temp_rotation.remap_id[i] = realloc_[i];
-    temp_rotation.rotation_vec[0] = r_mat(0, 0);
-    temp_rotation.rotation_vec[1] = r_mat(0, 1);
-    temp_rotation.rotation_vec[2] = r_mat(1, 0);
-    temp_rotation.rotation_vec[3] = r_mat(1, 1);
-    temp_rotation.yaw = formation_yaw;
-    frm_info_pub.publish(temp_rotation);
-}
-
-// other robot update FRM info
-void PlanManager::updateFRMInfo(const plan_manager::RotationVecConstPtr &msg) {
-    if (leader_id == fixed_id)
-        return;
-
-    for (int i = 0; i < fixed_num; i++)
-        realloc_[i] = msg->remap_id[i];
-    tb_id = realloc_[fixed_id];
-    first_start = false;
-    do_allocation = false;
-
-    if (task_type == TASK_TYPE::DEFORM)
-        return;
-
-    Eigen::Matrix2d rotation_2d;
-    rotation_2d(0, 0) = msg->rotation_vec[0];
-    rotation_2d(0, 1) = msg->rotation_vec[1];
-    rotation_2d(1, 0) = msg->rotation_vec[2];
-    rotation_2d(1, 1) = msg->rotation_vec[3];
-    formation_yaw = msg->yaw;
-
-    if (formation_type != msg->shape_type) {
-        formation_type = msg->shape_type;
-        setDesiredShape(formation_type);
-    }
-
-    for (int i = 0; i < fixed_num; i++)
-        swarm_des[i] = rotation_2d * swarm_des_origin[i];
-
-    tb_global_goal = getApproachGoal();
-}
-
-void PlanManager::applyFormationSeparation(Eigen::Vector2d& pos) const {
-    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
-        return std::isfinite(value.x()) && std::isfinite(value.y());
-    };
-
-    const double clearance = std::max(0.0, formation_min_robot_clearance);
-    const double gain = std::max(0.0, formation_min_robot_clearance_gain);
-    if (clearance <= 1e-3 || gain <= 1e-6 || tb_id < 0 || tb_id >= fixed_num) {
-        return;
-    }
-
-    const Eigen::Vector2d current_pos = tb_states_[tb_id].pos;
-    if (!is_finite_vec(current_pos)) {
-        return;
-    }
-
-    Eigen::Vector2d separation(0.0, 0.0);
-    for (int i = 0; i < fixed_num; i++) {
-        if (i == tb_id || !is_finite_vec(tb_states_[i].pos)) {
+        if (!exact_match && !prefix_match) {
             continue;
         }
 
-        Eigen::Vector2d away = current_pos - tb_states_[i].pos;
-        double distance = away.norm();
-        if (!std::isfinite(distance) || distance >= clearance) {
+        const geometry_msgs::Point& point = msg->pose[i].position;
+        if (!std::isfinite(point.x) || !std::isfinite(point.y)) {
             continue;
         }
-
-        if (distance < 1e-4) {
-            away = swarm_des[tb_id] - swarm_des[i];
-            distance = away.norm();
-        }
-        if (!is_finite_vec(away) || distance < 1e-4) {
-            away = tb_states_[tb_id].orient_vec;
-            distance = away.norm();
-        }
-        if (!is_finite_vec(away) || distance < 1e-4) {
-            away = Eigen::Vector2d(1.0, 0.0);
-            distance = 1.0;
-        }
-
-        separation += away.normalized() * (clearance - std::max(0.0, distance));
+        positions.emplace_back(point.x, point.y);
     }
 
-    const double separation_norm = separation.norm();
-    if (!std::isfinite(separation_norm) || separation_norm < 1e-4) {
-        return;
+    bool changed = positions.size() != dynamic_obstacle_positions_.size();
+    if (!changed) {
+        for (std::size_t i = 0; i < positions.size(); ++i) {
+            if ((positions[i] - dynamic_obstacle_positions_[i]).norm() >
+                dynamic_obstacle_replan_distance_) {
+                changed = true;
+                break;
+            }
+        }
     }
 
-    const double max_shift = clearance;
-    if (separation_norm > max_shift && max_shift > 1e-3) {
-        separation = separation / separation_norm * max_shift;
+    dynamic_obstacle_positions_ = positions;
+    if (changed && has_goal_) {
+        markPlanDirty();
     }
-
-    pos += gain * separation;
-    ROS_WARN_THROTTLE(1.0,
-                      "Formation separation adjusted local goal for tb %d by %.2f m.",
-                      fixed_id,
-                      (gain * separation).norm());
 }
 
-void PlanManager::preserveLocalGoalProgress(Eigen::Vector2d& pos, const Eigen::Vector2d& local_path_goal) const {
-    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
-        return std::isfinite(value.x()) && std::isfinite(value.y());
-    };
+void PlanManager::goalCallback(const geometry_msgs::PoseStampedConstPtr& msg)
+{
+    goal_center_.x() = msg->pose.position.x;
+    goal_center_.y() = msg->pose.position.y;
+    goal_yaw_ = yawFromQuaternion(msg->pose.orientation);
+    has_goal_ = true;
+    reached_ = false;
+    markPlanDirty();
+    publishReached(false);
 
-    const double min_progress = std::max(0.0, formation_min_local_goal_progress);
-    if (min_progress <= 1e-3 || tb_id < 0 || tb_id >= fixed_num) {
-        return;
-    }
-
-    const Eigen::Vector2d current_pos = tb_states_[tb_id].pos;
-    if (!is_finite_vec(current_pos) || !is_finite_vec(pos) || !is_finite_vec(local_path_goal)) {
-        return;
-    }
-
-    const double final_dist = (tb_global_goal - current_pos).norm();
-    if (!std::isfinite(final_dist) || final_dist <= std::max(approach_goal_dist, min_progress + 0.20)) {
-        return;
-    }
-
-    Eigen::Vector2d path_delta = local_path_goal - current_pos;
-    const double path_dist = path_delta.norm();
-    if (!std::isfinite(path_dist) || path_dist <= min_progress) {
-        return;
-    }
-
-    Eigen::Vector2d consensus_delta = pos - current_pos;
-    const double consensus_dist = consensus_delta.norm();
-    if (std::isfinite(consensus_dist) && consensus_dist >= min_progress) {
-        return;
-    }
-
-    const Eigen::Vector2d path_dir = path_delta / path_dist;
-    Eigen::Vector2d lateral(0.0, 0.0);
-    if (is_finite_vec(consensus_delta)) {
-        lateral = consensus_delta - path_dir * consensus_delta.dot(path_dir);
-        const double lateral_norm = lateral.norm();
-        if (std::isfinite(lateral_norm) && lateral_norm > min_progress) {
-            lateral = lateral / lateral_norm * min_progress;
-        }
-    }
-
-    pos = current_pos + path_dir * min_progress + lateral;
-    ROS_WARN_THROTTLE(1.0,
-                      "Consensus local goal for tb %d collapsed to %.2f m while %.2f m from slot; preserving %.2f m path progress.",
-                      fixed_id,
-                      std::isfinite(consensus_dist) ? consensus_dist : 0.0,
-                      final_dist,
-                      min_progress);
+    const Eigen::Vector2d target = slotTarget(goal_center_, rotate_slots_by_goal_yaw_ ? goal_yaw_ : 0.0, 1.0);
+    ROS_WARN("tb %d accepted square slot target %.3f %.3f for center goal %.3f %.3f",
+             fixed_id_,
+             target.x(),
+             target.y(),
+             goal_center_.x(),
+             goal_center_.y());
 }
 
-void PlanManager::FRMConsensus(Eigen::Vector2d& pos) {
-    const auto is_finite_vec = [](const Eigen::Vector2d& value) {
-        return std::isfinite(value.x()) && std::isfinite(value.y());
-    };
-
-    const Eigen::Vector2d local_path_goal = pos;
-    Eigen::Vector2d vec(0.0, 0.0);
-    int neighbor_count = 0;
-
-    for (int i = 0; i < fixed_num; i++) {
-        if (i == tb_id) {
-            continue;
-        }
-        if (!is_finite_vec(tb_states_[i].pos) || !is_finite_vec(swarm_des[tb_id]) || !is_finite_vec(swarm_des[i])) {
-            continue;
-        }
-        vec += tb_states_[i].pos + (swarm_des[tb_id] - swarm_des[i]);
-        neighbor_count++;
-    }
-
-    if (neighbor_count <= 0) {
+void PlanManager::controlCallback(const ros::TimerEvent&)
+{
+    if (!has_goal_ || !has_odom_) {
+        publishZero();
         return;
     }
 
-    double local_goal_weight = std::max(0.1, formation_consensus_local_goal_weight);
-
-    if (is_finite_vec(pos)) {
-        vec += local_goal_weight * pos;
-        vec /= (neighbor_count + local_goal_weight);
-    } else {
-        vec /= neighbor_count;
-    }
-    pos = vec;
-    applyFormationSeparation(pos);
-    preserveLocalGoalProgress(pos, local_path_goal);
-}
-
-// it is find Point from static path
-void PlanManager::findPointInPath(double forward_distance, Eigen::Vector2d &pt) {
-    if (path_.empty()) {
-        pt = sanitizeControllerGoal(tb_global_goal);
+    if (!ensureSlotAssignment()) {
+        publishZero();
+        publishReached(false);
         return;
     }
 
-    double to_goal_dist = (global_goal - tb_states_[tb_id].pos).norm();
-    if (to_goal_dist<forward_distance+0.2) {
-        pt = recoverNavigationTarget(global_goal, tb_states_[tb_id].pos, "near-goal local point");
-        return;
-    }
+    ensureCenterPath();
+    if (path_blocked_) {
+        const Eigen::Vector2d current_center = formationCenter();
+        const Eigen::Vector2d center_delta = goal_center_ - current_center;
+        const double center_distance = center_delta.norm();
+        double recovery_yaw = rotate_slots_by_goal_yaw_ ? goal_yaw_ : 0.0;
+        const double recovery_scale = commandedFormationScale(current_center);
 
-    //find Closest Point On Path
-    std::vector<Eigen::Vector2d> cur_path = path_;
-    Eigen::Vector2d cur_pos = tb_states_[tb_id].pos;
-
-    auto closestPointOnSegment = [](const Eigen::Vector2d& p, const Eigen::Vector2d& segStart, const Eigen::Vector2d& segEnd) -> Eigen::Vector2d {
-        Eigen::Vector2d segVec = segEnd - segStart;
-        Eigen::Vector2d vecToPoint = p - segStart;
-
-        double segLengthSq = segVec.squaredNorm();
-        double t = 0.0;
-
-        if (segLengthSq > 1e-8) {
-            t = std::max(0.0, std::min(1.0,vecToPoint.dot(segVec) / segLengthSq));
-        }
-
-        return segStart + t * segVec;
-    };
-
-    Eigen::Vector2d closestPoint = cur_path[0];
-    int curPointNextIdx = 0;
-
-    double minDistSq = std::numeric_limits<double>::max();
-
-    for (size_t i = 0; i < cur_path.size() - 1; ++i) {
-        Eigen::Vector2d candidate = closestPointOnSegment(cur_pos, cur_path[i], cur_path[i + 1]);
-        double distSq = (cur_pos - candidate).squaredNorm();
-        if (distSq < minDistSq) {
-            minDistSq = distSq;
-            closestPoint = candidate;
-            curPointNextIdx = i + 1;
-        }
-    }
-
-    double distToClosestPoint = (cur_pos - closestPoint).norm();
-
-    double cur_forward_distance;
-
-    cur_forward_distance = forward_distance;
-
-    // Bisection method
-    auto findDesiredPointOnSeg = [](const double& dist_delta, const Eigen::Vector2d& start, const Eigen::Vector2d& end) -> Eigen::Vector2d {
-        Eigen::Vector2d left_pt = start;
-        Eigen::Vector2d right_pt = end;
-        double mid_dist;
-        Eigen::Vector2d mid_pt;
-
-        do {
-            mid_pt = (left_pt + right_pt) / 2;
-            mid_dist = (mid_pt -start).norm();
-            if(mid_dist > dist_delta)
-                right_pt = mid_pt;
-            else
-                left_pt = mid_pt;
-
-        } while (abs(mid_dist - dist_delta) > 0.1);
-        return mid_pt;
-    };
-
-    double distToNextPoint = (closestPoint - cur_path[curPointNextIdx]).norm();
-    if (distToNextPoint > cur_forward_distance) {
-        pt = findDesiredPointOnSeg(cur_forward_distance, closestPoint, cur_path[curPointNextIdx]);
-        return ;
-    }
-
-    double dist_sum = distToNextPoint;
-    for (int i = curPointNextIdx; i < cur_path.size() - 1; i++) {
-        dist_sum += (cur_path[i + 1] - cur_path[i]).norm();
-        if (cur_forward_distance < dist_sum) {
-            double remaining_dist = cur_forward_distance - (dist_sum - (cur_path[i + 1] - cur_path[i]).norm());
-            pt = findDesiredPointOnSeg(remaining_dist, cur_path[i], cur_path[i + 1]);
+        if (allow_blocked_direct_recovery_ &&
+            std::isfinite(center_distance) &&
+            center_distance > 1e-6 &&
+            center_distance <= blocked_direct_recovery_max_distance_) {
+            recovery_yaw = std::atan2(center_delta.y(), center_delta.x());
+            const double step = std::min(lookahead_distance_, center_distance);
+            const Eigen::Vector2d recovery_center =
+                current_center + center_delta * (step / center_distance);
+            const Eigen::Vector2d final_target = slotTarget(
+                goal_center_,
+                rotate_slots_by_goal_yaw_ ? goal_yaw_ : recovery_yaw,
+                1.0);
+            const Eigen::Vector2d control_target = slotTarget(
+                recovery_center,
+                recovery_yaw,
+                recovery_scale);
+            const double distance = (final_target - self_state_.pos).norm();
+            if (std::isfinite(distance) && distance <= goal_tolerance_) {
+                publishZero();
+                if (!reached_) {
+                    reached_ = true;
+                    publishReached(true);
+                    ROS_WARN("tb %d reached square slot target during blocked direct recovery", fixed_id_);
+                }
+                return;
+            }
+            geometry_msgs::Twist cmd = computeVelocityCommand(final_target, control_target);
+            cmd.linear.x *= blocked_recovery_linear_scale_;
+            vel_pub_.publish(cmd);
+            publishDebug(final_target, control_target, cmd, distance, recovery_yaw);
+            markPlanDirty();
+            publishReached(false);
             return;
         }
-    }
 
-    ROS_WARN("path less than present distance!!! return the last point in path");
-    pt = cur_path.back();
-}
-
-void PlanManager::setPathPoint(const geometry_msgs::PointConstPtr &msg) {
-    if (fixed_id == leader_id)
-        return;
-
-    leader_path_point << msg->x,msg->y;
-}
-
-bool PlanManager::computeTaskAllocation(std::vector<int>& next_realloc, double& current_cost, double& proposed_cost) {
-    std::vector<geometry_msgs::Point> start_pts,goal_pts;
-    start_pts.resize(fixed_num);
-    goal_pts.resize(fixed_num);
-
-    Eigen::Vector2d start_center(0.0, 0.0);
-    Eigen::Vector2d goal_center(0.0, 0.0);
-    for (int i = 0; i < fixed_num; i++) {
-        start_center += tb_states_[i].pos;
-        goal_center += swarm_alloc[i];
-    }
-    start_center /= fixed_num;
-    goal_center /= fixed_num;
-
-    for (int i = 0; i < fixed_num; i++) {
-        const Eigen::Vector2d rel_start = tb_states_[i].pos - start_center;
-        const Eigen::Vector2d rel_goal = swarm_alloc[i] - goal_center;
-        start_pts[i].x = rel_start.x();
-        start_pts[i].y = rel_start.y();
-        goal_pts[i].x = rel_goal.x();
-        goal_pts[i].y = rel_goal.y();
-    }
-
-    std::vector<int> result;
-    if (ot_cli_->compute_assignment(start_pts, goal_pts, result) != 0) {
-        return false;
-    }
-    if (result.size() != fixed_num) {
-        ROS_WARN("task allocation returned %zu assignments for %d robots", result.size(), fixed_num);
-        return false;
-    }
-
-    std::vector<int> seen(fixed_num, 0);
-    for (int i = 0; i < fixed_num; i++) {
-        if (result[i] < 0 || result[i] >= fixed_num) {
-            ROS_WARN("task allocation returned invalid slot id %d for logical robot %d", result[i], i);
-            return false;
-        }
-        seen[result[i]] += 1;
-    }
-    for (int i = 0; i < fixed_num; i++) {
-        if (seen[i] != 1) {
-            ROS_WARN("task allocation returned a non-permutation assignment");
-            return false;
-        }
-    }
-
-    current_cost = 0.0;
-    proposed_cost = 0.0;
-    for (int i = 0; i < fixed_num; i++) {
-        const Eigen::Vector2d rel_start(start_pts[i].x, start_pts[i].y);
-        const Eigen::Vector2d current_goal(goal_pts[i].x, goal_pts[i].y);
-        const Eigen::Vector2d proposed_goal(goal_pts[result[i]].x, goal_pts[result[i]].y);
-        current_cost += (rel_start - current_goal).squaredNorm();
-        proposed_cost += (rel_start - proposed_goal).squaredNorm();
-    }
-
-    next_realloc.resize(fixed_num);
-    for (int i = 0; i < fixed_num; i++)
-        next_realloc[i] = result[realloc_[i]];
-
-    return true;
-}
-
-bool PlanManager::applyTaskAllocation(bool force, const char* reason) {
-    const ros::Time now = ros::Time::now();
-    if (!force) {
-        if (!slot_reassignment_enabled) {
-            return false;
-        }
-        if (!last_slot_reassignment_check_time_.isZero() &&
-            (now - last_slot_reassignment_check_time_).toSec() < slot_reassignment_cooldown) {
-            return false;
-        }
-        last_slot_reassignment_check_time_ = now;
-        if (!last_slot_reassignment_apply_time_.isZero() &&
-            (now - last_slot_reassignment_apply_time_).toSec() < slot_reassignment_cooldown) {
-            return false;
-        }
-    }
-
-    std::vector<int> next_realloc;
-    double current_cost = 0.0;
-    double proposed_cost = 0.0;
-    if (!computeTaskAllocation(next_realloc, current_cost, proposed_cost)) {
-        return false;
-    }
-
-    const bool same_assignment = next_realloc == realloc_;
-    const double improvement = current_cost - proposed_cost;
-    const double min_improvement = std::max(
-        std::max(0.0, slot_reassignment_min_cost_improvement),
-        std::max(0.0, slot_reassignment_min_cost_improvement_ratio) * std::max(0.0, current_cost));
-
-    if (!force && (same_assignment || improvement < min_improvement)) {
-        return false;
-    }
-
-    realloc_ = next_realloc;
-    tb_id = realloc_[fixed_id];
-    reported_reached_current_slot_ = false;
-    last_reassignment_time_ = now;
-    last_slot_reassignment_apply_time_ = now;
-
-    //print task allocation info
-    std::cout << "[task allocation:" << reason << "] ";
-    for (int i = 0; i<fixed_num; i++) {
-        std::cout << i << "-->" << realloc_[i] << "\t";
-    }
-    std::cout << "cost " << current_cost << " -> " << proposed_cost
-              << " improvement " << improvement;
-
-    std::cout<<"\n";
-    return true;
-}
-
-// task assignment and show assignment result
-void PlanManager::taskAllocation() {
-    applyTaskAllocation(true, "legacy call");
-}
-
-// compute formation bias
-void PlanManager::FRMBias(double& e) {
-
-    std::vector<Eigen::Vector2d> vec_des;
-    vec_des.resize(fixed_num, Eigen::Vector2d(0.0, 0.0));
-
-    for (int id = 0; id < fixed_num; id++) {
-        for(int i = 0; i < fixed_num; i++) {
-            if(i == id)
-                continue;
-            vec_des[id] += tb_states_[i].pos + (swarm_des[id] - swarm_des[i]);
-        }
-        vec_des[id] /= (fixed_num - 1);
-    }
-
-    e = 0.0;
-    for (int i = 0; i < fixed_num; i++)
-        e += (vec_des[i] - tb_states_[i].pos).norm();
-}
-
-// print change State
-void PlanManager::changeFRMExecState(PlanManager::FORMATION_EXEC_STATE new_state) {
-
-    static string state_str[7] = {"WAIT_ODOM_OR_TARGET", "FRM_INIT_PATH", "FRM_KEEP", "FRM_RECONFIG", "AVOID_OBS", "APPROACH_GOAL", "EMERGENCY_STOP"};
-    int last_state = int(exec_state_);
-    exec_state_ = new_state;
-    std::cout << "tb " + std::to_string(fixed_id) + " from " + state_str[last_state] + " to " + state_str[int(new_state)] << std::endl;
-}
-
-// subscribe latest global goal
-void PlanManager::subGlobalGoal(const geometry_msgs::PoseStampedConstPtr &msg) {
-    global_goal.x() = msg->pose.position.x;
-    global_goal.y() = msg->pose.position.y;
-
-    leader_path_point << msg->pose.position.x, msg->pose.position.y;
-
-    tb_global_goal = getApproachGoal();
-    traj_opt_->setGlobalGoal(tb_global_goal);
-    has_goal = true;
-    first_start = true;
-    reported_reached_current_slot_ = false;
-    reported_reached_slot_ = tb_global_goal;
-
-    std_msgs::Bool reached_msg;
-    reached_msg.data = false;
-    deform_reached_pub_.publish(reached_msg);
-
-    if (has_odom) {
-        changeFRMExecState(FRM_INIT_PATH);
-    } else {
-        changeFRMExecState(WAIT_ODOM_OR_TARGET);
-    }
-}
-
-std::vector<Eigen::Vector2d> PlanManager::generateFormationPositions(int robot_num, int one_row_num, double frm_gap) {
-
-    if(robot_num < one_row_num) {
-        std::cout << "invaild number" << std::endl;
-        return std::vector<Eigen::Vector2d>(1, Eigen::Vector2d(-1, -1));
-    }
-
-    Eigen::Vector2d tmp_pt;
-
-    std::vector<Eigen::Vector2d> frm_pos;
-    Eigen::Vector2d leader_pos;
-    int lid;
-
-    int rows = robot_num / one_row_num;
-    int remaining = robot_num % one_row_num;
-
-    for (int i = 0; i < rows; i++) {
-        for (int j = 0; j < one_row_num; j++) {
-            frm_pos.emplace_back(i * frm_gap, j * frm_gap);
-        }
-    }
-
-    if (remaining > 0) {
-        double base_x = rows * frm_gap;
-        double center_y = (one_row_num - 1) * frm_gap / 2;
-
-        if (remaining % 2 == 1) {
-            leader_pos << base_x, center_y;
-            lid = frm_pos.size();
-            frm_pos.push_back(leader_pos);
-            remaining -= 1;
-            for (int i = 1; i <= remaining / 2; i++) {
-                frm_pos.emplace_back(base_x, leader_pos.y() + i * frm_gap);
-                frm_pos.emplace_back(base_x, leader_pos.y() - i * frm_gap);
-            }
-        } else {
-            leader_pos << base_x, center_y + frm_gap / 2;
-            lid = frm_pos.size();
-            frm_pos.push_back(leader_pos);
-            Eigen::Vector2d right_pos(base_x, center_y - frm_gap / 2);
-            frm_pos.push_back(right_pos);
-            remaining -= 2;
-            for (int i = 1; i <= remaining / 2; i++) {
-                frm_pos.emplace_back(leader_pos.x(), leader_pos.y() + i * frm_gap);
-                frm_pos.emplace_back(right_pos.x(), right_pos.y() - i * frm_gap);
-            }
-        }
-    } else {
-        leader_pos << (rows - 1) * frm_gap, (one_row_num / 2) * frm_gap;
-        lid = (rows - 1) * one_row_num + (one_row_num / 2);
-    }
-
-    // offset frm_pos based on leader_pos
-    for (int i = 0; i < frm_pos.size(); i++) {
-        frm_pos[i] -= leader_pos;
-    }
-    std::swap(frm_pos[0], frm_pos[lid]);
-
-    // The response navigation goals represent the formation centroid. Keeping
-    // legacy leader-centered slots pushes every follower to one side of a
-    // corridor and can complete while the group center is still offset.
-    Eigen::Vector2d centroid(0.0, 0.0);
-    for (const auto& pos : frm_pos) {
-        centroid += pos;
-    }
-    centroid /= static_cast<double>(frm_pos.size());
-    for (int i = 0; i < frm_pos.size(); i++) {
-        frm_pos[i] -= centroid;
-    }
-
-    // show formation info
-    bool show_frm_pos = false;
-    if (show_frm_pos) {
-        std::cout << "robot_num:" << robot_num << " one_row_num:" << one_row_num << std::endl;;
-        std::cout << "formation position:\n";
-        for (int i = 0; i < frm_pos.size(); i++) {
-            std::cout << i << "\t" << frm_pos[i].x() << "," << frm_pos[i].y() << (i == lid ? "* \n" : " \n");
-        }
-    }
-
-    return frm_pos;
-}
-
-void PlanManager::calcDesireAngularVel(double &w, const Eigen::Vector2d& goal) {
-    Eigen::Vector2d diff_vec = goal - tb_states_[tb_id].pos;
-    const double to_goal_dist = diff_vec.norm();
-    if (!std::isfinite(diff_vec.x()) || !std::isfinite(diff_vec.y()) || to_goal_dist < 1e-3) {
-        w = 0.0;
+        const Eigen::Vector2d recovery_target = slotTarget(current_center, recovery_yaw, recovery_scale);
+        geometry_msgs::Twist cmd = computeVelocityCommand(recovery_target, recovery_target);
+        cmd.linear.x *= blocked_recovery_linear_scale_;
+        vel_pub_.publish(cmd);
+        publishDebug(recovery_target, recovery_target, cmd, (recovery_target - self_state_.pos).norm(), recovery_yaw);
+        markPlanDirty();
+        publishReached(false);
         return;
     }
 
-    Eigen::Vector2d to_goal_orient = diff_vec / to_goal_dist;
-
-    //w \in [-1.5,-1.5]
-    w = 0.5 * (1 - tb_states_[tb_id].orient_vec.dot(to_goal_orient)) * 1.5;
-
-    double angular_diff = atan2(diff_vec.y(), diff_vec.x()) - tb_states_[tb_id].yaw;
-
-    if (angular_diff > M_PI)
-        angular_diff -= 2 * M_PI;
-    if (angular_diff < -M_PI)
-        angular_diff += 2 * M_PI;
-
-    int sign_ = angular_diff > 0 ? 1 : -1;
-
-    w = sign_ * w;
-}
-
-void PlanManager::calcDesireLinearVel(double &v, const Eigen::Vector2d& goal) {
-    double x_e_threah = 0.5;
-    Eigen::Vector2d diff_vec = goal - tb_states_[tb_id].pos;
-    if (!std::isfinite(diff_vec.x()) || !std::isfinite(diff_vec.y())) {
-        v = 0.0;
-        return;
-    }
-    double x_e = diff_vec.norm();
-
-    if(x_e > x_e_threah)
-        v = 0.2;
-    else
-        v = x_e / x_e_threah * 0.2;
-}
-
-void PlanManager::pubVelCmd(const std::vector<double> &c) {
-    if (c.size() < 2 || !std::isfinite(c[0]) || !std::isfinite(c[1])) {
-        ROS_WARN_THROTTLE(1.0, "Reject invalid velocity command for tb %d; publishing zero.", fixed_id);
-        geometry_msgs::Twist vel;
-        vel.linear.x = 0.0;
-        vel.angular.z = 0.0;
-        vel_pub.publish(vel);
+    double formation_yaw = rotate_slots_by_goal_yaw_ ? goal_yaw_ : 0.0;
+    const double slot_scale = commandedFormationScale(formationCenter());
+    const Eigen::Vector2d control_center = controlTargetFor(goal_center_, formation_yaw);
+    const Eigen::Vector2d final_target = slotTarget(goal_center_, rotate_slots_by_goal_yaw_ ? goal_yaw_ : formation_yaw, 1.0);
+    const Eigen::Vector2d target = slotTarget(control_center, formation_yaw, slot_scale);
+    const double distance = (final_target - self_state_.pos).norm();
+    if (!std::isfinite(distance)) {
+        publishZero();
+        publishReached(false);
         return;
     }
 
-    geometry_msgs::Twist vel;
-    vel.linear.x = c[0];
-    vel.angular.z = c[1];
-    vel_pub.publish(vel);
+    if (distance <= goal_tolerance_) {
+        publishZero();
+        if (!reached_) {
+            reached_ = true;
+            publishReached(true);
+            ROS_WARN("tb %d reached square slot target", fixed_id_);
+        }
+        return;
+    }
+
+    if (reached_) {
+        reached_ = false;
+        publishReached(false);
+    }
+
+    geometry_msgs::Twist cmd = computeVelocityCommand(final_target, target);
+    vel_pub_.publish(cmd);
+    publishDebug(final_target, target, cmd, distance, formation_yaw);
 }
 
-void PlanManager::publishDebugInfo(const Eigen::Vector2d& controller_goal,
-                                   double v_des,
-                                   double w_des,
-                                   bool reach_goal,
-                                   const std::vector<double>& cmd) {
+void PlanManager::publishZero()
+{
+    geometry_msgs::Twist cmd;
+    cmd.linear.x = 0.0;
+    cmd.angular.z = 0.0;
+    vel_pub_.publish(cmd);
+}
+
+void PlanManager::publishReached(bool reached)
+{
+    std_msgs::Bool msg;
+    msg.data = reached;
+    reached_pub_.publish(msg);
+}
+
+void PlanManager::publishCenterPath() const
+{
+    nav_msgs::Path msg;
+    msg.header.stamp = ros::Time::now();
+    msg.header.frame_id = has_map_ && !occupancy_grid_.header.frame_id.empty()
+                              ? occupancy_grid_.header.frame_id
+                              : "map";
+    msg.poses.reserve(center_path_.size());
+    for (const Eigen::Vector2d& point : center_path_) {
+        geometry_msgs::PoseStamped pose;
+        pose.header = msg.header;
+        pose.pose.position.x = point.x();
+        pose.pose.position.y = point.y();
+        pose.pose.orientation.w = 1.0;
+        msg.poses.push_back(pose);
+    }
+    center_path_pub_.publish(msg);
+}
+
+void PlanManager::publishDebug(const Eigen::Vector2d& target,
+                               const Eigen::Vector2d& control_target,
+                               const geometry_msgs::Twist& cmd,
+                               double distance,
+                               double formation_yaw) const
+{
     if (debug_pub_.getNumSubscribers() <= 0) {
         return;
     }
 
-    std::vector<double> other_distances;
-    other_distances.reserve(std::max(0, fixed_num - 1));
-    for (int i = 0; i < fixed_num; i++) {
-        if (i == tb_id) {
-            continue;
-        }
-        other_distances.push_back((tb_states_[i].pos - tb_states_[tb_id].pos).norm());
-    }
-    std::sort(other_distances.begin(), other_distances.end());
-
     std::ostringstream oss;
-    static const char* state_str[7] = {
-        "WAIT_ODOM_OR_TARGET",
-        "FRM_INIT_PATH",
-        "FRM_KEEP",
-        "FRM_RECONFIG",
-        "AVOID_OBS",
-        "APPROACH_GOAL",
-        "EMERGENCY_STOP"
-    };
-    const int state_index = static_cast<int>(exec_state_);
-    const double controller_dist = (controller_goal - tb_states_[tb_id].pos).norm();
-    const double tb_goal_dist = (tb_global_goal - tb_states_[tb_id].pos).norm();
-    const double center_goal_dist = (global_goal - tb_states_[tb_id].pos).norm();
-    const double esdf_dist = grid_map_->getDistance(tb_states_[tb_id].pos);
-
-    oss << "fixed_id=" << fixed_id
-        << " tb_id=" << tb_id
-        << " state=" << (state_index >= 0 && state_index < 7 ? state_str[state_index] : "UNKNOWN")
-        << " formation_type=" << formation_type
-        << " has_goal=" << has_goal
-        << " has_odom=" << has_odom
-        << " has_depth=" << grid_map_->hasDepthObservation()
-        << " pos=(" << tb_states_[tb_id].pos.x() << "," << tb_states_[tb_id].pos.y() << ")"
-        << " yaw=" << tb_states_[tb_id].yaw
-        << " global_goal=(" << global_goal.x() << "," << global_goal.y() << ")"
-        << " tb_global_goal=(" << tb_global_goal.x() << "," << tb_global_goal.y() << ")"
-        << " controller_goal=(" << controller_goal.x() << "," << controller_goal.y() << ")"
-        << " center_goal_dist=" << center_goal_dist
-        << " tb_goal_dist=" << tb_goal_dist
-        << " controller_dist=" << controller_dist
-        << " esdf_dist=" << esdf_dist
-        << " v_des=" << v_des
-        << " w_des=" << w_des
-        << " cmd=(" << (cmd.size() > 0 ? cmd[0] : 0.0) << "," << (cmd.size() > 1 ? cmd[1] : 0.0) << ")"
-        << " reach_goal=" << reach_goal
-        << " realloc=[";
-    for (int i = 0; i < realloc_.size(); i++) {
-        if (i > 0) {
-            oss << ",";
-        }
-        oss << realloc_[i];
-    }
-    oss << "] other_dist=[";
-    for (int i = 0; i < other_distances.size(); i++) {
-        if (i > 0) {
-            oss << ",";
-        }
-        oss << other_distances[i];
-    }
-    oss << "] avoid=[";
-    for (int i = 0; i < is_avoid_obs.size(); i++) {
-        if (i > 0) {
-            oss << ",";
-        }
-        oss << is_avoid_obs[i];
-    }
-    oss << "]";
+    oss << "fixed_id=" << fixed_id_
+        << " mode=fixed_square"
+        << " has_goal=" << has_goal_
+        << " has_odom=" << has_odom_
+        << " pos=(" << self_state_.pos.x() << "," << self_state_.pos.y() << ")"
+        << " yaw=" << self_state_.yaw
+        << " center_goal=(" << goal_center_.x() << "," << goal_center_.y() << ")"
+        << " slot=(" << slots_[fixed_id_].x() << "," << slots_[fixed_id_].y() << ")"
+        << " assigned_slot=" << (fixed_id_ < static_cast<int>(assigned_slot_indices_.size())
+                                     ? assigned_slot_indices_[static_cast<std::size_t>(fixed_id_)]
+                                     : fixed_id_)
+        << " formation_scale=" << active_formation_scale_
+        << " formation_yaw=" << formation_yaw
+        << " path_points=" << center_path_.size()
+        << " path_blocked=" << path_blocked_
+        << " dynamic_obstacles=" << dynamic_obstacle_positions_.size()
+        << " has_map=" << has_map_
+        << " target=(" << target.x() << "," << target.y() << ")"
+        << " control_target=(" << control_target.x() << "," << control_target.y() << ")"
+        << " distance=" << distance
+        << " cmd=(" << cmd.linear.x << "," << cmd.angular.z << ")"
+        << " reached=" << reached_;
 
     std_msgs::String msg;
     msg.data = oss.str();
     debug_pub_.publish(msg);
 }
 
-void PlanManager::readParameters() {
-    nh_pri_.param("plan_manager/tb_id", fixed_id, -1);
-    nh_pri_.param("plan_manager/tb_num", fixed_num, -1);
-    nh_pri_.param("plan_manager/other_num_in_opti", other_num_to_opti, -1);
-    nh_pri_.param("plan_manager/formation_interval", formation_interval, -1.0);
-    nh_pri_.param("plan_manager/leader_id", leader_id, -1);
-    nh_pri_.param("plan_manager/forward_distance", fwd_dist, -1.0);
-    nh_pri_.param("plan_manager/obs_clearance", obs_clearance, -1.0);
-    nh_pri_.param("plan_manager/approach_goal_distance", approach_goal_dist, 2.0);
-    nh_pri_.param("plan_manager/approach_center_goal", approach_center_goal, false);
-    nh_pri_.param("plan_manager/publish_esdf_avoid_state", publish_esdf_avoid_state, false);
-    nh_pri_.param("plan_manager/center_local_goal_in_corridor", center_local_goal_in_corridor, true);
-    nh_pri_.param("plan_manager/corridor_centering_max_width", corridor_centering_max_width, 2.4);
-    nh_pri_.param("plan_manager/corridor_centering_max_shift", corridor_centering_max_shift, 0.45);
-    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_enabled", formation_corridor_yaw_snap_enabled, true);
-    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_max_width", formation_corridor_yaw_snap_max_width, 2.4);
-    nh_pri_.param("plan_manager/formation_corridor_yaw_snap_tolerance", formation_corridor_yaw_snap_tolerance, 0.70);
-    nh_pri_.param("plan_manager/formation_consensus_local_goal_weight", formation_consensus_local_goal_weight, 1.0);
-    nh_pri_.param("plan_manager/formation_min_robot_clearance", formation_min_robot_clearance, 0.4);
-    nh_pri_.param("plan_manager/formation_min_robot_clearance_gain", formation_min_robot_clearance_gain, 1.0);
-    nh_pri_.param("plan_manager/formation_min_local_goal_progress", formation_min_local_goal_progress, 0.30);
-    nh_pri_.param("plan_manager/target_recovery_clearance", target_recovery_clearance, 0.35);
-    nh_pri_.param("plan_manager/target_recovery_search_radius", target_recovery_search_radius, 1.2);
-    nh_pri_.param("plan_manager/formation_min_type", formation_min_type, 1);
-    nh_pri_.param("plan_manager/formation_reduce_robot_fraction", formation_reduce_robot_fraction, 0.2);
-    nh_pri_.param("plan_manager/avoid_obs_distance_threshold", avoid_obs_distance_threshold, 0.15);
-    nh_pri_.param("plan_manager/formation_reduce_hold_time", formation_reduce_hold_time, 1.0);
-    nh_pri_.param("plan_manager/formation_expand_hold_time", formation_expand_hold_time, 3.0);
-    nh_pri_.param("plan_manager/formation_expansion_cooldown", formation_expansion_cooldown, 8.0);
-    nh_pri_.param("plan_manager/reassignment_cooldown", reassignment_cooldown, 8.0);
-    nh_pri_.param("plan_manager/slot_reassignment_enabled", slot_reassignment_enabled, true);
-    nh_pri_.param("plan_manager/slot_reassignment_cooldown", slot_reassignment_cooldown, 2.0);
-    nh_pri_.param("plan_manager/slot_reassignment_min_cost_improvement", slot_reassignment_min_cost_improvement, 0.08);
-    nh_pri_.param("plan_manager/slot_reassignment_min_cost_improvement_ratio", slot_reassignment_min_cost_improvement_ratio, 0.10);
-    nh_pri_.param("plan_manager/timeout_reassignment_enabled", timeout_reassignment_enabled, true);
-    nh_pri_.param("plan_manager/frm_type", start_frm_type, -1);
-    nh_pri_.param("plan_manager/max_frm_type", formation_max_num, fixed_num);
-    nh_pri_.param("task_type", task_type, -1);
-    nh_pri_.param("vehicle_number", vehicle_number, -1);
+void PlanManager::markPlanDirty()
+{
+    path_dirty_ = true;
+}
+
+void PlanManager::ensureCenterPath()
+{
+    if (!has_goal_) {
+        return;
+    }
+
+    const Eigen::Vector2d center = formationCenter();
+    const bool goal_moved = (goal_center_ - planned_goal_center_).norm() > path_goal_tolerance_;
+    bool off_path = false;
+    if (!center_path_.empty()) {
+        double min_path_distance = std::numeric_limits<double>::infinity();
+        for (const Eigen::Vector2d& point : center_path_) {
+            min_path_distance = std::min(min_path_distance, (point - center).norm());
+        }
+        off_path = min_path_distance > replanning_distance_;
+    }
+    if (!path_dirty_ && !center_path_.empty() && !off_path && !goal_moved) {
+        return;
+    }
+
+    path_blocked_ = false;
+    if (!planCenterPath()) {
+        center_path_.clear();
+        if (use_occupancy_grid_planner_ && has_map_) {
+            center_path_.push_back(center);
+            path_blocked_ = true;
+            ROS_WARN("tb %d holding position: no collision-free formation center path", fixed_id_);
+        } else {
+            center_path_.push_back(center);
+            center_path_.push_back(goal_center_);
+        }
+    }
+    planned_start_center_ = center;
+    planned_goal_center_ = goal_center_;
+    path_dirty_ = false;
+    publishCenterPath();
+}
+
+bool PlanManager::planCenterPath()
+{
+    const Eigen::Vector2d start = formationCenter();
+    std::vector<Eigen::Vector2d> planned;
+
+    if (use_occupancy_grid_planner_ && has_map_) {
+        const double min_scale = allow_formation_scaling_ ? min_formation_scale_ : 1.0;
+        auto try_plan_at_scale = [&](double scale) {
+            if (planCenterPathOnGrid(start, goal_center_, planned, scale) && planned.size() >= 2) {
+                center_path_ = planned;
+                active_formation_scale_ = scale;
+                ROS_DEBUG("tb %d planned fixed-square center path with %zu points at scale %.2f",
+                          fixed_id_,
+                          center_path_.size(),
+                          active_formation_scale_);
+                return true;
+            }
+            return false;
+        };
+
+        for (double scale = 1.0; scale > min_scale + 1e-6; scale -= formation_scale_step_) {
+            if (try_plan_at_scale(scale)) {
+                return true;
+            }
+        }
+        if (try_plan_at_scale(min_scale)) {
+            return true;
+        }
+        return false;
+    }
+
+    center_path_.clear();
+    center_path_.push_back(start);
+    center_path_.push_back(goal_center_);
+    active_formation_scale_ = 1.0;
+    ROS_WARN("tb %d using direct fixed-square center path", fixed_id_);
+    return true;
+}
+
+bool PlanManager::planCenterPathOnGrid(const Eigen::Vector2d& start,
+                                       const Eigen::Vector2d& goal,
+                                       std::vector<Eigen::Vector2d>& path,
+                                       double slot_scale) const
+{
+    const std::vector<std::uint8_t> occupancy = inflatedOccupancyGrid(slot_scale);
+    if (occupancy.empty()) {
+        return false;
+    }
+
+    int start_x = 0;
+    int start_y = 0;
+    int goal_x = 0;
+    int goal_y = 0;
+    if (!worldToGrid(start, start_x, start_y) || !worldToGrid(goal, goal_x, goal_y)) {
+        ROS_WARN("tb %d center path start/goal outside map bounds", fixed_id_);
+        return false;
+    }
+
+    if (!closestFreeCell(occupancy, start_x, start_y, start_x, start_y) ||
+        !closestFreeCell(occupancy, goal_x, goal_y, goal_x, goal_y)) {
+        ROS_WARN("tb %d could not find free start/goal cell for center path", fixed_id_);
+        return false;
+    }
+
+    struct QueueNode
+    {
+        int index;
+        double priority;
+    };
+    struct Compare
+    {
+        bool operator()(const QueueNode& lhs, const QueueNode& rhs) const
+        {
+            return lhs.priority > rhs.priority;
+        }
+    };
+
+    const int width = static_cast<int>(occupancy_grid_.info.width);
+    const int height = static_cast<int>(occupancy_grid_.info.height);
+    const int start_index = gridIndex(start_x, start_y);
+    const int goal_index = gridIndex(goal_x, goal_y);
+    const std::array<int, 8> dx{{1, 1, 0, -1, -1, -1, 0, 1}};
+    const std::array<int, 8> dy{{0, 1, 1, 1, 0, -1, -1, -1}};
+
+    std::priority_queue<QueueNode, std::vector<QueueNode>, Compare> open;
+    std::vector<double> cost(occupancy.size(), std::numeric_limits<double>::infinity());
+    std::vector<int> parent(occupancy.size(), -1);
+    std::vector<std::uint8_t> closed(occupancy.size(), 0);
+
+    auto heuristic = [&](int mx, int my) {
+        return std::hypot(static_cast<double>(mx - goal_x), static_cast<double>(my - goal_y));
+    };
+
+    cost[static_cast<std::size_t>(start_index)] = 0.0;
+    open.push(QueueNode{start_index, heuristic(start_x, start_y)});
+
+    bool found = false;
+    while (!open.empty()) {
+        const QueueNode current = open.top();
+        open.pop();
+        if (closed[static_cast<std::size_t>(current.index)] != 0) {
+            continue;
+        }
+        closed[static_cast<std::size_t>(current.index)] = 1;
+        if (current.index == goal_index) {
+            found = true;
+            break;
+        }
+
+        const int cx = current.index % width;
+        const int cy = current.index / width;
+        for (std::size_t i = 0; i < dx.size(); ++i) {
+            const int nx = cx + dx[i];
+            const int ny = cy + dy[i];
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height ||
+                cellOccupied(occupancy, nx, ny)) {
+                continue;
+            }
+
+            const int next_index = gridIndex(nx, ny);
+            const double step_cost = (dx[i] != 0 && dy[i] != 0) ? 1.41421356237 : 1.0;
+            const double next_cost = cost[static_cast<std::size_t>(current.index)] + step_cost;
+            if (next_cost >= cost[static_cast<std::size_t>(next_index)]) {
+                continue;
+            }
+            cost[static_cast<std::size_t>(next_index)] = next_cost;
+            parent[static_cast<std::size_t>(next_index)] = current.index;
+            open.push(QueueNode{next_index, next_cost + heuristic(nx, ny)});
+        }
+    }
+
+    if (!found) {
+        ROS_WARN("tb %d could not find center path through inflated map", fixed_id_);
+        return false;
+    }
+
+    std::vector<int> reversed;
+    for (int index = goal_index; index >= 0; index = parent[static_cast<std::size_t>(index)]) {
+        reversed.push_back(index);
+        if (index == start_index) {
+            break;
+        }
+    }
+    if (reversed.empty() || reversed.back() != start_index) {
+        return false;
+    }
+
+    path.clear();
+    path.reserve(reversed.size());
+    for (auto it = reversed.rbegin(); it != reversed.rend(); ++it) {
+        const int mx = *it % width;
+        const int my = *it / width;
+        const Eigen::Vector2d point = gridToWorld(mx, my);
+        if (path.empty() || (point - path.back()).norm() > occupancy_grid_.info.resolution * 0.5) {
+            path.push_back(point);
+        }
+    }
+    if (!path.empty()) {
+        path.front() = start;
+        path.back() = goal;
+    }
+    return path.size() >= 2;
+}
+
+std::vector<std::uint8_t> PlanManager::inflatedOccupancyGrid(double slot_scale) const
+{
+    const int width = static_cast<int>(occupancy_grid_.info.width);
+    const int height = static_cast<int>(occupancy_grid_.info.height);
+    if (!has_map_ || width <= 0 || height <= 0) {
+        return {};
+    }
+
+    std::vector<std::uint8_t> occupancy(static_cast<std::size_t>(width * height), 0);
+    std::vector<int> occupied_indices;
+    occupied_indices.reserve(occupancy.size() / 8);
+
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            const int index = gridIndex(x, y);
+            const int value = occupancy_grid_.data[static_cast<std::size_t>(index)];
+            const bool occupied = value >= occupied_threshold_ ||
+                                  (value < 0 && treat_unknown_as_occupied_);
+            if (occupied) {
+                occupancy[static_cast<std::size_t>(index)] = 1;
+                occupied_indices.push_back(index);
+            }
+        }
+    }
+
+    const double safe_slot_scale = clamp(slot_scale, min_formation_scale_, 1.0);
+    double envelope_radius = robot_radius_ + formation_clearance_;
+    for (const Eigen::Vector2d& slot : slots_) {
+        envelope_radius = std::max(
+            envelope_radius,
+            slot.norm() * safe_slot_scale + robot_radius_ + formation_clearance_);
+    }
+    const double resolution = std::max(static_cast<double>(occupancy_grid_.info.resolution), 1e-6);
+    const int inflation_cells = static_cast<int>(std::ceil(envelope_radius / resolution));
+    const int inflation_sq = inflation_cells * inflation_cells;
+
+    for (const int index : occupied_indices) {
+        const int cx = index % width;
+        const int cy = index / width;
+        for (int dy = -inflation_cells; dy <= inflation_cells; ++dy) {
+            for (int dx = -inflation_cells; dx <= inflation_cells; ++dx) {
+                if (dx * dx + dy * dy > inflation_sq) {
+                    continue;
+                }
+                const int nx = cx + dx;
+                const int ny = cy + dy;
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+                    continue;
+                }
+                occupancy[static_cast<std::size_t>(gridIndex(nx, ny))] = 1;
+            }
+        }
+    }
+
+    const double dynamic_radius = envelope_radius + dynamic_obstacle_radius_;
+    for (const Eigen::Vector2d& obstacle : dynamic_obstacle_positions_) {
+        markCircularObstacle(occupancy, obstacle, dynamic_radius);
+    }
+    return occupancy;
+}
+
+bool PlanManager::worldToGrid(const Eigen::Vector2d& world, int& mx, int& my) const
+{
+    if (!has_map_) {
+        return false;
+    }
+    const double resolution = occupancy_grid_.info.resolution;
+    const double origin_x = occupancy_grid_.info.origin.position.x;
+    const double origin_y = occupancy_grid_.info.origin.position.y;
+    mx = static_cast<int>(std::floor((world.x() - origin_x) / resolution));
+    my = static_cast<int>(std::floor((world.y() - origin_y) / resolution));
+    return mx >= 0 &&
+           my >= 0 &&
+           mx < static_cast<int>(occupancy_grid_.info.width) &&
+           my < static_cast<int>(occupancy_grid_.info.height);
+}
+
+Eigen::Vector2d PlanManager::gridToWorld(int mx, int my) const
+{
+    const double resolution = occupancy_grid_.info.resolution;
+    const double origin_x = occupancy_grid_.info.origin.position.x;
+    const double origin_y = occupancy_grid_.info.origin.position.y;
+    return Eigen::Vector2d(
+        origin_x + (static_cast<double>(mx) + 0.5) * resolution,
+        origin_y + (static_cast<double>(my) + 0.5) * resolution);
+}
+
+int PlanManager::gridIndex(int mx, int my) const
+{
+    return my * static_cast<int>(occupancy_grid_.info.width) + mx;
+}
+
+bool PlanManager::cellOccupied(const std::vector<std::uint8_t>& occupancy, int mx, int my) const
+{
+    return occupancy[static_cast<std::size_t>(gridIndex(mx, my))] != 0;
+}
+
+void PlanManager::markCircularObstacle(std::vector<std::uint8_t>& occupancy,
+                                       const Eigen::Vector2d& center,
+                                       double radius) const
+{
+    int center_x = 0;
+    int center_y = 0;
+    if (!worldToGrid(center, center_x, center_y)) {
+        return;
+    }
+
+    const int width = static_cast<int>(occupancy_grid_.info.width);
+    const int height = static_cast<int>(occupancy_grid_.info.height);
+    const double resolution = std::max(static_cast<double>(occupancy_grid_.info.resolution), 1e-6);
+    const int radius_cells = static_cast<int>(std::ceil(std::max(0.0, radius) / resolution));
+    const int radius_sq = radius_cells * radius_cells;
+
+    for (int dy = -radius_cells; dy <= radius_cells; ++dy) {
+        for (int dx = -radius_cells; dx <= radius_cells; ++dx) {
+            if (dx * dx + dy * dy > radius_sq) {
+                continue;
+            }
+            const int nx = center_x + dx;
+            const int ny = center_y + dy;
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+                continue;
+            }
+            occupancy[static_cast<std::size_t>(gridIndex(nx, ny))] = 1;
+        }
+    }
+}
+
+bool PlanManager::closestFreeCell(const std::vector<std::uint8_t>& occupancy,
+                                  int seed_mx,
+                                  int seed_my,
+                                  int& free_mx,
+                                  int& free_my) const
+{
+    const int width = static_cast<int>(occupancy_grid_.info.width);
+    const int height = static_cast<int>(occupancy_grid_.info.height);
+    const int seed_index = gridIndex(seed_mx, seed_my);
+    if (seed_mx >= 0 && seed_mx < width && seed_my >= 0 && seed_my < height &&
+        occupancy[static_cast<std::size_t>(seed_index)] == 0) {
+        free_mx = seed_mx;
+        free_my = seed_my;
+        return true;
+    }
+
+    std::queue<int> queue;
+    std::vector<std::uint8_t> visited(occupancy.size(), 0);
+    queue.push(seed_index);
+    visited[static_cast<std::size_t>(seed_index)] = 1;
+    const std::array<int, 8> dx{{1, 1, 0, -1, -1, -1, 0, 1}};
+    const std::array<int, 8> dy{{0, 1, 1, 1, 0, -1, -1, -1}};
+
+    while (!queue.empty()) {
+        const int index = queue.front();
+        queue.pop();
+        const int cx = index % width;
+        const int cy = index / width;
+        for (std::size_t i = 0; i < dx.size(); ++i) {
+            const int nx = cx + dx[i];
+            const int ny = cy + dy[i];
+            if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+                continue;
+            }
+            const int next_index = gridIndex(nx, ny);
+            if (visited[static_cast<std::size_t>(next_index)] != 0) {
+                continue;
+            }
+            if (occupancy[static_cast<std::size_t>(next_index)] == 0) {
+                free_mx = nx;
+                free_my = ny;
+                return true;
+            }
+            visited[static_cast<std::size_t>(next_index)] = 1;
+            queue.push(next_index);
+        }
+    }
+    return false;
+}
+
+bool PlanManager::ensureSlotAssignment()
+{
+    if (slot_assignment_ready_) {
+        return true;
+    }
+    if (!allRobotStatesAvailable()) {
+        return false;
+    }
+
+    std::vector<Eigen::Vector2d> positions;
+    positions.reserve(robot_states_.size());
+    for (const RobotState& state : robot_states_) {
+        positions.push_back(state.pos);
+    }
+
+    assigned_slot_indices_ = plan_manager::assignSlotsByCurrentGeometry(
+        positions,
+        has_robot_state_,
+        slots_,
+        0.0,
+        assigned_slot_indices_);
+    slot_assignment_ready_ = true;
+
+    if (fixed_id_ >= 0 && fixed_id_ < static_cast<int>(assigned_slot_indices_.size())) {
+        ROS_WARN("tb %d locked response formation slot %d", fixed_id_, assigned_slot_indices_[fixed_id_]);
+    }
+    return true;
+}
+
+bool PlanManager::allRobotStatesAvailable() const
+{
+    if (has_robot_state_.empty()) {
+        return has_odom_;
+    }
+    for (bool has_state : has_robot_state_) {
+        if (!has_state) {
+            return false;
+        }
+    }
+    return true;
+}
+
+Eigen::Vector2d PlanManager::formationCenter() const
+{
+    Eigen::Vector2d sum = Eigen::Vector2d::Zero();
+    int count = 0;
+    for (std::size_t i = 0; i < robot_states_.size(); ++i) {
+        if (!has_robot_state_[i]) {
+            continue;
+        }
+        sum += robot_states_[i].pos;
+        ++count;
+    }
+    if (count > 0) {
+        return sum / static_cast<double>(count);
+    }
+
+    Eigen::Vector2d slot = assignedSlot(active_formation_scale_);
+    const double yaw = rotate_slots_by_goal_yaw_ ? goal_yaw_ : self_state_.yaw;
+    const double c = std::cos(yaw);
+    const double s = std::sin(yaw);
+    slot = Eigen::Vector2d(c * slot.x() - s * slot.y(), s * slot.x() + c * slot.y());
+    return self_state_.pos - slot;
+}
+
+bool PlanManager::hasUsableCenter() const
+{
+    for (bool has_state : has_robot_state_) {
+        if (has_state) {
+            return true;
+        }
+    }
+    return has_odom_;
+}
+
+Eigen::Vector2d PlanManager::assignedSlot(double slot_scale) const
+{
+    int slot_index = fixed_id_;
+    if (fixed_id_ >= 0 &&
+        fixed_id_ < static_cast<int>(assigned_slot_indices_.size()) &&
+        assigned_slot_indices_[static_cast<std::size_t>(fixed_id_)] >= 0 &&
+        assigned_slot_indices_[static_cast<std::size_t>(fixed_id_)] < static_cast<int>(slots_.size())) {
+        slot_index = assigned_slot_indices_[static_cast<std::size_t>(fixed_id_)];
+    }
+    if (slot_index < 0 || slot_index >= static_cast<int>(slots_.size())) {
+        return Eigen::Vector2d::Zero();
+    }
+    return slots_[static_cast<std::size_t>(slot_index)] * slot_scale;
+}
+
+double PlanManager::commandedFormationScale(const Eigen::Vector2d& center) const
+{
+    if (!allow_formation_scaling_) {
+        return 1.0;
+    }
+
+    const double path_scale = clamp(active_formation_scale_, min_formation_scale_, 1.0);
+    if (path_scale >= 1.0 - 1e-6) {
+        return 1.0;
+    }
+
+    const double distance_to_goal = (goal_center_ - center).norm();
+    if (!std::isfinite(distance_to_goal) || distance_to_goal <= goal_tolerance_) {
+        return 1.0;
+    }
+    if (distance_to_goal >= formation_expand_distance_) {
+        return path_scale;
+    }
+
+    const double expand = 1.0 - distance_to_goal / formation_expand_distance_;
+    return clamp(path_scale + (1.0 - path_scale) * expand, path_scale, 1.0);
+}
+
+Eigen::Vector2d PlanManager::slotTarget(const Eigen::Vector2d& center,
+                                        double formation_yaw,
+                                        double slot_scale) const
+{
+    Eigen::Vector2d slot = assignedSlot(slot_scale);
+    if (align_slots_to_path_ || rotate_slots_by_goal_yaw_) {
+        slot = plan_manager::rotateSlot(slot, formation_yaw);
+    }
+    return center + slot;
+}
+
+Eigen::Vector2d PlanManager::controlTargetFor(const Eigen::Vector2d& center_target,
+                                              double& formation_yaw) const
+{
+    if (center_path_.size() < 2 || !hasUsableCenter()) {
+        const Eigen::Vector2d delta = center_target - formationCenter();
+        if (delta.norm() > 1e-6) {
+            formation_yaw = std::atan2(delta.y(), delta.x());
+        }
+        return center_target;
+    }
+
+    const Eigen::Vector2d center = formationCenter();
+    int closest_index = 0;
+    double closest_distance = std::numeric_limits<double>::infinity();
+    for (std::size_t i = 0; i < center_path_.size(); ++i) {
+        const double distance = (center_path_[i] - center).squaredNorm();
+        if (distance < closest_distance) {
+            closest_distance = distance;
+            closest_index = static_cast<int>(i);
+        }
+    }
+
+    double slot_radius = 0.0;
+    for (const Eigen::Vector2d& slot : slots_) {
+        slot_radius = std::max(slot_radius, slot.norm() * active_formation_scale_);
+    }
+    double remaining = lookahead_distance_ + slot_radius;
+    Eigen::Vector2d previous = center;
+    for (std::size_t i = static_cast<std::size_t>(closest_index + 1); i < center_path_.size(); ++i) {
+        const Eigen::Vector2d next = center_path_[i];
+        const Eigen::Vector2d segment = next - previous;
+        const double length = segment.norm();
+        if (length < 1e-6) {
+            previous = next;
+            continue;
+        }
+        if (remaining <= length) {
+            const Eigen::Vector2d target = previous + segment * (remaining / length);
+            formation_yaw = std::atan2(segment.y(), segment.x());
+            return target;
+        }
+        remaining -= length;
+        previous = next;
+    }
+
+    const Eigen::Vector2d tail = center_path_.back() - center_path_[center_path_.size() - 2];
+    if (tail.norm() > 1e-6) {
+        formation_yaw = std::atan2(tail.y(), tail.x());
+    }
+    return center_path_.back();
+}
+
+geometry_msgs::Twist PlanManager::computeVelocityCommand(const Eigen::Vector2d& target,
+                                                         const Eigen::Vector2d& control_target) const
+{
+    geometry_msgs::Twist cmd;
+    const Eigen::Vector2d to_control = control_target - self_state_.pos;
+    const Eigen::Vector2d to_target = target - self_state_.pos;
+    const double control_distance = to_control.norm();
+    const double target_distance = to_target.norm();
+
+    if (!std::isfinite(control_distance) || control_distance < 1e-6 ||
+        !std::isfinite(target_distance)) {
+        return cmd;
+    }
+
+    const double desired_yaw = std::atan2(to_control.y(), to_control.x());
+    const double yaw_error = normalizeAngle(desired_yaw - self_state_.yaw);
+    const double angular = clamp(angular_gain_ * yaw_error,
+                                 -max_angular_velocity_,
+                                 max_angular_velocity_);
+
+    const double alignment = std::max(
+        0.0,
+        1.0 - std::abs(yaw_error) / angular_slowdown_threshold_);
+    double linear = std::min(max_linear_velocity_, linear_gain_ * target_distance) * alignment;
+    if (std::abs(yaw_error) > rotate_in_place_threshold_) {
+        linear = 0.0;
+    }
+
+    cmd.linear.x = linear;
+    cmd.angular.z = angular;
+    return cmd;
+}
+
+double PlanManager::yawFromQuaternion(const geometry_msgs::Quaternion& q)
+{
+    const double siny_cosp = 2.0 * (q.w * q.z + q.x * q.y);
+    const double cosy_cosp = 1.0 - 2.0 * (q.y * q.y + q.z * q.z);
+    return std::atan2(siny_cosp, cosy_cosp);
+}
+
+double PlanManager::normalizeAngle(double angle)
+{
+    while (angle > kPi) {
+        angle -= 2.0 * kPi;
+    }
+    while (angle < -kPi) {
+        angle += 2.0 * kPi;
+    }
+    return angle;
+}
+
+double PlanManager::clamp(double value, double low, double high)
+{
+    return std::min(std::max(value, low), high);
+}
+
+bool PlanManager::startsWith(const std::string& text, const std::string& prefix)
+{
+    return text.size() >= prefix.size() &&
+           std::equal(prefix.begin(), prefix.end(), text.begin());
 }

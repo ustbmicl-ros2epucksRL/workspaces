@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Publish search robots as dynamic obstacles for DEFORM local maps."""
+"""Publish search robots as point-cloud dynamic obstacles for legacy local maps."""
 
 import os
 import sys

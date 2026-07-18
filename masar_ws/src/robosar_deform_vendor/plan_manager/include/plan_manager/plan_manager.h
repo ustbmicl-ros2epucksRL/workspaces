@@ -1,302 +1,161 @@
-#include <ros/ros.h>
-#include <nav_msgs/Odometry.h>
-#include <geometry_msgs/Polygon.h>
-#include <geometry_msgs/Point32.h>
-#include <Eigen/Eigen>
-#include <tf2/utils.h>
-#include <tf2_eigen/tf2_eigen.h>
-#include <geometry_msgs/Twist.h>
+#ifndef PLAN_MANAGER_PLAN_MANAGER_H
+#define PLAN_MANAGER_PLAN_MANAGER_H
+
 #include <geometry_msgs/PoseStamped.h>
-#include <geometry_msgs/Point.h>
-#include <std_msgs/Float32.h>
-#include <std_msgs/Int16.h>
+#include <geometry_msgs/Twist.h>
+#include <gazebo_msgs/ModelStates.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/OccupancyGrid.h>
+#include <nav_msgs/Path.h>
+#include <ros/ros.h>
 #include <std_msgs/Bool.h>
-#include <std_msgs/Empty.h>
 #include <std_msgs/String.h>
 
-#include <plan_manager/RotationVec.h>
-#include <plan_manager/widthInfo.h>
-#include <path_searching/dyn_a_star.h>
-#include <plan_env/grid_map.h>
-#include <path_opti/path_opti.h>
-#include <width_check/find_width.h>
-#include <traj_opti/traj_opti.h>
-#include <to_visulaize/toVisualize.h>
-#include <ot_process/ot_client.h>
-#include <plan_rrt/plan_rrt.h>
-
-#include <chrono>
-#include <utility>
+#include <Eigen/Eigen>
+#include <cstdint>
+#include <unordered_map>
+#include <string>
 #include <vector>
-#include <fstream>
-#include <sstream>
-#include <queue>
 
-class ComputeTiming {
-public:
-
-    ComputeTiming(std::string name) : dur{}, timing_name(std::move(name)) {
-        data.clear();
-    }
-
-    void setFileName(std::string fn) {
-        fn_ = std::move(fn);
-    }
-
-    void start_timing() {
-        start = std::chrono::high_resolution_clock::now();
-    }
-    void stop_timing() {
-        end = std::chrono::high_resolution_clock::now();
-        dur = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-        data.push_back(dur.count());
-    }
-
-    void printf_timing_info() {
-        std::ostringstream oss;
-        oss << "[" << timing_name << "]:" << dur.count() << " ms" << endl;
-        cout << oss.str();
-
-    }
-
-    void save_data() {
-        data_out.open(fn_, std::ios::out);
-
-        for(auto elem : data)
-            data_out << elem << std::endl;
-
-        data_out.close();
-    }
-
-private:
-    using time_type = decltype(std::chrono::high_resolution_clock::now());
-    time_type start;
-    time_type end;
-    decltype(std::chrono::duration_cast<std::chrono::milliseconds>(end - start)) dur;
-    std::string timing_name;
-
-    std::string fn_;
-    std::vector<long> data;
-    std::ofstream data_out;
-
-};
-
-struct State
+struct RobotState
 {
-    Eigen::Vector2d pos;
-    double yaw;
-    Eigen::Vector2d vel;
-    Eigen::Vector2d orient_vec;
+    Eigen::Vector2d pos = Eigen::Vector2d::Zero();
+    double yaw = 0.0;
 };
 
 class PlanManager
 {
-private:
-    /*           flag      */
-    enum FORMATION_EXEC_STATE
-    {
-        WAIT_ODOM_OR_TARGET,
-        FRM_INIT_PATH,
-        FRM_KEEP,
-        FRM_DEFORM,
-        AVOID_OBS,
-        APPROACH_GOAL,
-        EMERGENCY_STOP
-    };
-
-    enum FORMATION_TYPE
-    {
-        LINE,
-        RECTANGLE,
-        THREE,
-        FOUR,
-        FIVE,
-    };
-
-    enum TASK_TYPE
-    {
-        NAVIGATION = 1,
-        DEFORM,
-    };
-
-//method
 public:
     PlanManager();
-    ~PlanManager();
+    ~PlanManager() = default;
+
 private:
     void readParameters();
-    void setDesiredShape(int type);
-    std::vector<Eigen::Vector2d> generateFormationPositions(int robot_num, int one_row_num, double frm_gap);
-    void changeFRMExecState(FORMATION_EXEC_STATE new_state);
-    void execCallback(const ros::TimerEvent&);
-    void subGlobalGoal(const geometry_msgs::PoseStampedConstPtr& msg);
-    void trajPlanning();
-    void trajPlanningDeform();
-    bool trajController(Eigen::Vector2d goal);
-    void pathPlanning(const ros::TimerEvent&);
-    void setPathPoint(const geometry_msgs::PointConstPtr& msg);
-    void findPointInPath(double forward_distance,Eigen::Vector2d& pt);
-    bool widthHandle(const Eigen::Vector2d& start_pt,Eigen::Vector2d& end_pt);
-    void widthHandleInExtend();
-    void isReduceFRM();
-    void isExtendFRM();
-    void rotateAndShareFRM();
-    void rotateAndShareDeform();
-    void updateFRMInfo(const plan_manager::RotationVecConstPtr& msg) ;
-    void FRMConsensus(Eigen::Vector2d& pos);
-    void taskAllocation();
-    bool computeTaskAllocation(std::vector<int>& next_realloc, double& current_cost, double& proposed_cost);
-    bool applyTaskAllocation(bool force, const char* reason);
-    void FRMBias(double& e);
-    void calcDesireAngularVel(double& w,const Eigen::Vector2d& goal);
-    void calcDesireLinearVel(double& v,const Eigen::Vector2d& goal);
-    void pubVelCmd(const std::vector<double>& c);
-    void updateOtherCallback(const ros::TimerEvent&);
-    void findClosestPointOnPath(const Eigen::Vector2d& target, const std::vector<Eigen::Vector2d>& path);
-    void updateAvoidModeCallback(const ros::TimerEvent&);
-    void timeoutCallback(const ros::TimerEvent&);
-    bool isDirectGoalApproachSafe(const Eigen::Vector2d& goal);
-    Eigen::Vector2d getApproachGoal() const;
-    Eigen::Vector2d sanitizeControllerGoal(const Eigen::Vector2d& goal) const;
-    bool isNavigationTargetSafe(const Eigen::Vector2d& target, double clearance) const;
-    Eigen::Vector2d recoverNavigationTarget(const Eigen::Vector2d& target,
-                                            const Eigen::Vector2d& reference,
-                                            const char* label) const;
-    double normalizeFormationYaw(double yaw) const;
-    double snapFormationYawForCorridor(double yaw) const;
-    void applyFormationSeparation(Eigen::Vector2d& pos) const;
-    void preserveLocalGoalProgress(Eigen::Vector2d& pos, const Eigen::Vector2d& local_path_goal) const;
-    void recenterLocalGoalInCorridor(Eigen::Vector2d& local_goal);
-    bool conditionHeld(ros::Time& since, bool condition, double hold_time) const;
-    void markFormationReduced();
-    void publishDebugInfo(const Eigen::Vector2d& controller_goal,
-                          double v_des,
-                          double w_des,
-                          bool reach_goal,
-                          const std::vector<double>& cmd);
+    void resetFormationSlots();
+    void odomCallback(const nav_msgs::OdometryConstPtr& msg);
+    void teammateOdomCallback(const nav_msgs::OdometryConstPtr& msg, int robot_id);
+    void mapCallback(const nav_msgs::OccupancyGridConstPtr& msg);
+    void modelStatesCallback(const gazebo_msgs::ModelStatesConstPtr& msg);
+    void goalCallback(const geometry_msgs::PoseStampedConstPtr& msg);
+    void controlCallback(const ros::TimerEvent&);
+    void publishZero();
+    void publishReached(bool reached);
+    void publishCenterPath() const;
+    void publishDebug(const Eigen::Vector2d& target,
+                      const Eigen::Vector2d& control_target,
+                      const geometry_msgs::Twist& cmd,
+                      double distance,
+                      double formation_yaw) const;
 
-//variable
-private:
+    void markPlanDirty();
+    void ensureCenterPath();
+    bool planCenterPath();
+    bool planCenterPathOnGrid(const Eigen::Vector2d& start,
+                              const Eigen::Vector2d& goal,
+                              std::vector<Eigen::Vector2d>& path,
+                              double slot_scale) const;
+    std::vector<std::uint8_t> inflatedOccupancyGrid(double slot_scale) const;
+    bool worldToGrid(const Eigen::Vector2d& world, int& mx, int& my) const;
+    Eigen::Vector2d gridToWorld(int mx, int my) const;
+    int gridIndex(int mx, int my) const;
+    bool cellOccupied(const std::vector<std::uint8_t>& occupancy, int mx, int my) const;
+    void markCircularObstacle(std::vector<std::uint8_t>& occupancy,
+                              const Eigen::Vector2d& center,
+                              double radius) const;
+    bool closestFreeCell(const std::vector<std::uint8_t>& occupancy,
+                         int seed_mx,
+                         int seed_my,
+                         int& free_mx,
+                         int& free_my) const;
+    bool ensureSlotAssignment();
+    bool allRobotStatesAvailable() const;
+    Eigen::Vector2d formationCenter() const;
+    bool hasUsableCenter() const;
+    Eigen::Vector2d assignedSlot(double slot_scale = 1.0) const;
+    double commandedFormationScale(const Eigen::Vector2d& center) const;
+    Eigen::Vector2d slotTarget(const Eigen::Vector2d& center,
+                               double formation_yaw,
+                               double slot_scale) const;
+    Eigen::Vector2d controlTargetFor(const Eigen::Vector2d& center,
+                                     double& formation_yaw) const;
+    geometry_msgs::Twist computeVelocityCommand(const Eigen::Vector2d& target,
+                                                const Eigen::Vector2d& control_target) const;
 
-    ros::NodeHandle nh_,nh_pri_;
-    ros::Timer execTimer;
-    ros::Timer pathTimer;
-    std::vector<ros::Subscriber> odoms_sub;
-    ros::Publisher vel_pub;
-    ros::Publisher path_point_pub;
-    ros::Subscriber path_point_sub;
-    ros::Subscriber goal_sub;
-    ros::Publisher frm_info_pub;
-    ros::Subscriber frm_info_sub;
-    ros::Publisher width_pub;
-    ros::Subscriber width_sub;
-    ros::Publisher is_avoid_obs_pub_;
-    ros::Publisher deform_reached_pub_;
+    static double yawFromQuaternion(const geometry_msgs::Quaternion& q);
+    static double normalizeAngle(double angle);
+    static double clamp(double value, double low, double high);
+    static bool startsWith(const std::string& text, const std::string& prefix);
+
+    ros::NodeHandle nh_;
+    ros::NodeHandle nh_pri_;
+    ros::Subscriber goal_sub_;
+    ros::Subscriber odom_sub_;
+    std::vector<ros::Subscriber> teammate_odom_subs_;
+    ros::Subscriber map_sub_;
+    ros::Subscriber model_states_sub_;
+    ros::Publisher vel_pub_;
+    ros::Publisher reached_pub_;
     ros::Publisher debug_pub_;
-    std::vector<ros::Subscriber> is_avoid_obs_sub_;
-    FORMATION_EXEC_STATE exec_state_;
-    
-    GridMap::Ptr grid_map_;
-    AStar::Ptr aster_;
-    FindMaxFreeRegion::Ptr find_region_;
-    PathOptimizer::Ptr path_opti_;
-    TrajectoryOptimizer::Ptr traj_opt_;
-    OT_Transfer::Ptr ot_cli_;
-    toVisualization::Ptr to_vis_;
+    ros::Publisher center_path_pub_;
+    ros::Timer control_timer_;
 
-    int fixed_id;
-    int fixed_num;
-    double formation_interval;
-    double formation_width;
-    int formation_type;
-    int formation_min_type;
-    int formation_max_type;
-    int leader_id;
-    int tb_id;
-    int formation_max_num;
-    double formation_yaw;
-    int start_frm_type;
-    std::vector<State> tb_states_;
-    std::vector<int> realloc_;
-    std::vector<double> all_width;
+    int fixed_id_ = 0;
+    int fixed_num_ = 4;
+    double formation_interval_ = 0.8;
+    double robot_radius_ = 0.18;
+    double formation_clearance_ = 0.18;
+    double replanning_distance_ = 0.35;
+    double path_goal_tolerance_ = 0.35;
+    double goal_tolerance_ = 0.18;
+    double lookahead_distance_ = 0.6;
+    double control_rate_hz_ = 10.0;
+    double max_linear_velocity_ = 0.22;
+    double max_angular_velocity_ = 1.4;
+    double linear_gain_ = 0.45;
+    double angular_gain_ = 1.8;
+    double angular_slowdown_threshold_ = 1.57079632679;
+    double rotate_in_place_threshold_ = 1.0471975512;
+    bool rotate_slots_by_goal_yaw_ = false;
+    bool align_slots_to_path_ = false;
+    bool use_occupancy_grid_planner_ = true;
+    bool treat_unknown_as_occupied_ = false;
+    bool allow_formation_scaling_ = true;
+    double min_formation_scale_ = 0.75;
+    double formation_scale_step_ = 0.10;
+    double formation_expand_distance_ = 1.0;
+    double blocked_recovery_linear_scale_ = 0.6;
+    bool allow_blocked_direct_recovery_ = false;
+    double blocked_direct_recovery_max_distance_ = 2.5;
+    bool use_dynamic_obstacle_models_ = true;
+    double dynamic_obstacle_radius_ = 0.40;
+    double dynamic_obstacle_replan_distance_ = 0.20;
+    std::string map_topic_ = "/map";
+    std::string model_states_topic_ = "/gazebo/model_states";
+    std::vector<std::string> dynamic_obstacle_model_prefixes_;
+    std::vector<std::string> dynamic_obstacle_model_names_;
+    std::vector<std::string> ignored_dynamic_obstacle_model_names_;
+    int occupied_threshold_ = 65;
 
-    Eigen::Vector2d global_goal;
-    Eigen::Vector2d tb_global_goal;
-    Eigen::Vector2d local_goal;
-    Eigen::Vector2d leader_path_point;
-    std::vector<Eigen::Vector2d> path_;
-    double fwd_dist;
-    double obs_clearance;
-    double approach_goal_dist;
-    bool approach_center_goal;
-    bool publish_esdf_avoid_state;
-    bool center_local_goal_in_corridor;
-    double corridor_centering_max_width;
-    double corridor_centering_max_shift;
-    bool formation_corridor_yaw_snap_enabled;
-    double formation_corridor_yaw_snap_max_width;
-    double formation_corridor_yaw_snap_tolerance;
-    double formation_consensus_local_goal_weight;
-    double formation_min_robot_clearance;
-    double formation_min_robot_clearance_gain;
-    double formation_min_local_goal_progress;
-    double target_recovery_clearance;
-    double target_recovery_search_radius;
-    double formation_reduce_robot_fraction;
-    double avoid_obs_distance_threshold;
-    double formation_reduce_hold_time;
-    double formation_expand_hold_time;
-    double formation_expansion_cooldown;
-    double reassignment_cooldown;
-    bool slot_reassignment_enabled;
-    double slot_reassignment_cooldown;
-    double slot_reassignment_min_cost_improvement;
-    double slot_reassignment_min_cost_improvement_ratio;
-    bool timeout_reassignment_enabled;
-    ros::Time avoid_reduce_since_;
-    ros::Time width_reduce_since_;
-    ros::Time expand_clear_since_;
-    ros::Time last_formation_reduce_time_;
-    ros::Time last_reassignment_time_;
-    ros::Time last_slot_reassignment_check_time_;
-    ros::Time last_slot_reassignment_apply_time_;
-
-    bool has_odom;
-    bool has_goal;
-    bool first_start;
-    bool do_allocation;
-    bool reported_reached_current_slot_;
-    Eigen::Vector2d reported_reached_slot_;
-
-    std::vector<Eigen::Vector2d> swarm_des_origin;// original target formation
-    std::vector<Eigen::Vector2d> swarm_des;// desired formation considering rotation
-    std::vector<Eigen::Vector2d> swarm_alloc;// deisred formation considering task allocation
-    std::vector<Eigen::Vector3d> pathInfo; // save global path
-    std::vector<int> is_avoid_obs; // count the number of robots in obstacle avoidance mode
-
-    // reocord other robots info  
-    std::vector<int> other_idx;
-    int other_num_to_opti;
-    std::vector<State> first_min_in_other;
-    ros::Timer updateOtherTimer;
-    ros::Timer avoidModeTimer;
-
-    ros::Timer timeoutTimer;
-    bool is_timeout;
-    double cur_bias;
-
-    // deform task 
-    int task_type;
-    int vehicle_number;
-
+    RobotState self_state_;
+    std::vector<RobotState> robot_states_;
+    std::vector<bool> has_robot_state_;
+    bool has_odom_ = false;
+    bool has_goal_ = false;
+    bool has_map_ = false;
+    bool path_dirty_ = true;
+    bool path_blocked_ = false;
+    bool reached_ = false;
+    nav_msgs::OccupancyGrid occupancy_grid_;
+    std::vector<Eigen::Vector2d> dynamic_obstacle_positions_;
+    Eigen::Vector2d goal_center_ = Eigen::Vector2d::Zero();
+    double goal_yaw_ = 0.0;
+    std::vector<Eigen::Vector2d> slots_;
+    std::vector<int> assigned_slot_indices_;
+    bool slot_assignment_ready_ = false;
+    double active_formation_scale_ = 1.0;
+    std::vector<Eigen::Vector2d> center_path_;
+    Eigen::Vector2d planned_start_center_ = Eigen::Vector2d::Zero();
+    Eigen::Vector2d planned_goal_center_ = Eigen::Vector2d::Zero();
 };
 
-inline void PlanManager::setDesiredShape(int type) {
-
-    swarm_des_origin = generateFormationPositions(fixed_num, type, formation_interval);
-    if(type == 1) {
-        formation_width = 0.3;
-    } else {
-        formation_width = (type - 1) * formation_interval;
-    }
-}
+#endif

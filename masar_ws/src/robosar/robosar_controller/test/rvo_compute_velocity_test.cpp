@@ -117,3 +117,115 @@ int main(int argc, char **argv) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
+
+TEST(PriorityYield, GradesClosingSpeedInsideYieldMargin)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.5, 0.0), 0.0};
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), RVO::Vector2(0.12, 0.04), {response},
+        0.85, 0.35, 0.12);
+
+    EXPECT_GT(result.x(), 0.0);
+    EXPECT_LT(result.x(), 0.12);
+    EXPECT_LE(abs(result), 0.12 + 1e-8);
+}
+
+TEST(PriorityYield, PreservesAwayAndOutsideMotion)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.5, 0.0), 0.0};
+    const RVO::Vector2 tangent_away(-0.03, 0.10);
+    const RVO::Vector2 outside_toward(0.12, 0.0);
+
+    const RVO::Vector2 nearby = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), tangent_away, {response}, 0.85, 0.35, 0.12);
+    response.current_position = RVO::Vector2(1.0, 0.0);
+    const RVO::Vector2 outside = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), outside_toward, {response}, 0.85, 0.35, 0.12);
+
+    EXPECT_NEAR(nearby.x(), tangent_away.x(), 1e-8);
+    EXPECT_NEAR(nearby.y(), tangent_away.y(), 1e-8);
+    EXPECT_LE(abs(nearby), 0.12 + 1e-8);
+    EXPECT_NEAR(outside.x(), outside_toward.x(), 1e-8);
+    EXPECT_NEAR(outside.y(), outside_toward.y(), 1e-8);
+}
+
+TEST(PriorityYield, SynthesizesEscapeForStationaryCoverageRobot)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.27, 0.0), 0.0};
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0), {response},
+        0.85, 0.35, 0.12);
+
+    EXPECT_LT(result.x(), 0.0);
+    EXPECT_NEAR(result.y(), 0.0, 1e-8);
+    EXPECT_LE(abs(result), 0.12 + 1e-8);
+}
+
+TEST(PriorityYield, CompletedHomePathRemainsStoppedNearResponseRobot)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.40, 0.0), 0.0};
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0), {response},
+        0.85, 0.35, 0.12, false);
+
+    // Priority yielding is useful while a coverage/home path is active, but a
+    // robot that has consumed its path must latch the terminal zero command.
+    EXPECT_NEAR(result.x(), 0.0, 1e-8);
+    EXPECT_NEAR(result.y(), 0.0, 1e-8);
+}
+
+TEST(PriorityYield, EmptyCoveragePathIsNotACompletedHomeHold)
+{
+    EXPECT_FALSE(shouldLatchCompletedHome(false, false));
+    EXPECT_FALSE(shouldLatchCompletedHome(true, true));
+    EXPECT_TRUE(shouldLatchCompletedHome(false, true));
+}
+
+TEST(PriorityYield, AccountsForApproachingResponseVelocity)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(-0.20, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.50, 0.0), 0.0};
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0), {response},
+        0.85, 0.35, 0.12);
+
+    EXPECT_NEAR(result.x(), -0.12, 1e-8);
+    EXPECT_NEAR(result.y(), 0.0, 1e-8);
+}
+
+TEST(PriorityYield, ContactRangeTrafficStillProducesSeparation)
+{
+    rvo_agent_obstacle_info_s nearby = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.27, 0.0), 0.0};
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        {nearby}, 0.85, 0.35, 0.12);
+
+    EXPECT_LT(result.x(), 0.0);
+    EXPECT_NEAR(result.y(), 0.0, 1e-8);
+    EXPECT_LE(abs(result), 0.12 + 1e-8);
+}
+
+TEST(PriorityYield, PreservesCandidateAtYieldBoundary)
+{
+    rvo_agent_obstacle_info_s response = {
+        "tb_0", RVO::Vector2(0.0, 0.0), RVO::Vector2(0.0, 0.0),
+        RVO::Vector2(0.85, 0.0), 0.0};
+    const RVO::Vector2 candidate(0.12, 0.0);
+    const RVO::Vector2 result = projectVelocityForPriorityYield(
+        RVO::Vector2(0.0, 0.0), candidate, {response},
+        0.85, 0.35, 0.12);
+
+    EXPECT_NEAR(result.x(), candidate.x(), 1e-8);
+    EXPECT_NEAR(result.y(), candidate.y(), 1e-8);
+}

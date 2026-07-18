@@ -22,9 +22,16 @@ TRANSPORT_OBJECT_SHAPES = (
     'triangular_prism',
 )
 TRANSPORT_OBJECT_SIZE = 0.25
+TRANSPORT_TARGET_ZONE_RADIUS = 0.25
 TRANSPORT_OBJECT_MASS = 0.6
 TRANSPORT_OBJECT_Z = 0.05
 ROUND_FLOCKING_TARGET_CLEARANCE = 0.6
+RUNTIME_ROBOT_RADIUS = 0.0
+RUNTIME_DEFAULT_OBJECT_RADIUS = 0.1
+
+
+class NoCollisionFreePositionError(ValueError):
+    """Raised when the requested area cannot fit another collision-free item."""
 
 
 def inset_bounds_for_clearance(
@@ -213,6 +220,70 @@ def check_point_box_collision(px: float, py: float,
     return (abs(px - box_cx) < half_sx and abs(py - box_cy) < half_sy)
 
 
+def is_position_collision_free(
+    x: float,
+    y: float,
+    min_distance: float,
+    existing_positions: list | None = None,
+) -> bool:
+    """Return whether a candidate position clears all occupied positions."""
+    for obj in existing_positions or []:
+        if len(obj) >= 3:
+            ox, oy, size_info = obj[0], obj[1], obj[2]
+        else:
+            ox, oy = obj[0], obj[1]
+            size_info = RUNTIME_DEFAULT_OBJECT_RADIUS
+
+        if isinstance(size_info, tuple):
+            box_sx, box_sy = size_info
+            if check_point_box_collision(x, y, ox, oy, box_sx, box_sy, min_distance):
+                return False
+        else:
+            distance = math.hypot(x - ox, y - oy)
+            if distance < min_distance + float(size_info):
+                return False
+    return True
+
+
+def runtime_object_radius(name: str) -> float:
+    """Return the conservative collision radius for a `/global_info` object."""
+    if name.startswith('victim_'):
+        return 0.22
+    if name.startswith('fire_source_'):
+        return 0.18
+    if name.startswith('transport_box'):
+        return TRANSPORT_OBJECT_SIZE / 2.0
+    if name.startswith('target_zone'):
+        return TRANSPORT_TARGET_ZONE_RADIUS
+    if name == 'flocking_target':
+        return 0.15
+    if name.startswith('navigation_target_'):
+        return 0.05
+    if name.startswith('obstacle_'):
+        return 0.1
+    return RUNTIME_DEFAULT_OBJECT_RADIUS
+
+
+def occupied_positions_from_global_info(global_info: dict) -> list[tuple[float, float, float]]:
+    """Convert the runtime `/global_info` payload to collision occupancy data."""
+    occupied_positions = []
+
+    for entries, radius_for_name in (
+        (global_info.get('robots', {}), lambda _name: RUNTIME_ROBOT_RADIUS),
+        (global_info.get('objects', {}), runtime_object_radius),
+    ):
+        for name, entry in entries.items():
+            try:
+                position = entry['position']
+                x = float(position['x'])
+                y = float(position['y'])
+            except (KeyError, TypeError, ValueError):
+                continue
+            occupied_positions.append((x, y, radius_for_name(name)))
+
+    return occupied_positions
+
+
 def generate_random_positions_with_obstacles(
     num_items: int,
     x_min: float, x_max: float,
@@ -258,40 +329,119 @@ def generate_random_positions_with_obstacles(
                     valid = False
                     break
             
-            if valid:
-                for obj in existing_positions:
-                    if len(obj) >= 3:
-                        ox, oy, size_info = obj[0], obj[1], obj[2]
-                    else:
-                        ox, oy = obj[0], obj[1]
-                        size_info = 0.1
-                    
-                    if isinstance(size_info, tuple):
-                        box_sx, box_sy = size_info
-                        if check_point_box_collision(x, y, ox, oy, box_sx, box_sy, min_distance):
-                            valid = False
-                            break
-                    else:
-                        radius = size_info
-                        dist = math.sqrt((x - ox) ** 2 + (y - oy) ** 2)
-                        if dist < min_distance + radius:
-                            valid = False
-                            break
+            if valid and not is_position_collision_free(
+                x,
+                y,
+                min_distance,
+                existing_positions,
+            ):
+                valid = False
             
             if valid:
                 positions.append((x, y))
                 break
         else:
-            cols = int(math.ceil(math.sqrt(num_items)))
-            row = i // cols
-            col = i % cols
-            x_step = (x_max - x_min) / max(cols, 1)
-            y_step = (y_max - y_min) / max(cols, 1)
-            x = x_min + col * x_step + x_step / 2
-            y = y_min + row * y_step + y_step / 2
-            positions.append((x, y))
+            raise NoCollisionFreePositionError(
+                f'could not place item {i + 1}/{num_items} without collision '
+                f'after {max_attempts} attempts'
+            )
     
     return positions
+
+
+def is_prime_count(value: int) -> bool:
+    """Return whether a positive item count is prime."""
+    if value < 2:
+        return False
+    if value == 2:
+        return True
+    if value % 2 == 0:
+        return False
+    limit = int(math.sqrt(value))
+    for factor in range(3, limit + 1, 2):
+        if value % factor == 0:
+            return False
+    return True
+
+
+def navigation_grid_columns(num_items: int) -> int:
+    """Choose deterministic navigation target columns from robot count.
+
+    Rule:
+    - even counts use two columns;
+    - prime counts use one column;
+    - other composite counts use the smallest factor greater than one.
+    """
+    if num_items <= 1:
+        return 1
+    if num_items % 2 == 0:
+        return 2
+    if is_prime_count(num_items):
+        return 1
+    for factor in range(3, num_items + 1, 2):
+        if num_items % factor == 0:
+            return factor
+    return 1
+
+
+def generate_grid_positions(
+    num_items: int,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+    columns: int | None = None,
+) -> list[tuple[float, float]]:
+    """Generate a deterministic column-major grid layout inside the given bounds."""
+    if num_items <= 0:
+        return []
+    if columns is None:
+        columns = navigation_grid_columns(num_items)
+    if columns <= 0:
+        raise ValueError('columns must be positive')
+    if x_min > x_max or y_min > y_max:
+        raise ValueError('position bounds must be ordered')
+
+    x_span = x_max - x_min
+    y_span = y_max - y_min
+    columns = min(columns, num_items)
+    if columns == 1:
+        x_positions = [(x_min + x_max) / 2.0]
+    else:
+        x_min_inner = x_min + 0.25 * x_span
+        x_max_inner = x_max - 0.25 * x_span
+        x_step = (x_max_inner - x_min_inner) / (columns - 1)
+        x_positions = [
+            x_min_inner + column * x_step
+            for column in range(columns)
+        ]
+
+    rows = int(math.ceil(num_items / columns))
+    if rows == 1:
+        y_positions = [(y_min + y_max) / 2.0]
+    else:
+        row_min = y_min + 0.10 * y_span
+        row_max = y_max - 0.10 * y_span
+        row_step = (row_max - row_min) / (rows - 1)
+        y_positions = [row_min + row * row_step for row in range(rows)]
+
+    positions = []
+    for column, x in enumerate(x_positions):
+        start = column * rows
+        column_count = min(rows, max(0, num_items - start))
+        positions.extend((x, y_positions[row]) for row in range(column_count))
+    return positions
+
+
+def generate_two_column_positions(
+    num_items: int,
+    x_min: float,
+    x_max: float,
+    y_min: float,
+    y_max: float,
+) -> list[tuple[float, float]]:
+    """Generate a deterministic two-column layout inside the given bounds."""
+    return generate_grid_positions(num_items, x_min, x_max, y_min, y_max, columns=2)
 
 
 def generate_epuck_robot(name: str, x: float, y: float, z: float = 0.0) -> str:
@@ -722,7 +872,7 @@ def generate_world_file(
     num_robots: int,
     positions: list,
     z_height: float = 0.0,
-    task_objects: dict = None
+    task_objects: dict = None,
 ) -> str:
     """基于模板世界文件生成包含机器人和任务物体的新世界文件"""
     with open(template_world, 'r') as f:
@@ -739,7 +889,6 @@ def generate_world_file(
         transport_object_shape = normalize_transport_object_shape(
             task_objects.get('transport_object_shape')
         )
-    
     if task_objects:
         if 'victims' in task_objects and task_objects['victims']:
             for i, (x, y) in enumerate(task_objects['victims']):

@@ -6,7 +6,7 @@ import math
 import rospy
 from geometry_msgs.msg import PoseStamped
 from robosar_messages.msg import EmergencyTask
-from std_msgs.msg import String
+from std_msgs.msg import Bool, String
 from tf.transformations import quaternion_from_euler
 
 
@@ -31,10 +31,17 @@ class ResponseTaskFixtureNode:
             queue_size=1,
             latch=True,
         )
+        self.motion_pub = rospy.Publisher(
+            rospy.get_param("~motion_enabled_topic", "/response_group/motion_enabled"),
+            Bool,
+            queue_size=1,
+            latch=True,
+        )
         rospy.Timer(rospy.Duration(1.0 / self.publish_rate), self._timer_callback)
         rospy.Timer(rospy.Duration(0.2), self._timer_callback, oneshot=True)
 
     def _timer_callback(self, _event):
+        self.motion_pub.publish(Bool(data=True))
         self.mode_pub.publish(String("TASK_CONTROL"))
         self.task_pub.publish(self._build_task())
 

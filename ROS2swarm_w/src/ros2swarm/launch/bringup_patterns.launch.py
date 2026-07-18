@@ -20,7 +20,12 @@ from ament_index_python.packages import get_package_share_directory
 from launch.actions import IncludeLaunchDescription, GroupAction, DeclareLaunchArgument, LogInfo
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution, Command, PythonExpression
-from launch.conditions import IfCondition, LaunchConfigurationEquals, LaunchConfigurationNotEquals
+from launch.conditions import (
+    IfCondition,
+    LaunchConfigurationEquals,
+    LaunchConfigurationNotEquals,
+    UnlessCondition,
+)
 
 def generate_launch_description():
     """Bring up all needed hardware protection patterns and the behaviour pattern.""" 
@@ -64,7 +69,10 @@ def generate_launch_description():
         namespace=robot_namespace,
         output='screen',
         parameters=[PathJoinSubstitution([config_dir, 'hardware_protection_layer' + '.yaml'])],
-        arguments=['--ros-args', '--log-level', log_level]
+        arguments=['--ros-args', '--log-level', log_level],
+        condition=UnlessCondition(PythonExpression([
+            "'transport_pattern' in '", pattern, "'"
+        ])),
     )
     ld.add_action(ros2_hardware_protection_layer_node)
 

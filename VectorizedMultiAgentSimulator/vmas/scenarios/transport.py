@@ -792,4 +792,3 @@ if __name__ == "__main__":
     # 交互式渲染
     # 允许用户使用键盘控制两个智能体，观察场景行为
     render_interactively(__file__, control_two_agents=True)
-

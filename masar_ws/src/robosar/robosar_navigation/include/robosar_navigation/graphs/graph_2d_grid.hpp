@@ -4,6 +4,7 @@
 #define GRAPH_2D_GRID
 
 #include <ros/ros.h>
+#include <boost/functional/hash.hpp>
 #include "costmap_2d.hpp"
 #include <vector>
 

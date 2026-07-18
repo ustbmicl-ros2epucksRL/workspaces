@@ -26,6 +26,15 @@ BEHAVIOR_SPIN = "TASK_SPIN_6S_PLACEHOLDER"
 BEHAVIOR_RETURN_HOME = "NAV_RETURN_HOME"
 
 
+def resume_mode_for_status(status: int, return_home_active: bool = False) -> str:
+    """Return the command-source mode for a preserved response phase."""
+    if return_home_active or status == STATUS_EN_ROUTE:
+        return "NAV_FORMATION"
+    if status == STATUS_ACTING:
+        return "TASK_CONTROL"
+    return "STOP"
+
+
 def emergency_object_key(object_type: int, object_id: int, scene_name: str) -> tuple[int, int, str]:
     return int(object_type), int(object_id), str(scene_name)
 
@@ -45,17 +54,9 @@ def all_expected_tasks_done(
 
 
 @dataclass(frozen=True)
-class StagingDistances:
-    victim: float = 0.9
-    fire: float = 1.1
-    box: float = 0.8
-
-    def for_type(self, task_type: int) -> float:
-        if task_type == TASK_FIRE:
-            return self.fire
-        if task_type == TASK_BOX:
-            return self.box
-        return self.victim
+class NavigationTarget:
+    pose: MatrixPose
+    profile: str
 
 
 @dataclass(frozen=True)
@@ -107,31 +108,42 @@ def _safe_direction(dx: float, dy: float, fallback_yaw: float = 0.0) -> tuple[fl
     return dx / norm, dy / norm, math.atan2(dy, dx)
 
 
-def compute_staging_pose(
+def compute_navigation_target(
     task_type: int,
     object_pose: MatrixPose,
     group_center: MatrixPose,
     goal_pose: MatrixPose | None,
-    distances: StagingDistances,
-) -> MatrixPose:
-    distance = distances.for_type(task_type)
-    if task_type == TASK_BOX and goal_pose is not None:
-        direction_x, direction_y, yaw = _safe_direction(
-            goal_pose.x - object_pose.x,
-            goal_pose.y - object_pose.y,
-            object_pose.yaw,
-        )
-    else:
-        direction_x, direction_y, yaw = _safe_direction(
+    transport_rear_distance: float,
+) -> NavigationTarget:
+    """Derive the formation-center goal from the downstream task geometry."""
+    if task_type != TASK_BOX:
+        _direction_x, _direction_y, yaw = _safe_direction(
             object_pose.x - group_center.x,
             object_pose.y - group_center.y,
             object_pose.yaw,
         )
+        return NavigationTarget(
+            pose=MatrixPose(object_pose.x, object_pose.y, yaw, object_pose.z),
+            profile="SURROUND",
+        )
 
-    return MatrixPose(
-        x=object_pose.x - direction_x * distance,
-        y=object_pose.y - direction_y * distance,
-        yaw=yaw,
+    if goal_pose is None:
+        raise ValueError("transport task requires goal_pose")
+    direction_x, direction_y, yaw = _safe_direction(
+        goal_pose.x - object_pose.x,
+        goal_pose.y - object_pose.y,
+        object_pose.yaw,
+    )
+    distance = max(0.0, float(transport_rear_distance))
+
+    return NavigationTarget(
+        pose=MatrixPose(
+            x=object_pose.x - direction_x * distance,
+            y=object_pose.y - direction_y * distance,
+            yaw=yaw,
+            z=object_pose.z,
+        ),
+        profile="TRANSPORT_APPROACH",
     )
 
 
@@ -158,12 +170,12 @@ class ResponseTaskQueue:
     def __init__(
         self,
         assigned_robots: Iterable[str],
-        staging_distances: StagingDistances,
+        transport_rear_distance: float,
         hold_seconds: float = 6.0,
         use_spin_placeholder: bool = False,
     ):
         self.assigned_robots = tuple(assigned_robots)
-        self.staging_distances = staging_distances
+        self.transport_rear_distance = max(0.0, float(transport_rear_distance))
         self.hold_seconds = float(hold_seconds)
         self.use_spin_placeholder = bool(use_spin_placeholder)
         self._tasks: Dict[tuple[int, int, str], ManagedTask] = {}
@@ -186,12 +198,12 @@ class ResponseTaskQueue:
         if key in self._tasks:
             return False
 
-        staging = compute_staging_pose(
+        navigation_target = compute_navigation_target(
             task_type=obj.object_type,
             object_pose=obj.pose,
             group_center=group_center,
             goal_pose=obj.goal_pose if obj.has_goal_pose else None,
-            distances=self.staging_distances,
+            transport_rear_distance=self.transport_rear_distance,
         )
         task = ManagedTask(
             task_id=self._next_task_id,
@@ -201,7 +213,7 @@ class ResponseTaskQueue:
             scene_name=obj.scene_name,
             detector_robot=obj.detector_robot,
             precise_pose=obj.pose,
-            staging_pose=staging,
+            staging_pose=navigation_target.pose,
             goal_pose=obj.goal_pose,
             has_goal_pose=bool(obj.has_goal_pose and obj.goal_pose is not None),
             hold_seconds=self.hold_seconds,
@@ -306,6 +318,16 @@ class ResponseTaskQueue:
         if self._active_task_id == task_id:
             self._active_task_id = None
         return task
+
+    def cancel_active_for_return_home(self) -> ManagedTask | None:
+        """Terminate only the current task and leave pending tasks untouched."""
+        current = self.current_task()
+        if current is None:
+            return None
+        cancelled = replace(current, status=STATUS_FAILED)
+        self._tasks[cancelled.key] = cancelled
+        self._active_task_id = None
+        return cancelled
 
     def all_tasks(self) -> List[ManagedTask]:
         return sorted(
