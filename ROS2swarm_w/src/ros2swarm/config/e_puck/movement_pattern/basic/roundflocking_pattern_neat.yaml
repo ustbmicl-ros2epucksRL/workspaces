@@ -19,7 +19,8 @@
 
     # ===== 激光雷达配置 =====
     n_lidar_rays: 12
-    max_range: 0.20
+    # NEAT训练时Lidar(max_range=0.2)的原始米制输入上限；不是物理雷达量程。
+    lidar_input_max_range: 0.20
 
     # ===== 观测归一化配置 =====
     world_scale: 1.75

@@ -32,7 +32,7 @@ LOG_LEVEL="info"                                # debug、info、warn、error、
 WEBOTS_MODE="realtime"                          # pause、realtime、fast、rendering
 WEBOTS_GUI="true"                               # true、false
 # 机器人类型。
-ROBOT="e_puck"                                  # e_puck、burger
+ROBOT="burger"                                  # e_puck、burger
 # 传感器类型。
 SENSOR_TYPE="lidar"                             # lidar、ir
 # 随机生成区域 X 最小值。

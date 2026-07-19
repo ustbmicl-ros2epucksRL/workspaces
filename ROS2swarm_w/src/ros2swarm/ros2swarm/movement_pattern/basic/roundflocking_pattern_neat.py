@@ -11,7 +11,7 @@ RoundFlocking Pattern - 使用NEAT神经网络控制机器人进行环绕任务
 - 智能体自身位置 (2维)
 - 智能体自身速度 (2维)
 - 智能体到目标的相对位置 (2维)
-- 激光雷达测量值 (12维) - 360度分为12个区间，取区间中间光束
+- 激光雷达测量值 (12维) - 360度分为12个区间，保留训练时的原始距离范围
 """
 import os
 import pickle
@@ -41,6 +41,42 @@ def normalize_neat_output_to_signed(value, activation):
         return np.clip(value, -1.0, 1.0)
     raise ValueError(f'不支持的输出激活函数: {activation}')
 
+
+def sample_lidar_for_neat(ranges, n_lidar_rays, lidar_input_max_range):
+    """Sample a physical scan into the raw distance range used in training.
+
+    VMAS flocking trained this bundled genome with ``Lidar(max_range=0.2)``
+    and appended those raw metre values directly to the observation.  The
+    physical sensor range must therefore never be used as the NEAT input
+    range.  In particular, a Burger LDS-01 reports up to 3.5 m while an
+    e-puck RPLidar reports up to 12 m.
+    """
+    n_lidar_rays = int(n_lidar_rays)
+    lidar_input_max_range = float(lidar_input_max_range)
+    if n_lidar_rays <= 0:
+        raise ValueError('n_lidar_rays必须大于0')
+    if lidar_input_max_range <= 0.0:
+        raise ValueError('lidar_input_max_range必须大于0')
+
+    scan = np.asarray(ranges, dtype=np.float32)
+    if scan.size == 0:
+        return None
+
+    scan = np.where(np.isfinite(scan), scan, lidar_input_max_range)
+    scan = np.clip(scan, 0.0, lidar_input_max_range)
+
+    sampled_ranges = []
+    beams_per_sector = max(1, scan.size // n_lidar_rays)
+    for ray_index in range(n_lidar_rays):
+        start_index = ray_index * beams_per_sector
+        middle_index = min(
+            start_index + beams_per_sector // 2,
+            scan.size - 1,
+        )
+        sampled_ranges.append(scan[middle_index])
+    return np.asarray(sampled_ranges, dtype=np.float32)
+
+
 class RoundFlockingPattern(MovementPattern):
     """
     使用NEAT神经网络进行环绕(Round Flocking)任务的模式节点
@@ -65,7 +101,8 @@ class RoundFlockingPattern(MovementPattern):
                 ('timer_period', 0.1),  # 控制周期（秒）
                 ('target_def_name', 'flocking_target'),  # 环绕目标DEF名称
                 ('n_lidar_rays', 12),  # 激光雷达采样区间数
-                ('max_range', 0.2),  # 激光雷达最大范围
+                # 这是NEAT训练输入上限，不是物理雷达量程。
+                ('lidar_input_max_range', 0.2),
                 ('world_scale', 1.75),  # 世界坐标归一化因子（Webots场景3.5x3.5即±1.75，VMAS训练时±1）
             ])
 
@@ -82,8 +119,8 @@ class RoundFlockingPattern(MovementPattern):
             'target_def_name').get_parameter_value().string_value
         self.n_lidar_rays = self.get_parameter(
             'n_lidar_rays').get_parameter_value().integer_value
-        self.max_range = self.get_parameter(
-            'max_range').get_parameter_value().double_value
+        self.lidar_input_max_range = self.get_parameter(
+            'lidar_input_max_range').get_parameter_value().double_value
         self.world_scale = self.get_parameter(
             'world_scale').get_parameter_value().double_value
 
@@ -139,6 +176,7 @@ class RoundFlockingPattern(MovementPattern):
         self.get_logger().debug(
             f'RoundFlocking模式初始化完成 [{self.robot_name}], 网络输入维度: {self.network_input_dim}, '
             f'激光雷达区间数: {self.n_lidar_rays}, '
+            f'NEAT雷达输入范围: [0, {self.lidar_input_max_range}] m, '
             f'速度范围: linear=[-{self.max_linear_velocity}, {self.max_linear_velocity}], '
             f'angular=[-{self.max_angular_velocity}, {self.max_angular_velocity}]'
         )
@@ -202,30 +240,13 @@ class RoundFlockingPattern(MovementPattern):
         接收激光雷达数据，将360度分为n_lidar_rays个区间，
         取每个区间中间光束的测量值
         """
-        ranges = np.array(msg.ranges, dtype=np.float32)
-        num_beams = len(ranges)
-        
-        if num_beams == 0:
-            return
-        
-        # 处理无效值
-        ranges = np.where(np.isinf(ranges), self.max_range, ranges)
-        ranges = np.where(np.isnan(ranges), self.max_range, ranges)
-        ranges = np.clip(ranges, 0, self.max_range)
-        
-        # 将360度分为n_lidar_rays个区间，取每个区间中间光束的值
-        sampled_ranges = []
-        beams_per_sector = num_beams // self.n_lidar_rays
-        
-        for i in range(self.n_lidar_rays):
-            # 计算区间中间位置的索引
-            start_idx = i * beams_per_sector
-            mid_idx = start_idx + beams_per_sector // 2
-            mid_idx = min(mid_idx, num_beams - 1)
-            sampled_ranges.append(ranges[mid_idx])
-        
-        # 直接使用激光雷达值，超过max_range的值已在前面被clip到max_range
-        self.lidar_data = np.array(sampled_ranges)
+        sampled = sample_lidar_for_neat(
+            msg.ranges,
+            self.n_lidar_rays,
+            self.lidar_input_max_range,
+        )
+        if sampled is not None:
+            self.lidar_data = sampled
 
     def _get_observation(self):
         """
@@ -235,7 +256,7 @@ class RoundFlockingPattern(MovementPattern):
         - 智能体位置 (2维): x, y (归一化)
         - 智能体速度 (2维): vx, vy
         - 到目标的相对位置 (2维): target - robot (归一化)
-        - 激光雷达测量值 (12维): 距离值 [0, max_range]
+        - 激光雷达测量值 (12维): 训练侧原始距离值 [0, 0.2m]
         
         注意：NEAT网络在VMAS环境训练时使用的坐标范围为 [-1, 1]，
         Webots仿真场景大小为 3.5x3.5，坐标范围为 [-1.75, 1.75]，
@@ -246,11 +267,11 @@ class RoundFlockingPattern(MovementPattern):
         """
         if self.global_info is None:
             self.get_logger().debug('等待全局信息...')
-            return self._get_random_observation()
+            return None
         
         if self.lidar_data is None:
             self.get_logger().debug('等待激光雷达数据...')
-            return self._get_random_observation()
+            return None
         
         try:
             robots = self.global_info.get('robots', {})
@@ -260,7 +281,7 @@ class RoundFlockingPattern(MovementPattern):
             robot_info = robots.get(self.robot_name, None)
             if robot_info is None:
                 self._warn_missing_data(f'未找到机器人 {self.robot_name} 的信息')
-                return self._get_random_observation()
+                return None
             
             robot_x = robot_info['position']['x']
             robot_y = robot_info['position']['y']
@@ -280,7 +301,10 @@ class RoundFlockingPattern(MovementPattern):
                 target_rel_x_global = robot_x - target_info['position']['x']
                 target_rel_y_global = robot_y - target_info['position']['y']
             else:
-                 target_rel_x_global, target_rel_y_global = 0.0, 0.0
+                self._warn_missing_data(
+                    f'未找到环绕目标 {self.target_def_name} 的信息'
+                )
+                return None
             
             # 将相对位置和速度转换到机器人本体坐标系（绕z轴旋转-yaw角）
             # 这样网络看到的是：正x方向=机器人前方，正y方向=机器人左方
@@ -308,7 +332,7 @@ class RoundFlockingPattern(MovementPattern):
                 target_rel_y / scale, # 到目标的相对位置 y (本体坐标系，归一化)
             ]
             
-            # 添加激光雷达数据 (n_lidar_rays维，已归一化到[0, 1])
+            # 添加训练侧原始雷达距离，单位为米，范围[0, 0.2]。
             observation.extend(self.lidar_data.tolist())
             
             # 调试输出
@@ -322,21 +346,21 @@ class RoundFlockingPattern(MovementPattern):
             
         except Exception as e:
             self.get_logger().error(f'获取观测失败: {str(e)}')
-            return self._get_random_observation()
-
-    def _get_random_observation(self):
-        """生成随机观测向量用于测试"""
-        return np.random.uniform(-1.0, 1.0, self.network_input_dim).tolist()
+            return None
 
     def control_callback(self):
         """控制回调函数，使用NEAT网络计算并发布控制命令"""
         if self.network is None:
             self._warn_missing_data('NEAT网络未初始化，无法控制')
+            self.command_publisher.publish(Twist())
             return
 
         try:
             # 获取观测
             observation = self._get_observation()
+            if observation is None:
+                self.command_publisher.publish(Twist())
+                return
             
             # 通过NEAT网络计算输出
             output = self.network.activate(observation)
@@ -385,6 +409,7 @@ class RoundFlockingPattern(MovementPattern):
 
         except Exception as e:
             self.get_logger().error(f'NEAT网络推理失败: {str(e)}')
+            self.command_publisher.publish(Twist())
 
 
 def main(args=None):

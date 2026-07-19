@@ -15,7 +15,8 @@
 
     # ===== 激光雷达配置 =====
     n_lidar_rays: 12
-    max_range: 3.5
+    # LDS-01物理量程为3.5m，但该NEAT网络只在0..0.2m原始距离上训练。
+    lidar_input_max_range: 0.20
 
     # ===== 观测归一化配置 =====
     world_scale: 1.75

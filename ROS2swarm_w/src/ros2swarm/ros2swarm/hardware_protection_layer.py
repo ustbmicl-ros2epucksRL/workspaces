@@ -21,6 +21,31 @@ from rclpy.qos import qos_profile_sensor_data
 from ros2swarm.utils.scan_calculation_functions import ScanCalculationFunctions
 
 
+def limit_twist_to_wheel_speed(linear_velocity, angular_velocity,
+                               wheel_separation, max_wheel_linear_velocity):
+    """Scale a differential-drive command to a joint wheel-speed limit.
+
+    Scaling both components by the same factor preserves the avoidance path's
+    curvature.  A non-positive wheel limit leaves legacy platforms unchanged.
+    """
+    linear_velocity = float(linear_velocity)
+    angular_velocity = float(angular_velocity)
+    wheel_separation = float(wheel_separation)
+    max_wheel_linear_velocity = float(max_wheel_linear_velocity)
+    if wheel_separation <= 0.0 or max_wheel_linear_velocity <= 0.0:
+        return linear_velocity, angular_velocity
+
+    half_track = wheel_separation / 2.0
+    left_velocity = linear_velocity - angular_velocity * half_track
+    right_velocity = linear_velocity + angular_velocity * half_track
+    requested_max = max(abs(left_velocity), abs(right_velocity))
+    if requested_max <= max_wheel_linear_velocity:
+        return linear_velocity, angular_velocity
+
+    scale = max_wheel_linear_velocity / requested_max
+    return linear_velocity * scale, angular_velocity * scale
+
+
 class HardwareProtectionLayer(AbstractPattern):
     """
     Protects the robot from crashing into obstacles.
@@ -48,7 +73,9 @@ class HardwareProtectionLayer(AbstractPattern):
                 ('hardware_protection_layer_front_attraction', 0.0),# 前方吸引因子
                 ('hardware_protection_layer_threshold', 0), # 阈值，用于检测障碍物的条件
                 ('max_translational_velocity', 0.0),    # 最大平移速度
-                ('max_rotational_velocity', 0.0)    # 最大旋转速度
+                ('max_rotational_velocity', 0.0),    # 最大旋转速度
+                ('wheel_separation', 0.0),
+                ('max_wheel_linear_velocity', 0.0),
             ])
 
         # 订阅机器人移动的命令（drive_command 话题）
@@ -89,6 +116,10 @@ class HardwareProtectionLayer(AbstractPattern):
             "max_translational_velocity").get_parameter_value().double_value
         self.param_max_rotational_velocity = self.get_parameter(
             "max_rotational_velocity").get_parameter_value().double_value
+        self.param_wheel_separation = self.get_parameter(
+            "wheel_separation").get_parameter_value().double_value
+        self.param_max_wheel_linear_velocity = self.get_parameter(
+            "max_wheel_linear_velocity").get_parameter_value().double_value
 
     def destroy_node(self):
         """Send a stop twist message and calls the super destroy method."""
@@ -116,6 +147,14 @@ class HardwareProtectionLayer(AbstractPattern):
                                                      self.param_threshold,
                                                      self.current_ranges,
                                                      self.angles)
+        limited_linear, limited_angular = limit_twist_to_wheel_speed(
+            direction.linear.x,
+            direction.angular.z,
+            self.param_wheel_separation,
+            self.param_max_wheel_linear_velocity,
+        )
+        direction.linear.x = limited_linear
+        direction.angular.z = limited_angular
         # 如果没有障碍物，obstacle_free 为 True，不需要避障；否则需要避障
         avoid_needed = not obstacle_free
 
