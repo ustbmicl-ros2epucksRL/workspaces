@@ -8,14 +8,16 @@
 
 ### 1.1 网络输入、输出维度总表
 
-| 任务 | ROS 2 节点/可执行文件 | 模型文件 | 固定网络输入维度 | 网络输出维度 | 主要 ROS 输入 |
-|---|---|---|---:|---:|---|
-| Transport | `transport_pattern` | `transport/best_actor.pt` | **11** | **2** | `/global_info`、`/swarm_command` |
-| Transport | `transport_pattern_neat` | `transport/transport_genome_package.pkl` | **11** | **2** | `/global_info`、`/swarm_command` |
-| RoundFlocking | `roundflocking_pattern` | `roundflocking/best_actor.pt` | **18** = 6 + 12 路 Lidar | **2** | `/global_info`、`/<robot>/scan`、`/swarm_command` |
-| RoundFlocking | `roundflocking_pattern_neat` | `roundflocking/flocking_genome_package_0.3.pkl` | **18** = 6 + 12 路 Lidar | **2** | `/global_info`、`/<robot>/scan`、`/swarm_command` |
-| Navigation | `navigation_pattern` | `navigation/best_actor.pt` | **18** = 6 + 12 路 Lidar | **2** | `/global_info`、`/<robot>/scan`、`/swarm_command` |
-| Navigation | `navigation_pattern_neat` | `navigation/navigation_genome_package.pkl` | **18** = 6 + 12 路 Lidar | **2** | `/global_info`、`/<robot>/scan`、`/swarm_command` |
+
+| 任务            | ROS 2 节点/可执行文件               | 模型文件                                            | 固定网络输入维度                | 网络输出维度 | 主要 ROS 输入                                       |
+| ------------- | ---------------------------- | ----------------------------------------------- | ----------------------- | ------ | ----------------------------------------------- |
+| Transport     | `transport_pattern`          | `transport/best_actor.pt`                       | **11**                  | **2**  | `/global_info`、`/swarm_command`                 |
+| Transport     | `transport_pattern_neat`     | `transport/transport_genome_package.pkl`        | **11**                  | **2**  | `/global_info`、`/swarm_command`                 |
+| RoundFlocking | `roundflocking_pattern`      | `roundflocking/best_actor.pt`                   | **18** = 6 + 12 路 Lidar | **2**  | `/global_info`、`/<robot>/scan`、`/swarm_command` |
+| RoundFlocking | `roundflocking_pattern_neat` | `roundflocking/flocking_genome_package_0.3.pkl` | **18** = 6 + 12 路 Lidar | **2**  | `/global_info`、`/<robot>/scan`、`/swarm_command` |
+| Navigation    | `navigation_pattern`         | `navigation/best_actor.pt`                      | **18** = 6 + 12 路 Lidar | **2**  | `/global_info`、`/<robot>/scan`、`/swarm_command` |
+| Navigation    | `navigation_pattern_neat`    | `navigation/navigation_genome_package.pkl`      | **18** = 6 + 12 路 Lidar | **2**  | `/global_info`、`/<robot>/scan`、`/swarm_command` |
+
 
 模型文件本身也确认了上述维度：
 
@@ -36,11 +38,13 @@
 
 ### 1.2 三类任务需要的物理信息
 
-| 任务 | 机器人自身状态 | 任务对象状态 | Lidar | 是否显式输入其他机器人状态 |
-|---|---|---|---|---|
-| Transport | 全局位置、平面速度、朝向（朝向用于转换或动作映射） | 包裹位置/速度、目标区位置 | 网络本身不需要 | 否；其他机器人只通过共同影响包裹间接耦合 |
-| RoundFlocking | 全局位置、平面速度、朝向 | 共同环绕目标的位置 | 12 个方向，训练输入上限仅 0.20 m | 没有结构化邻居状态；实物 Lidar 会把邻居当作普通回波 |
-| Navigation | 全局位置、平面速度、朝向、机器人 ID | 每台机器人对应目标的位置 | 12 个方向，PT 上限 0.35 m，NEAT 上限 0.20 m | 没有结构化邻居状态；邻居只能出现在 Lidar 中 |
+
+| 任务            | 机器人自身状态                   | 任务对象状态        | Lidar                              | 是否显式输入其他机器人状态                 |
+| ------------- | ------------------------- | ------------- | ---------------------------------- | ----------------------------- |
+| Transport     | 全局位置、平面速度、朝向（朝向用于转换或动作映射） | 包裹位置/速度、目标区位置 | 网络本身不需要                            | 否；其他机器人只通过共同影响包裹间接耦合          |
+| RoundFlocking | 全局位置、平面速度、朝向              | 共同环绕目标的位置     | 12 个方向，训练输入上限仅 0.20 m              | 没有结构化邻居状态；实物 Lidar 会把邻居当作普通回波 |
+| Navigation    | 全局位置、平面速度、朝向、机器人 ID       | 每台机器人对应目标的位置  | 12 个方向，PT 上限 0.35 m，NEAT 上限 0.20 m | 没有结构化邻居状态；邻居只能出现在 Lidar 中     |
+
 
 这里的“全局位置”目前不是由 `odom` 自动提供，而是 Webots Supervisor 直接读取所有实体真实状态后组成 `/global_info`。实机部署必须替换这一个关键仿真特权接口。
 
@@ -64,7 +68,7 @@ Transport 是例外：配置中的 bypass_protection=true
   -> pattern node 直接发布 /robot_N/cmd_vel
 ```
 
-公共 `MovementPattern` 根据 `bypass_protection` 选择 `/drive_command` 或 `/cmd_vel`，见 [`movement_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/movement_pattern.py#L21)。`/swarm_command` 为 START 时才运行控制回调，否则持续发布零速度，见 [`abstract_pattern.py`](../src/ros2swarm/ros2swarm/abstract_pattern.py#L28)。
+公共 `MovementPattern` 根据 `bypass_protection` 选择 `/drive_command` 或 `/cmd_vel`，见 `[movement_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/movement_pattern.py#L21)`。`/swarm_command` 为 START 时才运行控制回调，否则持续发布零速度，见 `[abstract_pattern.py](../src/ros2swarm/ros2swarm/abstract_pattern.py#L28)`。
 
 ### 2.1 `/global_info` 的当前 JSON 契约
 
@@ -97,7 +101,7 @@ Webots Supervisor 发布的数据结构是：
 }
 ```
 
-机器人朝向是**行优先 3x3 旋转矩阵**，节点按 `yaw = atan2(R10, R00)` 提取航向角。Webots 发布器用位置差分计算机器人和物体的全局 `vx, vy`，实现见 [`global_info_supervisor.py`](../src/launch_webots/launch_webots/global_info_supervisor.py#L412)。
+机器人朝向是**行优先 3x3 旋转矩阵**，节点按 `yaw = atan2(R10, R00)` 提取航向角。Webots 发布器用位置差分计算机器人和物体的全局 `vx, vy`，实现见 `[global_info_supervisor.py](../src/launch_webots/launch_webots/global_info_supervisor.py#L412)`。
 
 实机兼容发布器至少必须保持下列约束：
 
@@ -106,6 +110,8 @@ Webots Supervisor 发布的数据结构是：
 - 物体键必须匹配参数：`transport_box`、`target_zone`、`flocking_target` 或 `navigation_target_N`；
 - 位置单位为米，速度单位为 m/s，yaw 为绕 `+z` 的右手系角度；
 - 所有机器人、包裹和目标必须位于同一个稳定的世界坐标系中。
+
+
 
 ## 3. 统一记号和坐标变换
 
@@ -136,43 +142,47 @@ Transport 不读取 Lidar。它依赖自身状态、包裹状态和目标区状�
 
 ### 4.1 `transport_pattern`：PT 版，11 维
 
-观测由 [`vmas_transport_adapter.py`](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L39) 构造：
+观测由 `[vmas_transport_adapter.py](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L39)` 构造：
 
-| 索引 | 实际输入 | 坐标系 | 归一化/范围 | 含义 |
-|---:|---|---|---|---|
-| 0 | `x_r / s_p` | 世界 | `/ world_scale` | 机器人绝对 x |
-| 1 | `y_r / s_p` | 世界 | `/ world_scale` | 机器人绝对 y |
-| 2 | `vx_r / s_v` | 世界 | `velocity_scale<=0` 时 `s_v=s_p` | 机器人世界 x 速度 |
-| 3 | `vy_r / s_v` | 世界 | 同上 | 机器人世界 y 速度 |
-| 4 | `(x_b-x_t) / s_p` | 世界 | `/ world_scale` | 目标指向包裹的 x 分量 |
-| 5 | `(y_b-y_t) / s_p` | 世界 | `/ world_scale` | 目标指向包裹的 y 分量 |
-| 6 | `(x_b-x_r) / s_p` | 世界 | `/ world_scale` | 机器人指向包裹的 x 分量 |
-| 7 | `(y_b-y_r) / s_p` | 世界 | `/ world_scale` | 机器人指向包裹的 y 分量 |
-| 8 | `vx_b / s_v` | 世界 | `/ velocity scale` | 包裹世界 x 速度 |
-| 9 | `vy_b / s_v` | 世界 | 同上 | 包裹世界 y 速度 |
-| 10 | `on_goal` | 标量 | `0.0` 或 `1.0` | `||p_b-p_t|| < goal_threshold` |
 
-当前 e-puck/Burger YAML 都设 `world_scale=1.75`、`velocity_scale=0.0`，所以位置和速度都除以 1.75。注意这里**没有把速度或相对向量旋转到本体坐标系**。
+| 索引  | 实际输入              | 坐标系 | 归一化/范围                          | 含义            |
+| --- | ----------------- | --- | ------------------------------- | ------------- |
+| 0   | `x_r / s_p`       | 世界  | `/ world_scale`                 | 机器人绝对 x       |
+| 1   | `y_r / s_p`       | 世界  | `/ world_scale`                 | 机器人绝对 y       |
+| 2   | `vx_r / s_v`      | 世界  | `velocity_scale<=0` 时 `s_v=s_p` | 机器人世界 x 速度    |
+| 3   | `vy_r / s_v`      | 世界  | 同上                              | 机器人世界 y 速度    |
+| 4   | `(x_b-x_t) / s_p` | 世界  | `/ world_scale`                 | 目标指向包裹的 x 分量  |
+| 5   | `(y_b-y_t) / s_p` | 世界  | `/ world_scale`                 | 目标指向包裹的 y 分量  |
+| 6   | `(x_b-x_r) / s_p` | 世界  | `/ world_scale`                 | 机器人指向包裹的 x 分量 |
+| 7   | `(y_b-y_r) / s_p` | 世界  | `/ world_scale`                 | 机器人指向包裹的 y 分量 |
+| 8   | `vx_b / s_v`      | 世界  | `/ velocity scale`              | 包裹世界 x 速度     |
+| 9   | `vy_b / s_v`      | 世界  | 同上                              | 包裹世界 y 速度     |
+| 10  | `on_goal`         | 标量  | `0.0` 或 `1.0`                   | `             |
 
-PT 网络输出是归一化二维平面动作 `[a_x, a_y]`。默认 `action_mapping=heading` 将它解释为**世界坐标期望移动方向**，结合 `/global_info` 中的 yaw 转为差速底盘 `linear.x/angular.z`，见 [`vmas_transport_adapter.py`](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L129)。
+
+当前 e-puck YAML 设置 `world_scale=1.75`、`velocity_scale=0.0`，所以位置和速度都除以 1.75。注意这里**没有把速度或相对向量旋转到本体坐标系**。
+
+PT 网络输出是归一化二维平面动作 `[a_x, a_y]`。默认 `action_mapping=heading` 将它解释为**世界坐标期望移动方向**，结合 `/global_info` 中的 yaw 转为差速底盘 `linear.x/angular.z`，见 `[vmas_transport_adapter.py](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L129)`。
 
 ### 4.2 `transport_pattern_neat`：原生 NEAT 版，11 维
 
-原生 NEAT 使用相同字段数量，但从第 2 维开始大量使用本体坐标，构造见 [`transport_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L182)：
+原生 NEAT 使用相同字段数量，但从第 2 维开始大量使用本体坐标，构造见 `[transport_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L182)`：
 
-| 索引 | 实际输入 | 坐标系 | 归一化/范围 |
-|---:|---|---|---|
-| 0 | `x_r / s_p` | 世界 | `/ world_scale` |
-| 1 | `y_r / s_p` | 世界 | `/ world_scale` |
-| 2 | `R(-yaw) v_r` 的 x | 本体 | **不再除以 `world_scale`** |
-| 3 | `R(-yaw) v_r` 的 y | 本体 | 不缩放 |
-| 4 | `R(-yaw)(p_b-p_t)` 的 x `/s_p` | 本体 | `/ world_scale` |
-| 5 | `R(-yaw)(p_b-p_t)` 的 y `/s_p` | 本体 | `/ world_scale` |
-| 6 | `R(-yaw)(p_b-p_r)` 的 x `/s_p` | 本体 | `/ world_scale` |
-| 7 | `R(-yaw)(p_b-p_r)` 的 y `/s_p` | 本体 | `/ world_scale` |
-| 8 | `R(-yaw) v_b` 的 x | 本体 | 不缩放 |
-| 9 | `R(-yaw) v_b` 的 y | 本体 | 不缩放 |
-| 10 | `on_goal` | 标量 | `0.0` 或 `1.0` |
+
+| 索引  | 实际输入                          | 坐标系 | 归一化/范围                 |
+| --- | ----------------------------- | --- | ---------------------- |
+| 0   | `x_r / s_p`                   | 世界  | `/ world_scale`        |
+| 1   | `y_r / s_p`                   | 世界  | `/ world_scale`        |
+| 2   | `R(-yaw) v_r` 的 x             | 本体  | **不再除以** `world_scale` |
+| 3   | `R(-yaw) v_r` 的 y             | 本体  | 不缩放                    |
+| 4   | `R(-yaw)(p_b-p_t)` 的 x `/s_p` | 本体  | `/ world_scale`        |
+| 5   | `R(-yaw)(p_b-p_t)` 的 y `/s_p` | 本体  | `/ world_scale`        |
+| 6   | `R(-yaw)(p_b-p_r)` 的 x `/s_p` | 本体  | `/ world_scale`        |
+| 7   | `R(-yaw)(p_b-p_r)` 的 y `/s_p` | 本体  | `/ world_scale`        |
+| 8   | `R(-yaw) v_b` 的 x             | 本体  | 不缩放                    |
+| 9   | `R(-yaw) v_b` 的 y             | 本体  | 不缩放                    |
+| 10  | `on_goal`                     | 标量  | `0.0` 或 `1.0`          |
+
 
 网络的两个 sigmoid 输出直接映射为：
 
@@ -181,7 +191,7 @@ linear.x = (output[0] * 2 - 1) * max_linear_velocity
 angular.z = (output[1] * 2 - 1) * max_angular_velocity
 ```
 
-这和 PT 版的“二维世界平面动作再做航向转换”不是同一种输出语义，见 [`transport_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L312)。
+这和 PT 版的“二维世界平面动作再做航向转换”不是同一种输出语义，见 `[transport_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L312)`。
 
 ### 4.3 Transport 实机所需传感与状态估计
 
@@ -201,21 +211,23 @@ angular.z = (output[1] * 2 - 1) * max_angular_velocity
 
 ### 5.1 `roundflocking_pattern`：PT 版，18 维
 
-输入由节点内部 `_get_observation()` 构造，见 [`roundflocking_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L233)：
+输入由节点内部 `_get_observation()` 构造，见 `[roundflocking_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L233)`：
 
-| 索引 | 实际输入 | 坐标系 | 当前默认处理 |
-|---:|---|---|---|
-| 0 | `x_r / s_p` | 世界 | `target_centric_position=false` 时为绝对 x |
-| 1 | `y_r / s_p` | 世界 | 绝对 y |
-| 2 | `R(-yaw) v_r` 的 x `/s_v` | 本体 | `velocity_scale=1.0` |
-| 3 | `R(-yaw) v_r` 的 y `/s_v` | 本体 | `velocity_scale=1.0` |
-| 4 | `R(-yaw)(p_r-p_t)` 的 x `/s_p` | 本体 | 目标指向机器人的相对 x |
-| 5 | `R(-yaw)(p_r-p_t)` 的 y `/s_p` | 本体 | 目标指向机器人的相对 y |
-| 6..17 | 12 路 Lidar 原始距离 | 雷达/本体方向 | 每维裁剪到 `[0, 0.20]` m |
 
-若把 `target_centric_position` 改为 true，索引 0、1 会从机器人绝对位置变成 `(p_r-p_t)/s_p`。当前 e-puck/Burger 配置均为 false，不能在不重新验证模型的情况下随意修改。
+| 索引    | 实际输入                          | 坐标系     | 当前默认处理                                 |
+| ----- | ----------------------------- | ------- | -------------------------------------- |
+| 0     | `x_r / s_p`                   | 世界      | `target_centric_position=false` 时为绝对 x |
+| 1     | `y_r / s_p`                   | 世界      | 绝对 y                                   |
+| 2     | `R(-yaw) v_r` 的 x `/s_v`      | 本体      | `velocity_scale=1.0`                   |
+| 3     | `R(-yaw) v_r` 的 y `/s_v`      | 本体      | `velocity_scale=1.0`                   |
+| 4     | `R(-yaw)(p_r-p_t)` 的 x `/s_p` | 本体      | 目标指向机器人的相对 x                           |
+| 5     | `R(-yaw)(p_r-p_t)` 的 y `/s_p` | 本体      | 目标指向机器人的相对 y                           |
+| 6..17 | 12 路 Lidar 原始距离               | 雷达/本体方向 | 每维裁剪到 `[0, 0.20]` m                    |
 
-Lidar 当前按数组长度均分 12 段，并取每段中间的一束；它**忽略 `LaserScan.angle_min` 和 `angle_increment`**，见 [`roundflocking_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L178)。因此它隐含假设 `ranges[0]` 对应训练侧的机器人 `+x` 方向，并且后续数组方向与训练一致。
+
+若把 `target_centric_position` 改为 true，索引 0、1 会从机器人绝对位置变成 `(p_r-p_t)/s_p`。当前 e-puck 配置为 false，不能在不重新验证模型的情况下随意修改。
+
+Lidar 当前按数组长度均分 12 段，并取每段中间的一束；它**忽略** `LaserScan.angle_min` **和** `angle_increment`，见 `[roundflocking_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L178)`。因此它隐含假设 `ranges[0]` 对应训练侧的机器人 `+x` 方向，并且后续数组方向与训练一致。
 
 PT 版的实际动作还不是纯网络输出。默认启用环半径稳定器：
 
@@ -226,23 +238,25 @@ ring_radial_gain = 6.0
 ring_tangential_gain = 1.0
 ```
 
-实现见 [`roundflocking_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L321)。所以 PT 实机表现高度依赖目标位置和 yaw 的准确度；它并非只部署 checkpoint 就能复现。
+实现见 `[roundflocking_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L321)`。所以 PT 实机表现高度依赖目标位置和 yaw 的准确度；它并非只部署 checkpoint 就能复现。
 
 ### 5.2 `roundflocking_pattern_neat`：原生 NEAT 版，18 维
 
 输入顺序为：
 
-| 索引 | 实际输入 | 坐标系 | 当前默认处理 |
-|---:|---|---|---|
-| 0 | `x_r / s_p` | 世界 | 绝对 x |
-| 1 | `y_r / s_p` | 世界 | 绝对 y |
-| 2 | `R(-yaw) v_r` 的 x | 本体 | 不缩放 |
-| 3 | `R(-yaw) v_r` 的 y | 本体 | 不缩放 |
-| 4 | `R(-yaw)(p_r-p_t)` 的 x `/s_p` | 本体 | 目标指向机器人 |
-| 5 | `R(-yaw)(p_r-p_t)` 的 y `/s_p` | 本体 | 同上 |
-| 6..17 | 12 路 Lidar 原始距离 | 按扫描数组顺序 | `[0, lidar_input_max_range]`，当前为 `[0, 0.20]` m |
 
-实现见 [`roundflocking_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L251)。当前代码已明确区分“物理雷达量程”和“网络训练输入量程”：e-puck 雷达即使可测 12 m、Burger LDS-01 即使可测 3.5 m，送入网络的最大值仍是 0.20 m，见 [`roundflocking_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L45)。
+| 索引    | 实际输入                          | 坐标系     | 当前默认处理                                         |
+| ----- | ----------------------------- | ------- | ---------------------------------------------- |
+| 0     | `x_r / s_p`                   | 世界      | 绝对 x                                           |
+| 1     | `y_r / s_p`                   | 世界      | 绝对 y                                           |
+| 2     | `R(-yaw) v_r` 的 x             | 本体      | 不缩放                                            |
+| 3     | `R(-yaw) v_r` 的 y             | 本体      | 不缩放                                            |
+| 4     | `R(-yaw)(p_r-p_t)` 的 x `/s_p` | 本体      | 目标指向机器人                                        |
+| 5     | `R(-yaw)(p_r-p_t)` 的 y `/s_p` | 本体      | 同上                                             |
+| 6..17 | 12 路 Lidar 原始距离               | 按扫描数组顺序 | `[0, lidar_input_max_range]`，当前为 `[0, 0.20]` m |
+
+
+实现见 `[roundflocking_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L251)`。当前代码已明确区分“物理雷达量程”和“网络训练输入量程”：e-puck2 扩展雷达即使具有更大量程，送入网络的最大值仍是 0.20 m，见 `[roundflocking_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L45)`。
 
 其 Lidar 同样按数组索引分段取中间束，不使用角度元数据。两个网络输出被解释为本体平面动作 `[vx, vy]`，再通过期望方向角转成差速底盘命令。原生 NEAT 版没有 PT 版的环半径外环。
 
@@ -263,17 +277,19 @@ ring_tangential_gain = 1.0
 
 ### 6.1 `navigation_pattern`：PT 版，18 维
 
-观测由 [`vmas_planar_adapter.py`](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L26) 构造：
+观测由 `[vmas_planar_adapter.py](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L26)` 构造：
 
-| 索引 | 实际输入 | 坐标系 | 当前默认处理 |
-|---:|---|---|---|
-| 0 | `x_r / s_p` | 世界 | `/ 1.75` |
-| 1 | `y_r / s_p` | 世界 | `/ 1.75` |
-| 2 | `vx_r / s_v` | 世界 | `velocity_scale<=0`，所以 `/1.75` |
-| 3 | `vy_r / s_v` | 世界 | 同上 |
-| 4 | `(x_r-x_t) / s_p` | 世界 | 目标指向机器人 |
-| 5 | `(y_r-y_t) / s_p` | 世界 | 同上 |
-| 6..17 | `max_range - sampled_distance[i]` | 机器人 0、30、...、330 度 | 当前 `max_range=0.35` m |
+
+| 索引    | 实际输入                              | 坐标系                | 当前默认处理                         |
+| ----- | --------------------------------- | ------------------ | ------------------------------ |
+| 0     | `x_r / s_p`                       | 世界                 | `/ 1.75`                       |
+| 1     | `y_r / s_p`                       | 世界                 | `/ 1.75`                       |
+| 2     | `vx_r / s_v`                      | 世界                 | `velocity_scale<=0`，所以 `/1.75` |
+| 3     | `vy_r / s_v`                      | 世界                 | 同上                             |
+| 4     | `(x_r-x_t) / s_p`                 | 世界                 | 目标指向机器人                        |
+| 5     | `(y_r-y_t) / s_p`                 | 世界                 | 同上                             |
+| 6..17 | `max_range - sampled_distance[i]` | 机器人 0、30、...、330 度 | 当前 `max_range=0.35` m          |
+
 
 PT Navigation 的 Lidar 不是原始距离，而是“障碍接近量”：
 
@@ -282,23 +298,25 @@ PT Navigation 的 Lidar 不是原始距离，而是“障碍接近量”：
 0.35 代表障碍距离接近 0 m
 ```
 
-这里的采样器是六个节点中较稳健的一个：它使用 `angle_min` 和 `angle_increment`，主动寻找机器人 `+x` 起始的 0、30、...、330 度方向，见 [`vmas_planar_adapter.py`](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L79)。
+这里的采样器是六个节点中较稳健的一个：它使用 `angle_min` 和 `angle_increment`，主动寻找机器人 `+x` 起始的 0、30、...、330 度方向，见 `[vmas_planar_adapter.py](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L79)`。
 
-网络输出 `[a_x, a_y]` 按世界平面向量处理，结合 yaw 经默认 `heading` 映射转成差速速度，见 [`navigation_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern.py#L183)。
+网络输出 `[a_x, a_y]` 按世界平面向量处理，结合 yaw 经默认 `heading` 映射转成差速速度，见 `[navigation_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern.py#L183)`。
 
 ### 6.2 `navigation_pattern_neat`：原生 NEAT 版，18 维
 
-输入构造见 [`navigation_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L243)：
+输入构造见 `[navigation_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L243)`：
 
-| 索引 | 实际输入 | 坐标系 | 当前默认处理 |
-|---:|---|---|---|
-| 0 | `x_r / s_p` | 世界 | `/ 1.75` |
-| 1 | `y_r / s_p` | 世界 | `/ 1.75` |
-| 2 | `R(-yaw) v_r` 的 x | 本体 | 不缩放 |
-| 3 | `R(-yaw) v_r` 的 y | 本体 | 不缩放 |
-| 4 | `R(-yaw)(p_r-p_t)` 的 x `/s_p` | 本体 | 目标指向机器人 |
-| 5 | `R(-yaw)(p_r-p_t)` 的 y `/s_p` | 本体 | 同上 |
+
+| 索引    | 实际输入                              | 坐标系     | 当前默认处理                |
+| ----- | --------------------------------- | ------- | --------------------- |
+| 0     | `x_r / s_p`                       | 世界      | `/ 1.75`              |
+| 1     | `y_r / s_p`                       | 世界      | `/ 1.75`              |
+| 2     | `R(-yaw) v_r` 的 x                 | 本体      | 不缩放                   |
+| 3     | `R(-yaw) v_r` 的 y                 | 本体      | 不缩放                   |
+| 4     | `R(-yaw)(p_r-p_t)` 的 x `/s_p`     | 本体      | 目标指向机器人               |
+| 5     | `R(-yaw)(p_r-p_t)` 的 y `/s_p`     | 本体      | 同上                    |
 | 6..17 | `max_range - sampled_distance[i]` | 按扫描数组顺序 | 当前 `max_range=0.20` m |
+
 
 该节点按数组均分扇区并取中间束，忽略 Lidar 的角度元数据。输出 `[vx, vy]` 被当作本体平面期望方向，再转成差速 `Twist`。
 
@@ -318,27 +336,34 @@ PT Navigation 的 Lidar 不是原始距离，而是“障碍接近量”：
 
 ## 7. 配置参数对比
 
+
+
 ### 7.1 当前速度上限
 
-| 平台/任务 | Transport PT/NEAT | RoundFlocking PT/NEAT | Navigation PT/NEAT |
-|---|---|---|---|
-| e-puck | `0.12 m/s`, `1.0 rad/s` | `0.12 m/s`, `1.0 rad/s` | `0.12 m/s`, `1.0 rad/s` |
-| Burger | `0.15 m/s`, `0.8 rad/s` | `0.15 m/s`, `0.8 rad/s` | `0.15 m/s`, `1.5 rad/s` |
 
-这些是节点输出限幅，不是对每个轮电机的最终强制限幅。HardwareProtectionLayer 只在生成避障方向时调用轮速联合限制；障碍为空时会原样转发神经网络命令，见 [`hardware_protection_layer.py`](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L163)。实机底层仍需独立的轮速/电流/加速度限制和命令超时。
+| 平台/任务  | Transport PT/NEAT       | RoundFlocking PT/NEAT   | Navigation PT/NEAT      |
+| ------ | ----------------------- | ----------------------- | ----------------------- |
+| e-puck | `0.12 m/s`, `1.0 rad/s` | `0.12 m/s`, `1.0 rad/s` | `0.12 m/s`, `1.0 rad/s` |
+
+
+这些是节点输出限幅，不是对每个轮电机的最终强制限幅。HardwareProtectionLayer 只在生成避障方向时调用轮速联合限制；障碍为空时会原样转发神经网络命令，见 `[hardware_protection_layer.py](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L163)`。实机底层仍需独立的轮速/电流/加速度限制和命令超时。
 
 ### 7.2 当前 Lidar 网络语义
 
-| 控制器 | 维度 | 网络截断上限 | 送入网络的值 | 是否使用 `LaserScan` 角度元数据 |
-|---|---:|---:|---|---|
-| RoundFlocking PT | 12 | 0.20 m | 原始距离 `d` | 否 |
-| RoundFlocking NEAT | 12 | 0.20 m | 原始距离 `d` | 否 |
-| Navigation PT | 12 | 0.35 m | `0.35-d` | 是 |
-| Navigation NEAT | 12 | 0.20 m | `0.20-d` | 否 |
+
+| 控制器                | 维度  | 网络截断上限 | 送入网络的值   | 是否使用 `LaserScan` 角度元数据 |
+| ------------------ | --- | ------ | -------- | ---------------------- |
+| RoundFlocking PT   | 12  | 0.20 m | 原始距离 `d` | 否                      |
+| RoundFlocking NEAT | 12  | 0.20 m | 原始距离 `d` | 否                      |
+| Navigation PT      | 12  | 0.35 m | `0.35-d` | 是                      |
+| Navigation NEAT    | 12  | 0.20 m | `0.20-d` | 否                      |
+
 
 不得把物理雷达的 `range_max` 直接替换上述训练上限，也不得把原始距离和反向距离混用。
 
 ## 8. 从 Webots 到实机：必须替换的接口
+
+
 
 ### 8.1 用实机状态桥替代 Webots Supervisor
 
@@ -408,13 +433,15 @@ RoundFlocking-> clipped_distance
 - 加速度和 jerk 受限，避免仿真中瞬时动作在实物上打滑；
 - recurrent 网络的 10 Hz 输出与底盘控制器频率之间有确定的保持策略。
 
+
+
 ## 9. 当前实现中必须正视的风险
 
 以下不是泛化建议，而是当前代码的具体行为。
 
 ### 9.1 P0：Transport 绕过 HardwareProtectionLayer
 
-e-puck 和 Burger 的两个 Transport YAML 都设了 `bypass_protection: true`，因为机器人需要接触包裹；`bringup_patterns.launch.py` 也会对名称包含 `transport_pattern` 的任务跳过 HardwareProtectionLayer，见 [`bringup_patterns.launch.py`](../src/ros2swarm/launch/bringup_patterns.launch.py#L65)。
+e-puck Transport YAML 设置了 `bypass_protection: true`，因为机器人需要接触包裹；实机入口会覆盖该参数并让新的 safety supervisor 独占最终 `cmd_vel`。
 
 这意味着 Transport 神经网络命令直接进入 `/cmd_vel`。实机至少需要独立于行为控制器的：急停、保险杠/碰撞条、场地边界、人员检测、速度/加速度/轮速限制、定位失效停车和通信失效停车。安全层应允许“接触被跟踪包裹”，而不是关闭全部碰撞保护。
 
@@ -429,11 +456,11 @@ e-puck 和 Burger 的两个 Transport YAML 都设了 `bypass_protection: true`�
 - 在底盘驱动中保留更低一层的独立命令 watchdog；
 - 增加测试，覆盖 START 运动、STOP 停车、Lidar 未就绪和 Lidar 中断。
 
-相关包装逻辑见 [`hardware_protection_layer.py`](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L81) 和 [`abstract_pattern.py`](../src/ros2swarm/ros2swarm/abstract_pattern.py#L47)。
+相关包装逻辑见 `[hardware_protection_layer.py](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L81)` 和 `[abstract_pattern.py](../src/ros2swarm/ros2swarm/abstract_pattern.py#L47)`。
 
 ### 9.3 P0：原生 Transport/Navigation 在输入缺失时使用随机观测
 
-`transport_pattern_neat` 和 `navigation_pattern_neat` 在等待 `/global_info`、等待 Lidar 或部分查找失败时会生成 `[-1,1]` 随机向量并继续推理。Navigation 相关逻辑见 [`navigation_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L256)，Transport 相关逻辑见 [`transport_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L200)。
+`transport_pattern_neat` 和 `navigation_pattern_neat` 在等待 `/global_info`、等待 Lidar 或部分查找失败时会生成 `[-1,1]` 随机向量并继续推理。Navigation 相关逻辑见 `[navigation_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L256)`，Transport 相关逻辑见 `[transport_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L200)`。
 
 这在仿真中可用于早期测试，但不适用于实机：不仅会产生随机动作，还会污染 recurrent state。实机前应改为“观测不完整、非法或过期时发布零速度，且不调用网络”。RoundFlocking NEAT 当前已经采用这种停车行为。
 
@@ -450,6 +477,8 @@ e-puck 和 Burger 的两个 Transport YAML 都设了 `bypass_protection: true`�
 - 机器人状态、目标状态、包裹状态的 validity；
 - 位置跳变、速度异常、非有限数检查；
 - 任一条件失败时的零速度和 recurrent state 处理策略。
+
+
 
 ### 9.5 P0：三个节点的 Lidar 扇区方向可能在实机上错位
 
@@ -470,22 +499,21 @@ RoundFlocking PT、RoundFlocking NEAT、Navigation NEAT 只按数组索引取样
 - STOP 后再次 START 是否清除 `_goal_reached`；
 - 多机器人集中推理时，每个机器人必须有独立 recurrent state。
 
-### 9.8 P1：实机 launch 路径尚未与当前仿真路径对齐
 
-当前仓库已有 `bringup_robot.launch.py` 和 `start_robot.sh`，但部署前需要修正/验证：
 
-- `bringup_patterns.launch.py` 的 `use_sim_time` 默认是 `True`，实机必须为 false；
-- `start_robot.sh` 传入 `sensor_type:=lidar`，但 `bringup_robot.launch.py` 当前没有解析并转发该参数；
-- e-puck 在 `bringup_robot.launch.py` 中被设为 `robot_node=False`，不会启动任何实物底盘驱动，必须由外部 bringup 提供 `/scan` 和 `/cmd_vel`；
-- TurtleBot3 串口默认固定为 `/dev/ttyACM0` 和 `/dev/ttyUSB0`，需要用 udev 规则稳定设备名；
-- 旧交付脚本仍 source ROS 2 Foxy，而 README 和当前环境主要按 Humble 使用；
-- 仿真中的 `robot_state_publisher` 空壳 URDF/由 Webots 注入 URDF 的逻辑不能照搬到实机。
+### 9.8 e-puck2 实机 launch
 
-在这些 launch 问题修复前，不应把 Webots 启动命令简单替换成 `bringup_robot.launch.py` 就直接上电运行。
+e-puck2 统一使用：
+
+- `epuck2_physical.launch.py`：底盘、360 度 Lidar、策略适配和安全链；
+- `epuck2_overhead_tracking.launch.py`：二维码检测和全局状态；
+- `epuck2_mock_chain.launch.py`：无硬件闭环测试。
+
+这些入口显式使用 `use_sim_time=false`，并能拆分为中央策略与 Pi-puck 本地驱动/安全。Webots 保持原有独立启动路径。
 
 ### 9.9 P1：运行依赖没有在包元数据中声明
 
-[`setup.py`](../src/ros2swarm/setup.py#L101) 的 `install_requires` 只有 `setuptools`，[`package.xml`](../src/ros2swarm/package.xml#L1) 也缺少运行依赖。实机镜像必须显式安装并锁定至少：
+`[setup.py](../src/ros2swarm/setup.py#L101)` 的 `install_requires` 只有 `setuptools`，`[package.xml](../src/ros2swarm/package.xml#L1)` 也缺少运行依赖。实机镜像必须显式安装并锁定至少：
 
 - 与目标 ROS 2 发行版匹配的 `rclpy`、消息包、launch 依赖；
 - `numpy`；
@@ -533,6 +561,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 
 ## 11. 推荐部署步骤
 
+
+
 ### 阶段 0：冻结仿真基线
 
 1. 为每种任务和 PT/NEAT 各录一包成功 Webots 数据；
@@ -541,6 +571,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 4. 统计每一维的 min/max/均值/标准差和控制延迟；
 5. 保存模型 SHA-256、配置和代码 commit，避免实机测试中模型悄然变化。
 
+
+
 ### 阶段 1：只验证底盘，不运行网络
 
 1. 设置实机 `use_sim_time=false`；
@@ -548,6 +580,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 3. 用极低速手动 Twist 验证线速度/角速度正负号；
 4. 测量实际轮距、轮径、最大稳定轮速、制动距离；
 5. 验证物理急停和远程 STOP 在网络中断时仍有效。
+
+
 
 ### 阶段 2：验证 `/global_info`，网络只做 shadow inference
 
@@ -558,6 +592,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 5. 在 12 个方向放置单一障碍，验证 Lidar 维度索引；
 6. 比较实机观测分布和阶段 0 仿真分布，超出训练范围时先定位原因，不直接裁剪掩盖问题。
 
+
+
 ### 阶段 3：单机器人、低速、空旷场地
 
 1. 将速度上限降至当前配置的 20%--30%；
@@ -566,11 +602,15 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 4. 分别测试目标在前后左右、机器人不同初始 yaw；
 5. 检查 recurrent state 在 STOP/START 后是否符合预期。
 
+
+
 ### 阶段 4：按任务逐步增加复杂度
 
 - Navigation：先单机器人静态障碍，再动态障碍，最后多机器人；
 - RoundFlocking：先单机器人绕目标，再 2 台，逐步增加数量；
 - Transport：先单机器人/轻质假包裹，再多机器人；最后才使用真实负载，并监控电机电流、打滑和包裹跟踪遮挡。
+
+
 
 ### 阶段 5：必要时做再训练或适配训练
 
@@ -583,7 +623,11 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 - 不同场地尺寸、坐标原点和目标位置；
 - 安全层对动作的实际修改。
 
+
+
 ## 12. 上车前验收清单
+
+
 
 ### 12.1 网络与观测
 
@@ -596,6 +640,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 - [ ] 模型加载后实际报告的输入/输出维度和文档一致；
 - [ ] 每个机器人拥有独立 recurrent state，新任务能按定义 reset。
 
+
+
 ### 12.2 Lidar
 
 - [ ] `/robot_N/scan` 为 360 度有效扫描，frame 与 `base_link` 标定正确；
@@ -606,6 +652,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 - [ ] 雷达不会持续看到机器人自身外壳或支架；
 - [ ] 实物 Lidar 频率、延迟和丢包在安全阈值内。
 
+
+
 ### 12.3 ROS 2、时钟和通信
 
 - [ ] 所有实机节点 `use_sim_time=false`，没有等待不存在的 `/clock`；
@@ -614,6 +662,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 - [ ] Wi-Fi 断开、中央状态桥退出、Lidar 退出时机器人均在规定时间内停车；
 - [ ] QoS 经实网测试，没有把高丢包误当正常状态；
 - [ ] CPU/内存/温度满足 PT 或 NEAT runtime 长时间运行。
+
+
 
 ### 12.4 底盘和安全
 
@@ -625,7 +675,11 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 - [ ] Transport 虽允许接触包裹，但人员、墙体、越界和定位失效仍能触发安全停车；
 - [ ] Navigation 由任务管理器明确执行到达停车，因为当前节点不使用 `goal_threshold` 停车。
 
+
+
 ## 13. 建议的代码改造优先级
+
+
 
 ### 第一优先级：没有这些不要驱动实物
 
@@ -637,6 +691,8 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 6. 将三个索引式 Lidar sampler 改为统一的、基于角度和 TF 的采样器；
 7. 修复实机 launch 的 `use_sim_time`、`sensor_type` 转发和驱动启动路径。
 
+
+
 ### 第二优先级：保证任务可以重复和诊断
 
 1. 在任务 START/STOP 边界管理网络 reset 和 `_goal_reached`；
@@ -646,12 +702,16 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 5. 用 typed message 替代 JSON，同时保留兼容桥；
 6. 补全 ROS/Python 运行依赖并建立可复现的 ARM/x86 镜像。
 
+
+
 ### 第三优先级：提高 sim-to-real 表现
 
 1. 用实物录包回放测试所有 observation builder；
 2. 标定坐标、速度滤波、Lidar 噪声和动作延迟；
 3. 在 Webots/训练环境注入实测噪声与动力学；
 4. 若仍有显著域差异，重新训练或微调模型，不用安全层替代策略能力。
+
+
 
 ## 14. 最终判断
 
@@ -661,16 +721,17 @@ Transport 也应经过 `safety supervisor`，只是该安全层需要识别允�
 
 ## 15. 关键源码索引
 
-- PT checkpoint 载入、维度校验和 recurrent runtime：[`vmas_actor_policy.py`](../src/ros2swarm/ros2swarm/vmas_actor_policy.py#L24)
-- Transport PT 观测与动作适配：[`vmas_transport_adapter.py`](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L39)
-- Navigation PT 观测和角度感知 Lidar 采样：[`vmas_planar_adapter.py`](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L26)
-- Transport PT 节点：[`transport_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern.py#L27)
-- Transport NEAT 节点：[`transport_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L37)
-- RoundFlocking PT 节点：[`roundflocking_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L42)
-- RoundFlocking NEAT 节点：[`roundflocking_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L80)
-- Navigation PT 节点：[`navigation_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern.py#L34)
-- Navigation NEAT 节点：[`navigation_pattern_neat.py`](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L38)
-- Webots `/global_info` 生成：[`global_info_supervisor.py`](../src/launch_webots/launch_webots/global_info_supervisor.py#L412)
-- 行为输出 topic 选择：[`movement_pattern.py`](../src/ros2swarm/ros2swarm/movement_pattern/movement_pattern.py#L18)
-- HardwareProtectionLayer：[`hardware_protection_layer.py`](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L49)
-- 实机/行为 bringup：[`bringup_robot.launch.py`](../src/ros2swarm/launch/bringup_robot.launch.py#L26)、[`bringup_patterns.launch.py`](../src/ros2swarm/launch/bringup_patterns.launch.py#L30)
+- PT checkpoint 载入、维度校验和 recurrent runtime：`[vmas_actor_policy.py](../src/ros2swarm/ros2swarm/vmas_actor_policy.py#L24)`
+- Transport PT 观测与动作适配：`[vmas_transport_adapter.py](../src/ros2swarm/ros2swarm/vmas_transport_adapter.py#L39)`
+- Navigation PT 观测和角度感知 Lidar 采样：`[vmas_planar_adapter.py](../src/ros2swarm/ros2swarm/vmas_planar_adapter.py#L26)`
+- Transport PT 节点：`[transport_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern.py#L27)`
+- Transport NEAT 节点：`[transport_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/transport_pattern_neat.py#L37)`
+- RoundFlocking PT 节点：`[roundflocking_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern.py#L42)`
+- RoundFlocking NEAT 节点：`[roundflocking_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/roundflocking_pattern_neat.py#L80)`
+- Navigation PT 节点：`[navigation_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern.py#L34)`
+- Navigation NEAT 节点：`[navigation_pattern_neat.py](../src/ros2swarm/ros2swarm/movement_pattern/basic/navigation_pattern_neat.py#L38)`
+- Webots `/global_info` 生成：`[global_info_supervisor.py](../src/launch_webots/launch_webots/global_info_supervisor.py#L412)`
+- 行为输出 topic 选择：`[movement_pattern.py](../src/ros2swarm/ros2swarm/movement_pattern/movement_pattern.py#L18)`
+- HardwareProtectionLayer：`[hardware_protection_layer.py](../src/ros2swarm/ros2swarm/hardware_protection_layer.py#L49)`
+- e-puck2 实机 bringup：`[epuck2_physical.launch.py](../src/ros2swarm/launch/epuck2_physical.launch.py)`、`[epuck2_overhead_tracking.launch.py](../src/ros2swarm/launch/epuck2_overhead_tracking.launch.py)`
+- 无硬件闭环：`[epuck2_mock_chain.launch.py](../src/ros2swarm/launch/epuck2_mock_chain.launch.py)`

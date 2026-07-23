@@ -19,6 +19,7 @@ import os
 import pickle
 import numpy as np
 import json
+import time
 
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
@@ -63,6 +64,8 @@ class NavigationPattern(MovementPattern):
                 ('collisions', True),  # 是否启用碰撞检测（添加激光雷达观测）
                 ('n_lidar_rays', 12),  # 激光雷达采样区间数
                 ('max_range', 0.2),  # 激光雷达最大范围
+                ('real_robot_mode', False),
+                ('data_timeout', 0.30),
             ])
 
         # 获取参数值
@@ -86,6 +89,10 @@ class NavigationPattern(MovementPattern):
             'n_lidar_rays').get_parameter_value().integer_value
         self.max_range = self.get_parameter(
             'max_range').get_parameter_value().double_value
+        self.real_robot_mode = self.get_parameter(
+            'real_robot_mode').get_parameter_value().bool_value
+        self.data_timeout = self.get_parameter(
+            'data_timeout').get_parameter_value().double_value
 
         # NEAT网络
         self.network = None
@@ -97,6 +104,10 @@ class NavigationPattern(MovementPattern):
         self.lidar_data = None
         self.robot_name = self.get_namespace().strip('/')
         self._missing_data_warn_counts = {}
+        self._global_info_received_at = None
+        self._lidar_received_at = None
+        self._distance_to_target = None
+        self._goal_reached = False
         
         # 从机器人名称中提取ID
         self.robot_id = self._extract_robot_id(self.robot_name)
@@ -201,6 +212,7 @@ class NavigationPattern(MovementPattern):
         """接收全局信息"""
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as e:
             self.get_logger().error(f'解析全局信息失败: {e}')
 
@@ -239,6 +251,7 @@ class NavigationPattern(MovementPattern):
             sampled_ranges.append(ranges[mid_idx])
         
         self.lidar_data = np.array(sampled_ranges)
+        self._lidar_received_at = time.monotonic()
 
     def _get_observation(self):
         """
@@ -255,11 +268,30 @@ class NavigationPattern(MovementPattern):
         """
         if self.global_info is None:
             self.get_logger().debug('等待全局信息...')
+            if self.real_robot_mode:
+                return None
             return self._get_random_observation()
         
         if self.collisions and self.lidar_data is None:
             self.get_logger().debug('等待激光雷达数据...')
+            if self.real_robot_mode:
+                return None
             return self._get_random_observation()
+        if self.real_robot_mode:
+            now = time.monotonic()
+            if (
+                self._global_info_received_at is None
+                or now - self._global_info_received_at > self.data_timeout
+                or (
+                    self.collisions
+                    and (
+                        self._lidar_received_at is None
+                        or now - self._lidar_received_at > self.data_timeout
+                    )
+                )
+            ):
+                self._warn_missing_data('导航输入已过期')
+                return None
         
         try:
             robots = self.global_info.get('robots', {})
@@ -269,6 +301,8 @@ class NavigationPattern(MovementPattern):
             robot_info = robots.get(self.robot_name, None)
             if robot_info is None:
                 self._warn_missing_data(f'未找到机器人 {self.robot_name} 的信息')
+                if self.real_robot_mode:
+                    return None
                 return self._get_random_observation()
             
             robot_x = robot_info['position']['x']
@@ -302,8 +336,15 @@ class NavigationPattern(MovementPattern):
                 rel_y = sin_yaw * rel_x_global + cos_yaw * rel_y_global
                 
                 goal_poses.extend([rel_x / scale, rel_y / scale])
+                self._distance_to_target = float(np.hypot(
+                    rel_x_global,
+                    rel_y_global,
+                ))
             else:
                 self._warn_missing_data(f'未找到目标 {self.target_def_name}')
+                self._distance_to_target = None
+                if self.real_robot_mode:
+                    return None
                 goal_poses.extend([0.0, 0.0])
             
             # 构建观测向量（匹配VMAS navigation任务的观测结构）
@@ -334,6 +375,8 @@ class NavigationPattern(MovementPattern):
             
         except Exception as e:
             self.get_logger().error(f'获取观测失败: {str(e)}')
+            if self.real_robot_mode:
+                return None
             return self._get_random_observation()
 
     def _get_random_observation(self):
@@ -344,11 +387,26 @@ class NavigationPattern(MovementPattern):
         """控制回调函数，使用NEAT网络计算并发布控制命令"""
         if self.network is None:
             self._warn_missing_data('NEAT网络未初始化，无法控制')
+            if self.real_robot_mode:
+                self.command_publisher.publish(Twist())
             return
 
         try:
             # 获取观测
             observation = self._get_observation()
+            if observation is None:
+                self.command_publisher.publish(Twist())
+                return
+            if self.real_robot_mode and (
+                self._goal_reached
+                or (
+                    self._distance_to_target is not None
+                    and self._distance_to_target <= self.goal_threshold
+                )
+            ):
+                self._goal_reached = True
+                self.command_publisher.publish(Twist())
+                return
             
             # 通过NEAT网络计算输出
             output = self.network.activate(observation)
@@ -389,6 +447,16 @@ class NavigationPattern(MovementPattern):
 
         except Exception as e:
             self.get_logger().error(f'NEAT网络推理失败: {str(e)}')
+            if self.real_robot_mode:
+                self.command_publisher.publish(Twist())
+
+    def on_swarm_start(self):
+        if not self.real_robot_mode:
+            return
+        self._goal_reached = False
+        self._distance_to_target = None
+        if self.network is not None:
+            self.network.reset()
 
 
 def main(args=None):

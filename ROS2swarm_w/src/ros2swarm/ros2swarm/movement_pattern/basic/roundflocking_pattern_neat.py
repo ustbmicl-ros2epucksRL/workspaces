@@ -17,6 +17,7 @@ import os
 import pickle
 import numpy as np
 import json
+import time
 
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
@@ -104,6 +105,8 @@ class RoundFlockingPattern(MovementPattern):
                 # 这是NEAT训练输入上限，不是物理雷达量程。
                 ('lidar_input_max_range', 0.2),
                 ('world_scale', 1.75),  # 世界坐标归一化因子（Webots场景3.5x3.5即±1.75，VMAS训练时±1）
+                ('real_robot_mode', False),
+                ('data_timeout', 0.30),
             ])
 
         # 获取参数值
@@ -123,6 +126,10 @@ class RoundFlockingPattern(MovementPattern):
             'lidar_input_max_range').get_parameter_value().double_value
         self.world_scale = self.get_parameter(
             'world_scale').get_parameter_value().double_value
+        self.real_robot_mode = self.get_parameter(
+            'real_robot_mode').get_parameter_value().bool_value
+        self.data_timeout = self.get_parameter(
+            'data_timeout').get_parameter_value().double_value
 
         # NEAT网络
         self.network = None
@@ -135,6 +142,8 @@ class RoundFlockingPattern(MovementPattern):
         self.lidar_data = None
         self.robot_name = self.get_namespace().strip('/')
         self._missing_data_warn_counts = {}
+        self._global_info_received_at = None
+        self._lidar_received_at = None
 
         # 加载NEAT网络
         if not NEAT_AVAILABLE:
@@ -224,6 +233,7 @@ class RoundFlockingPattern(MovementPattern):
         """接收全局信息"""
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as e:
             self.get_logger().error(f'解析全局信息失败: {e}')
 
@@ -247,6 +257,7 @@ class RoundFlockingPattern(MovementPattern):
         )
         if sampled is not None:
             self.lidar_data = sampled
+            self._lidar_received_at = time.monotonic()
 
     def _get_observation(self):
         """
@@ -272,6 +283,16 @@ class RoundFlockingPattern(MovementPattern):
         if self.lidar_data is None:
             self.get_logger().debug('等待激光雷达数据...')
             return None
+        if self.real_robot_mode:
+            now = time.monotonic()
+            if (
+                self._global_info_received_at is None
+                or now - self._global_info_received_at > self.data_timeout
+                or self._lidar_received_at is None
+                or now - self._lidar_received_at > self.data_timeout
+            ):
+                self._warn_missing_data('环绕输入已过期')
+                return None
         
         try:
             robots = self.global_info.get('robots', {})
@@ -410,6 +431,10 @@ class RoundFlockingPattern(MovementPattern):
         except Exception as e:
             self.get_logger().error(f'NEAT网络推理失败: {str(e)}')
             self.command_publisher.publish(Twist())
+
+    def on_swarm_start(self):
+        if self.real_robot_mode and self.network is not None:
+            self.network.reset()
 
 
 def main(args=None):

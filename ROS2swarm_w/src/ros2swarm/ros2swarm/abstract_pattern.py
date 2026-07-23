@@ -39,10 +39,21 @@ class AbstractPattern(Node):
         ros2 topic pub --once /swarm_command communication_interfaces/msg/Int8Message "{data: 0}"
         """
         self.get_logger().debug('Robot "{}" received command "{}"'.format(self.get_namespace(), msg.data))
+        was_started = self.start_flag
         if msg.data == int(SwarmState.START):
             self.start_flag = True
+            if not was_started:
+                self.on_swarm_start()
         if msg.data == int(SwarmState.STOP):
             self.start_flag = False
+            if was_started:
+                self.on_swarm_stop()
+
+    def on_swarm_start(self):
+        """Hook invoked once when a stopped pattern receives START."""
+
+    def on_swarm_stop(self):
+        """Hook invoked once when a running pattern receives STOP."""
 
     def swarm_command_controlled(self, callback_func):
         """

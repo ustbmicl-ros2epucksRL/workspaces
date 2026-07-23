@@ -1,0 +1,25 @@
+/**:
+  ros__parameters:
+    backend: 'qr'
+    image_topic: '/overhead_camera/image_raw'
+    camera_info_topic: '/overhead_camera/camera_info'
+    output_topic: '/marker_detections'
+    marker_size: 0.08
+    aruco_dictionary: 'DICT_5X5_250'
+    max_reprojection_error: 4.0
+    marker_keys: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
+    entity_names: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
+    entity_types: [0, 2, 2, 1, 2]
+    marker_offsets: [
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0
+    ]
+    # [a, b, tx, c, d, ty]; replace with calibrated camera-plane transform.
+    camera_to_world: [1.0, 0.0, 0.0, 0.0, -1.0, 0.0]
+    max_marker_age: 0.30
+    velocity_alpha: 0.65
+    max_velocity_dt: 0.50
+    publish_period: 0.05

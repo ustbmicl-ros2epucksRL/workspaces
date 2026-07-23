@@ -3,6 +3,7 @@
 
 import json
 import os
+import time
 
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Twist
@@ -49,6 +50,8 @@ class TransportPattern(MovementPattern):
                 ("allow_reverse", False),
                 ("allow_reverse_goal_distance", 0.6),
                 ("diagnostics_period", 2.0),
+                ("real_robot_mode", False),
+                ("data_timeout", 0.30),
             ],
         )
 
@@ -72,6 +75,8 @@ class TransportPattern(MovementPattern):
             "allow_reverse_goal_distance"
         )
         self.diagnostics_period = self._double_param("diagnostics_period")
+        self.real_robot_mode = self._bool_param("real_robot_mode")
+        self.data_timeout = self._double_param("data_timeout")
 
         self.global_info = None
         self.robot_name = self.get_namespace().strip("/")
@@ -80,6 +85,7 @@ class TransportPattern(MovementPattern):
         self._missing_data_warn_counts = {}
         self._goal_reached = False
         self._started_near_goal = None
+        self._global_info_received_at = None
 
         self._load_actor()
 
@@ -144,6 +150,7 @@ class TransportPattern(MovementPattern):
     def _global_info_callback(self, msg: String):
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as exc:
             self.get_logger().error(
                 f"Failed to parse /global_info JSON: {exc}"
@@ -155,6 +162,13 @@ class TransportPattern(MovementPattern):
             return
         if self.global_info is None:
             self._warn_missing_data("waiting for /global_info")
+            self._publish_stop()
+            return
+        if self.real_robot_mode and (
+            self._global_info_received_at is None
+            or time.monotonic() - self._global_info_received_at > self.data_timeout
+        ):
+            self._warn_missing_data("stale /global_info")
             self._publish_stop()
             return
 
@@ -210,6 +224,14 @@ class TransportPattern(MovementPattern):
 
     def _allow_reverse(self, observation):
         return self.allow_reverse or bool(self._started_near_goal)
+
+    def on_swarm_start(self):
+        if not self.real_robot_mode:
+            return
+        self._goal_reached = False
+        self._started_near_goal = None
+        if self.actor_policy is not None:
+            self.actor_policy.reset(1)
 
     def _publish_stop(self):
         self.command_publisher.publish(Twist())

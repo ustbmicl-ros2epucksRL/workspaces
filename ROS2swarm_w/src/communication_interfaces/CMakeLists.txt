@@ -17,6 +17,7 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(builtin_interfaces REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 # uncomment the following section in order to fill in
@@ -35,6 +36,11 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/RangeData.msg"
   "msg/FloatArray.msg"
   "msg/ModelStatesStamped.msg"
+  "msg/MarkerDetection.msg"
+  "msg/MarkerDetectionArray.msg"
+  "msg/TrackedEntity.msg"
+  "msg/TrackedEntityArray.msg"
+  "msg/SafetyState.msg"
   DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
 )
 

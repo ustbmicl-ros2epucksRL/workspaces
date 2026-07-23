@@ -3,6 +3,7 @@
 
 import json
 import os
+import time
 
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Twist
@@ -57,6 +58,8 @@ class NavigationPattern(MovementPattern):
                 ("min_action_norm", 0.02),
                 ("allow_reverse", True),
                 ("diagnostics_period", 2.0),
+                ("real_robot_mode", False),
+                ("data_timeout", 0.30),
             ],
         )
 
@@ -79,6 +82,8 @@ class NavigationPattern(MovementPattern):
         self.min_action_norm = self._double_param("min_action_norm")
         self.allow_reverse = self._bool_param("allow_reverse")
         self.diagnostics_period = self._double_param("diagnostics_period")
+        self.real_robot_mode = self._bool_param("real_robot_mode")
+        self.data_timeout = self._double_param("data_timeout")
 
         self.global_info = None
         self.lidar_data = None
@@ -88,6 +93,9 @@ class NavigationPattern(MovementPattern):
         self.actor_policy = None
         self._last_diagnostics_ns = 0
         self._missing_data_warn_counts = {}
+        self._global_info_received_at = None
+        self._lidar_received_at = None
+        self._goal_reached = False
 
         self._load_actor()
 
@@ -168,6 +176,7 @@ class NavigationPattern(MovementPattern):
     def _global_info_callback(self, msg: String):
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as exc:
             self.get_logger().error(
                 f"Failed to parse /global_info JSON: {exc}"
@@ -179,6 +188,7 @@ class NavigationPattern(MovementPattern):
             self.n_lidar_rays,
             self.max_range,
         )
+        self._lidar_received_at = time.monotonic()
 
     def control_callback(self):
         if self.actor_policy is None:
@@ -192,6 +202,22 @@ class NavigationPattern(MovementPattern):
             self._warn_missing_data("waiting for lidar scan")
             self._publish_stop()
             return
+        if self.real_robot_mode:
+            now = time.monotonic()
+            if (
+                self._global_info_received_at is None
+                or now - self._global_info_received_at > self.data_timeout
+            ):
+                self._warn_missing_data("stale /global_info")
+                self._publish_stop()
+                return
+            if self.collisions and (
+                self._lidar_received_at is None
+                or now - self._lidar_received_at > self.data_timeout
+            ):
+                self._warn_missing_data("stale lidar scan")
+                self._publish_stop()
+                return
 
         try:
             lidar = self.lidar_data
@@ -206,6 +232,13 @@ class NavigationPattern(MovementPattern):
                 velocity_scale=self.velocity_scale,
                 lidar_range=self.max_range,
             )
+            if self.real_robot_mode and (
+                self._goal_reached
+                or observation.distance_to_target <= self.goal_threshold
+            ):
+                self._goal_reached = True
+                self._publish_stop()
+                return
             action = self.actor_policy.act(observation.values)
             command = vmas_action_to_diff_drive(
                 action,
@@ -230,6 +263,13 @@ class NavigationPattern(MovementPattern):
 
     def _publish_stop(self):
         self.command_publisher.publish(Twist())
+
+    def on_swarm_start(self):
+        if not self.real_robot_mode:
+            return
+        self._goal_reached = False
+        if self.actor_policy is not None:
+            self.actor_policy.reset(1)
 
     def _warn_missing_data(self, message: str):
         count = self._missing_data_warn_counts.get(message, 0) + 1

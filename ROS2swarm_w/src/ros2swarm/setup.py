@@ -1,13 +1,13 @@
 import os
 from glob import glob
-from setuptools import setup
+from setuptools import find_packages, setup
 
 package_name = 'ros2swarm'
 
 setup(
     name=package_name,
     version='1.0.0',
-    packages=[package_name],
+    packages=find_packages(),
     data_files=[
         ('share/ament_index/resource_index/packages',
          ['resource/' + package_name]),
@@ -87,6 +87,8 @@ setup(
          glob('config/e_puck/movement_pattern/combined/*.yaml')),
         (os.path.join('share', package_name, 'config', 'e_puck', 'voting_pattern', 'basic'),
          glob('config/e_puck/voting_pattern/basic/*.yaml')),
+        (os.path.join('share', package_name, 'config', 'e_puck', 'real_robot'),
+         glob('config/e_puck/real_robot/*.yaml')),
 
         # NEAT checkpoints 文件
         (os.path.join('share', package_name, 'launch', 'pattern', 'movement_pattern', 'basic', 'checkpoints', 'roundflocking'),
@@ -124,6 +126,24 @@ setup(
             'ir_layer = ros2swarm.sensor_layer.ir_layer:main',
             'ir_tf_layer = ros2swarm.sensor_layer.ir_tf_layer:main',
             'lidar_layer = ros2swarm.sensor_layer.lidar_layer:main',
+
+            # physical e-puck deployment adapters
+            'policy_scan_adapter = '
+            'ros2swarm.real_robot.policy_scan_adapter:main',
+            'global_info_bridge = '
+            'ros2swarm.real_robot.global_info_bridge:main',
+            'marker_state_fuser = '
+            'ros2swarm.real_robot.marker_state_fuser:main',
+            'fiducial_detector = '
+            'ros2swarm.real_robot.fiducial_detector:main',
+            'safety_supervisor = '
+            'ros2swarm.real_robot.safety_supervisor:main',
+            'fake_epuck_driver = '
+            'ros2swarm.real_robot.fake_epuck_driver:main',
+            'fake_marker_tracker = '
+            'ros2swarm.real_robot.fake_marker_tracker:main',
+            'synthetic_scan_publisher = '
+            'ros2swarm.real_robot.synthetic_scan_publisher:main',
 
             # movement_pattern.basic
             'drive_pattern = ros2swarm.movement_pattern.basic.drive_pattern:main',

@@ -1,0 +1,95 @@
+当前文档首版推荐把 PT/NEAT 策略放在 x86 中央机上。但这只是部署建议，不是代码架构限制。
+当前骨架已经可以把策略直接下沉到 Pi-puck，不需要修改策略节点。策略运行位置完全由“在哪台机器启动 epuck2_physical.launch.py”以及 start_policy 参数决定：
+start_policy:=true：本机启动策略。
+start_policy:=false：本机不启动策略。
+具体策略由 pattern 选择。
+对应实现见 [epuck2_physical.launch.py (line 168)](/root/workspace/ROS2swarm_w/src/ros2swarm/launch/epuck2_physical.launch.py:168)。
+Pi-puck 全部本地控制
+在 Pi-puck 上可以直接运行：
+source /opt/ros/humble/setup.bash
+source ~/epuck2_hw_ws/install/setup.bash
+source ~/ROS2swarm_w/install/setup.bash
+
+ros2 launch ros2swarm epuck2_physical.launch.py \
+  robot_id:=0 \
+  pattern:=navigation_pattern_neat \
+  start_driver:=true \
+  start_lidar:=true \
+  start_scan_adapter:=true \
+  start_policy:=true \
+  start_safety:=true \
+  lidar_serial_port:=/dev/serial/by-id/YOUR_LIDAR \
+  lidar_baudrate:=115200
+此时控制链全部在 Pi-puck：
+Pi-puck
+  Lidar driver
+       -> scan_raw
+       -> policy_scan_adapter
+       -> scan
+       -> PT/NEAT policy
+       -> drive_command
+       -> safety_supervisor
+       -> cmd_vel
+       -> e-puck2 driver
+中央机只需要运行顶视定位：
+ros2 launch ros2swarm epuck2_overhead_tracking.launch.py
+不要再在中央机启动相同机器人的策略，否则会出现两个策略节点同时发布 /robot_0/drive_command。
+仍然存在的中央机依赖
+策略下沉不等于完全离线自主。当前全局状态仍来自中央顶视相机：
+中央机:
+camera -> QR detector -> global_state -> global_info
+                                      |
+                                    Wi-Fi
+                                      |
+Pi-puck:
+              policy + safety_supervisor
+因此 Wi-Fi 中断后：
+Pi-puck 本地 Lidar 和底盘驱动仍在运行；
+策略收不到新的 /global_info；
+策略的 real_robot_mode 会停止输出有效运动命令；
+本地 safety supervisor 检测到 state_timeout；
+最终 cmd_vel 归零；
+驱动内部 0.25 秒 watchdog 再提供一层停车保护。
+如果希望断网后仍继续完成任务，还需要把二维码相机和状态融合一起下沉，或者增加本地定位方案。当前实现的目标是断网安全停车，而不是断网持续运行。
+PT 和 NEAT 的下沉差异
+项目	原生 NEAT	PT
+模型运行时	neat-python + NumPy	PyTorch + NumPy
+模型计算量	很小	当前网络本身不大，但 PyTorch 运行时较重
+ARM64 部署难度	较低	取决于 Pi 系统对应的 PyTorch wheel
+内存占用	较低	明显更高
+首选下沉顺序	推荐首先验证	NEAT 合格后再验证
+当前代码支持	已支持	已支持
+
+.pt 文件也是 recurrent NEAT actor 的 PyTorch 导出形式，所以模型计算量未必很大；主要负担通常来自 PyTorch ARM64 运行时、加载时间和内存，而不是网络层数。
+Pi-puck 必须满足的条件
+与中央机兼容的 ROS 2 Humble 和 Python 版本。
+已构建 communication_interfaces 和 ros2swarm。
+NEAT 模式安装兼容版本的 neat-python。
+PT 模式安装 ARM64 CPU 版 PyTorch。
+checkpoint 已随 ros2swarm 安装。
+10 Hz 控制周期内推理稳定完成。
+策略最坏推理时间应明显低于 100 ms，建议小于 50 ms。
+长时间 CPU、内存、温度和电池测试合格。
+建议先下沉：
+navigation_pattern_neat
+roundflocking_pattern_neat
+transport_pattern_neat
+再测试三个 PT 版本。
+无运动的下沉试运行
+可以先让 Pi-puck 正常执行策略，但保持软件急停：
+ros2 topic pub --once /emergency_stop std_msgs/msg/Bool "{data: true}"
+
+ros2 topic pub --once /swarm_command \
+  communication_interfaces/msg/Int8Message "{data: 1}"
+此时检查：
+ros2 topic hz /robot_0/drive_command
+ros2 topic echo /robot_0/drive_command
+
+ros2 topic echo /robot_0/safety_state
+ros2 topic echo /robot_0/cmd_vel
+预期结果：
+drive_command 有策略推理输出；
+safety_state.reason 包含 emergency_stop；
+cmd_vel 始终为零。
+因此，更准确的结论是：
+当前代码骨架已经支持策略网络下沉到 Pi-puck；中央部署只是首版推荐方案。NEAT 可以优先下沉，PT 需要在实际 Pi-puck 上验证 PyTorch ARM64 环境、推理时延、内存和温度后再正式启用。

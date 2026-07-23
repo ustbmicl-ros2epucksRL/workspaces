@@ -19,6 +19,7 @@ import os
 import pickle
 import numpy as np
 import json
+import time
 
 from geometry_msgs.msg import Twist
 from std_msgs.msg import String
@@ -60,6 +61,8 @@ class TransportPattern(MovementPattern):
                 ('target_def_name', 'target_zone'),  # 目标区域DEF名称
                 ('world_scale', 1.75),  # 世界坐标归一化因子（Webots场景3.5x3.5即±1.75，VMAS训练时±1）
                 ('goal_threshold', 0.125),  # 判断包裹是否在目标上的距离阈值（米）
+                ('real_robot_mode', False),
+                ('data_timeout', 0.30),
             ])
 
         # 获取参数值
@@ -79,6 +82,10 @@ class TransportPattern(MovementPattern):
             'world_scale').get_parameter_value().double_value
         self.goal_threshold = self.get_parameter(
             'goal_threshold').get_parameter_value().double_value
+        self.real_robot_mode = self.get_parameter(
+            'real_robot_mode').get_parameter_value().bool_value
+        self.data_timeout = self.get_parameter(
+            'data_timeout').get_parameter_value().double_value
 
         # NEAT网络
         self.network = None
@@ -90,6 +97,7 @@ class TransportPattern(MovementPattern):
         self._missing_data_warn_counts = {}
         self._distance_to_target = None
         self._goal_reached = False
+        self._global_info_received_at = None
 
         # 加载NEAT网络
         if not NEAT_AVAILABLE:
@@ -168,6 +176,7 @@ class TransportPattern(MovementPattern):
         """接收全局信息"""
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as e:
             self.get_logger().error(f'解析全局信息失败: {e}')
 
@@ -200,7 +209,15 @@ class TransportPattern(MovementPattern):
         self._distance_to_target = None
         if self.global_info is None:
             self.get_logger().debug('等待全局信息...')
+            if self.real_robot_mode:
+                return None
             return self._get_random_observation()
+        if self.real_robot_mode and (
+            self._global_info_received_at is None
+            or time.monotonic() - self._global_info_received_at > self.data_timeout
+        ):
+            self._warn_missing_data('全局信息已过期')
+            return None
         
         try:
             robots = self.global_info.get('robots', {})
@@ -210,6 +227,8 @@ class TransportPattern(MovementPattern):
             robot_info = robots.get(self.robot_name, None)
             if robot_info is None:
                 self._warn_missing_data(f'未找到机器人 {self.robot_name} 的信息')
+                if self.real_robot_mode:
+                    return None
                 return self._get_random_observation()
             
             robot_x = robot_info['position']['x']
@@ -231,6 +250,9 @@ class TransportPattern(MovementPattern):
                 box_vx = box_info['velocity']['x']
                 box_vy = box_info['velocity']['y']
             else:
+                if self.real_robot_mode:
+                    self._warn_missing_data(f'未找到包裹 {self.box_def_name}')
+                    return None
                 box_x, box_y = 0.0, 0.0
                 box_vx, box_vy = 0.0, 0.0
             
@@ -240,6 +262,9 @@ class TransportPattern(MovementPattern):
                 target_x = target_info['position']['x']
                 target_y = target_info['position']['y']
             else:
+                if self.real_robot_mode:
+                    self._warn_missing_data(f'未找到目标 {self.target_def_name}')
+                    return None
                 target_x, target_y = 0.0, 0.0
             
             # 计算全局坐标系下的相对位置
@@ -303,6 +328,8 @@ class TransportPattern(MovementPattern):
             
         except Exception as e:
             self.get_logger().error(f'获取观测失败: {str(e)}')
+            if self.real_robot_mode:
+                return None
             return self._get_random_observation()
 
     def _get_random_observation(self):
@@ -319,6 +346,9 @@ class TransportPattern(MovementPattern):
         try:
             # 获取观测
             observation = self._get_observation()
+            if observation is None:
+                self._publish_stop()
+                return
 
             if self._goal_reached or (
                 self._distance_to_target is not None
@@ -361,6 +391,14 @@ class TransportPattern(MovementPattern):
 
     def _publish_stop(self):
         self.command_publisher.publish(Twist())
+
+    def on_swarm_start(self):
+        if not self.real_robot_mode:
+            return
+        self._goal_reached = False
+        self._distance_to_target = None
+        if self.network is not None:
+            self.network.reset()
 
 
 

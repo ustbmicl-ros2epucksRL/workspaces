@@ -1,0 +1,211 @@
+diff --git a/epuck_ros2_driver/src/driver.cpp b/epuck_ros2_driver/src/driver.cpp
+index 825744f..d73c0f5 100644
+--- a/epuck_ros2_driver/src/driver.cpp
++++ b/epuck_ros2_driver/src/driver.cpp
+@@ -119,6 +119,12 @@ public:
+ 
+     mWheelDistance = declare_parameter<float>("wheel_distance", DEFAULT_WHEEL_DISTANCE);
+     mWheelRadius = declare_parameter<float>("wheel_radius", DEFAULT_WHEEL_RADIUS);
++    mCommandTimeout = declare_parameter<double>("command_timeout", 0.25);
++    mOdomFrame = declare_parameter<std::string>("odom_frame", "odom");
++    mBaseFrame = declare_parameter<std::string>("base_frame", "base_link");
++    mProximityLaserFrame =
++      declare_parameter<std::string>("proximity_laser_frame", "laser_scanner");
++    mFramePrefix = declare_parameter<std::string>("frame_prefix", "");
+     mGroundEnabled = declare_parameter("ground_enabled", false);
+     mCallbackHandler =
+       add_on_set_parameters_callback(std::bind(&EPuckDriver::paramChangeCallback, this, std::placeholders::_1));
+@@ -140,6 +146,8 @@ public:
+     std::fill(mMsgSensors, mMsgSensors + MSG_SENSORS_SIZE, 0);
+     resetOdometry();
+     mI2cMainErrCnt = 0;
++    mCommandReceived = false;
++    mLastCommandTime = now();
+ 
+     // Create subscirbers and publishers
+     mTwistSubscription = create_subscription<geometry_msgs::msg::Twist>(
+@@ -147,17 +155,17 @@ public:
+     for (int i = 0; i < NB_RGB_LEDS; i++) {
+       std::function<void(const std_msgs::msg::Int32::SharedPtr)> f =
+         std::bind(&EPuckDriver::onRgbLedReceived, this, std::placeholders::_1, i);
+-      mRgbLedSubscription[i] = create_subscription<std_msgs::msg::Int32>("/led" + std::to_string(i * 2 + 1), 1, f);
++      mRgbLedSubscription[i] = create_subscription<std_msgs::msg::Int32>("led" + std::to_string(i * 2 + 1), 1, f);
+     }
+     for (int i = 0; i < NB_BINARY_LEDS; i++) {
+       std::function<void(const std_msgs::msg::Bool::SharedPtr)> f =
+         std::bind(&EPuckDriver::onLedReceived, this, std::placeholders::_1, i);
+-      mLedSubscription[i] = create_subscription<std_msgs::msg::Bool>("/led" + std::to_string(i * 2), 1, f);
++      mLedSubscription[i] = create_subscription<std_msgs::msg::Bool>("led" + std::to_string(i * 2), 1, f);
+     }
+     mLaserPublisher = create_publisher<sensor_msgs::msg::LaserScan>("scan", 1);
+     if(mGroundEnabled) {
+       for (int i = 0; i < NB_GROUND_SENSORS; i++)
+-        mGroundRangePublisher[i] = create_publisher<sensor_msgs::msg::Range>("/gs" + std::to_string(i), 1);
++        mGroundRangePublisher[i] = create_publisher<sensor_msgs::msg::Range>("gs" + std::to_string(i), 1);
+     }    
+     mOdometryPublisher = create_publisher<nav_msgs::msg::Odometry>("odom", 1);
+     for (int i = 0; i < NB_INFRARED_SENSORS; i++) {
+@@ -176,8 +184,8 @@ public:
+     mLaserBroadcaster = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+     geometry_msgs::msg::TransformStamped laserTransform;
+     laserTransform.header.stamp = now();
+-    laserTransform.header.frame_id = "base_link";
+-    laserTransform.child_frame_id = "laser_scanner";
++    laserTransform.header.frame_id = mBaseFrame;
++    laserTransform.child_frame_id = mProximityLaserFrame;
+     laserTransform.transform.rotation.x = 0;
+     laserTransform.transform.rotation.y = 0;
+     laserTransform.transform.rotation.z = 0;
+@@ -192,8 +200,8 @@ public:
+       mInfraredBroadcasters[i] = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+       geometry_msgs::msg::TransformStamped infraredTransform;
+       infraredTransform.header.stamp = now();
+-      infraredTransform.header.frame_id = "base_link";
+-      infraredTransform.child_frame_id = "ps" + std::to_string(i);
++      infraredTransform.header.frame_id = mBaseFrame;
++      infraredTransform.child_frame_id = mFramePrefix + "ps" + std::to_string(i);
+       infraredTransform.transform.rotation = EPuckDriver::euler2quaternion(0, 0, DISTANCE_SENSOR_ANGLE[i]);
+       infraredTransform.transform.translation.x = SENSOR_DIST_FROM_CENTER * cos(DISTANCE_SENSOR_ANGLE[i]);
+       infraredTransform.transform.translation.y = SENSOR_DIST_FROM_CENTER * sin(DISTANCE_SENSOR_ANGLE[i]);
+@@ -204,8 +212,8 @@ public:
+       mLightSensorBroadcasters[i] = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+       geometry_msgs::msg::TransformStamped lightTransform;
+       lightTransform.header.stamp = now();
+-      lightTransform.header.frame_id = "base_link";
+-      lightTransform.child_frame_id = "ls" + std::to_string(i);
++      lightTransform.header.frame_id = mBaseFrame;
++      lightTransform.child_frame_id = mFramePrefix + "ls" + std::to_string(i);
+       lightTransform.transform.rotation = EPuckDriver::euler2quaternion(0, 0, DISTANCE_SENSOR_ANGLE[i]);
+       lightTransform.transform.translation.x = SENSOR_DIST_FROM_CENTER * cos(DISTANCE_SENSOR_ANGLE[i]);
+       lightTransform.transform.translation.y = SENSOR_DIST_FROM_CENTER * sin(DISTANCE_SENSOR_ANGLE[i]);
+@@ -219,8 +227,8 @@ public:
+         mGroundBroadcasters[i] = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+         geometry_msgs::msg::TransformStamped groundTransform;
+         groundTransform.header.stamp = now();
+-        groundTransform.header.frame_id = "base_link";
+-        groundTransform.child_frame_id = "gs" + std::to_string(i);
++        groundTransform.header.frame_id = mBaseFrame;
++        groundTransform.child_frame_id = mFramePrefix + "gs" + std::to_string(i);
+         groundTransform.transform.rotation = EPuckDriver::euler2quaternion(0, 0, DISTANCE_SENSOR_ANGLE[i]);
+         groundTransform.transform.translation.x = SENSOR_DIST_FROM_CENTER - 0.005;
+         groundTransform.transform.translation.y = 0.009 - i * 0.009;
+@@ -233,8 +241,8 @@ public:
+     mTofBroadcasters = std::make_unique<tf2_ros::StaticTransformBroadcaster>(this);
+     geometry_msgs::msg::TransformStamped infraredTransform;
+     infraredTransform.header.stamp = now();
+-    infraredTransform.header.frame_id = "base_link";
+-    infraredTransform.child_frame_id = "tof";
++    infraredTransform.header.frame_id = mBaseFrame;
++    infraredTransform.child_frame_id = mFramePrefix + "tof";
+     infraredTransform.transform.rotation = EPuckDriver::euler2quaternion(0, 0, 0);
+     infraredTransform.transform.translation.x = SENSOR_DIST_FROM_CENTER;
+     infraredTransform.transform.translation.y = 0;
+@@ -315,6 +323,8 @@ private:
+     mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 1] = (leftVelocityBig >> 8) & 0xFF;
+     mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 2] = rightVelocityBig & 0xFF;
+     mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 3] = (rightVelocityBig >> 8) & 0xFF;
++    mLastCommandTime = now();
++    mCommandReceived = true;
+ 
+     //auto stop = std::chrono::high_resolution_clock::now();
+     //auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+@@ -414,7 +424,7 @@ private:
+       laser_dists[i] = (dist[i] > INFRARED_MAX_RANGE) ? OUT_OF_RANGE : dist[i];
+ 
+     auto msg = sensor_msgs::msg::LaserScan();
+-    msg.header.frame_id = "laser_scanner";
++    msg.header.frame_id = mProximityLaserFrame;
+     msg.header.stamp = stamp;
+     msg.angle_min = -150 * M_PI / 180;
+     msg.angle_max = 150 * M_PI / 180;
+@@ -534,8 +544,8 @@ private:
+     // Pack & publish odometry
+     nav_msgs::msg::Odometry msg;
+     msg.header.stamp = stamp;
+-    msg.header.frame_id = "odom";
+-    msg.child_frame_id = "base_link";
++    msg.header.frame_id = mOdomFrame;
++    msg.child_frame_id = mBaseFrame;
+     msg.twist.twist.linear.x = v;
+     msg.twist.twist.angular.z = omega;
+     msg.pose.pose.position.x = positionX;
+@@ -546,8 +556,8 @@ private:
+     // Pack & publish transforms
+     geometry_msgs::msg::TransformStamped tf;
+     tf.header.stamp = stamp;
+-    tf.header.frame_id = "odom";
+-    tf.child_frame_id = "base_link";
++    tf.header.frame_id = mOdomFrame;
++    tf.child_frame_id = mBaseFrame;
+     tf.transform.translation.x = positionX;
+     tf.transform.translation.y = positionY;
+     tf.transform.translation.z = 0.0;
+@@ -584,6 +594,17 @@ private:
+     int retryCount;
+     rclcpp::Time stamp;
+ 
++    if (mCommandReceived && mCommandTimeout > 0.0 &&
++        (now() - mLastCommandTime).seconds() > mCommandTimeout) {
++      mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 0] = 0;
++      mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 1] = 0;
++      mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 2] = 0;
++      mMsgActuators[MSG_ACTUATORS_MOTORS_INDEX + 3] = 0;
++      mCommandReceived = false;
++      RCLCPP_WARN(
++        get_logger(), "cmd_vel timeout after %.3f seconds; motors stopped", mCommandTimeout);
++    }
++
+     // I2C: Set address
+     retryCount = 1;
+     success = 0;
+@@ -720,6 +741,13 @@ private:
+   struct bmm150_dev mDevMag;
+ 
+   bool mGroundEnabled;
++  bool mCommandReceived;
++  double mCommandTimeout;
++  rclcpp::Time mLastCommandTime;
++  std::string mOdomFrame;
++  std::string mBaseFrame;
++  std::string mProximityLaserFrame;
++  std::string mFramePrefix;
+ };
+ 
+ int main(int argc, char *argv[]) {
+diff --git a/epuck_ros2_driver/test/test_driver.py b/epuck_ros2_driver/test/test_driver.py
+index 0675e8d..eec0e9f 100644
+--- a/epuck_ros2_driver/test/test_driver.py
++++ b/epuck_ros2_driver/test/test_driver.py
+@@ -37,7 +37,7 @@ DISTANCE_FROM_CENTER = 0.035
+ READ_WRITE_RETRY_COUNT = 10
+ READ_WRITE_RETRY_DELAY = 0.5
+ MESSAGE_SEND_RETRY_COUNT = 10
+-MESSAGE_SEND_DELAY = 0.5
++MESSAGE_SEND_DELAY = 0.05
+ 
+ 
+ def arr2int16(arr):
+@@ -175,7 +175,7 @@ def generate_test_description():
+ 
+     controller = launch_ros.actions.Node(
+         package='epuck_ros2_driver',
+-        node_executable='driver',
++        executable='driver',
+         output='screen',
+         arguments=['--type', 'test']
+     )
+@@ -245,6 +245,14 @@ class TestController(unittest.TestCase):
+         self.assertEqual(params['right_speed'], 1108,
+                          'The speed should be in range of [-1108, 1108]')
+ 
++    def test_command_watchdog(self, launch_service, proc_output):
++        publish_twist(self.node, linear_x=0.02)
++        time.sleep(0.4)
++
++        params, _ = read_params_from_i2c()
++        self.assertEqual(params['left_speed'], 0)
++        self.assertEqual(params['right_speed'], 0)
++
+     def test_distance_sensors(self, launch_service, proc_output):
+         write_params_to_i2c({'ps0': 120})
+         condition = check_topic_condition(

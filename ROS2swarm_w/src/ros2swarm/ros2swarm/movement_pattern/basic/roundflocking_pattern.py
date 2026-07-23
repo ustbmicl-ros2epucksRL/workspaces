@@ -4,6 +4,7 @@
 import json
 import math
 import os
+import time
 from dataclasses import dataclass
 
 import numpy as np
@@ -65,6 +66,8 @@ class RoundFlockingPattern(MovementPattern):
                 ("ring_radial_gain", 6.0),
                 ("ring_tangential_gain", 1.0),
                 ("diagnostics_period", 2.0),
+                ("real_robot_mode", False),
+                ("data_timeout", 0.30),
             ],
         )
 
@@ -89,6 +92,8 @@ class RoundFlockingPattern(MovementPattern):
         self.ring_radial_gain = self._double_param("ring_radial_gain")
         self.ring_tangential_gain = self._double_param("ring_tangential_gain")
         self.diagnostics_period = self._double_param("diagnostics_period")
+        self.real_robot_mode = self._bool_param("real_robot_mode")
+        self.data_timeout = self._double_param("data_timeout")
 
         self.global_info = None
         self.lidar_data = None
@@ -96,6 +101,8 @@ class RoundFlockingPattern(MovementPattern):
         self.actor_policy = None
         self._last_diagnostics_ns = 0
         self._missing_data_warn_counts = {}
+        self._global_info_received_at = None
+        self._lidar_received_at = None
         self.network_input_dim = 6 + self.n_lidar_rays
         self._load_actor()
 
@@ -170,6 +177,7 @@ class RoundFlockingPattern(MovementPattern):
     def _global_info_callback(self, msg: String):
         try:
             self.global_info = json.loads(msg.data)
+            self._global_info_received_at = time.monotonic()
         except json.JSONDecodeError as exc:
             self.get_logger().error(
                 f"Failed to parse /global_info JSON: {exc}"
@@ -194,6 +202,7 @@ class RoundFlockingPattern(MovementPattern):
             sampled_ranges.append(ranges[mid_index])
 
         self.lidar_data = np.asarray(sampled_ranges, dtype=np.float32)
+        self._lidar_received_at = time.monotonic()
 
     def control_callback(self):
         if self.actor_policy is None:
@@ -207,6 +216,17 @@ class RoundFlockingPattern(MovementPattern):
             self._warn_missing_data("waiting for lidar scan")
             self._publish_stop()
             return
+        if self.real_robot_mode:
+            now = time.monotonic()
+            if (
+                self._global_info_received_at is None
+                or now - self._global_info_received_at > self.data_timeout
+                or self._lidar_received_at is None
+                or now - self._lidar_received_at > self.data_timeout
+            ):
+                self._warn_missing_data("stale flocking input")
+                self._publish_stop()
+                return
 
         try:
             observation = self._get_observation()
@@ -412,6 +432,10 @@ class RoundFlockingPattern(MovementPattern):
 
     def swarm_command_false_case(self):
         self._publish_stop()
+
+    def on_swarm_start(self):
+        if self.real_robot_mode and self.actor_policy is not None:
+            self.actor_policy.reset(1)
 
 
 def main(args=None):

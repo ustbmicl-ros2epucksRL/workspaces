@@ -1,0 +1,9 @@
+std_msgs/Header header
+bool safe
+bool emergency_stop
+bool command_fresh
+bool state_fresh
+bool scan_fresh
+string reason
+geometry_msgs/Twist requested
+geometry_msgs/Twist output
