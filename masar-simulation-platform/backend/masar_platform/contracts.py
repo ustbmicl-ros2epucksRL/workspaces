@@ -7,6 +7,7 @@ fragments; process launchers resolve command references through ``commands``.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from copy import deepcopy
 from types import MappingProxyType
 from typing import Any, Literal
 
@@ -34,6 +35,13 @@ class ParameterDefinition(BaseModel):
     @classmethod
     def _tuple_enum(cls, value: Any) -> Any:
         return tuple(value) if value is not None else None
+
+    @field_validator("minimum", "maximum", mode="before")
+    @classmethod
+    def _reject_boolean_bounds(cls, value: Any) -> Any:
+        if isinstance(value, bool):
+            raise ValueError("numeric bounds must not be booleans")
+        return value
 
     @model_validator(mode="after")
     def _validate_definition(self) -> "ParameterDefinition":
@@ -140,6 +148,19 @@ class ScenarioManifest(BaseModel):
     @field_serializer("parameters")
     def _serialize_parameters(self, value: Mapping[str, ParameterDefinition]) -> dict[str, ParameterDefinition]:
         return dict(value)
+
+    def model_copy(
+        self,
+        *,
+        update: Mapping[str, Any] | None = None,
+        deep: bool = False,
+    ) -> "ScenarioManifest":
+        """Return a validated copy so frozen nested contracts cannot be bypassed."""
+
+        payload = self.model_dump(mode="python", round_trip=True)
+        if update:
+            payload.update(deepcopy(dict(update)) if deep else dict(update))
+        return type(self).model_validate(payload)
 
     def resolve_parameters(self, values: Mapping[str, Any] | None = None) -> dict[str, Any]:
         values = {} if values is None else dict(values)

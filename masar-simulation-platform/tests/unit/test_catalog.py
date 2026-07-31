@@ -105,6 +105,7 @@ def test_depends_on_is_required_by_runtime_model_and_json_schema(tmp_path: Path)
         ("pattern", lambda definition: definition.pop("enum")),
         ("number_robots", lambda definition: definition.pop("minimum")),
         ("pattern", lambda definition: definition.update(enum=["roundflocking_pattern"] * 2)),
+        ("number_robots", lambda definition: definition.update(minimum=True)),
     ),
 )
 def test_parameter_definition_failures_match_json_schema_and_runtime(
@@ -128,6 +129,13 @@ def test_catalog_parameter_contract_cannot_be_mutated() -> None:
     with pytest.raises(TypeError):
         manifest.parameters["number_robots"] = manifest.parameters["total_robots"]  # type: ignore[index]
 
+    copied = manifest.model_copy(update={"parameters": dict(manifest.parameters)})
+    with pytest.raises(TypeError):
+        copied.parameters["number_robots"] = copied.parameters["total_robots"]  # type: ignore[index]
+
+    serialized = json.loads(copied.model_dump_json())
+    assert serialized["parameters"]["number_robots"]["default"] == 5
+
 
 def test_unknown_manifest_fields_are_rejected(tmp_path: Path) -> None:
     source = ROOT / "scenarios" / "swarm.webots.ros2swarm.yaml"
@@ -147,9 +155,8 @@ def test_invalid_parameters_and_incompatible_combinations_are_rejected(tmp_path:
     with pytest.raises(CatalogError):
         catalog.validate_parameters(controller.scenario_id, {"mode": "unsupported"})
 
-    rescue = catalog.get("rescue.gazebo.tepper-response").model_copy(update={"simulator": "webots"})
-    with pytest.raises(CatalogError, match="webots|incompatible"):
-        catalog.validate_manifest(rescue)
+    with pytest.raises(ValueError, match="webots|supported"):
+        catalog.get("rescue.gazebo.tepper-response").model_copy(update={"simulator": "webots"})
 
 
 def test_dependency_cycles_and_unknown_references_are_rejected(tmp_path: Path) -> None:
