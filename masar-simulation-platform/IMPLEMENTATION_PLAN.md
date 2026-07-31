@@ -110,29 +110,31 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `tests/unit/test_config.py`
 - Test: `tests/unit/test_config.py`
 
-- [ ] **Step 1: Write the failing configuration tests.** Assert that defaults resolve to `127.0.0.1`, ports `18090/18100/18101/18102/18111/18112/18121/18122/18131/18132/18141`, and `MASAR_PLATFORM_DATA_DIR` resolves under `runs/`.
+- [x] **Step 1: Write the failing configuration tests.** Assert that defaults resolve to `127.0.0.1`, ports `18090/18100/18101/18102/18111/18112/18121/18122/18131/18132/18141`, and `MASAR_PLATFORM_DATA_DIR` resolves under `runs/`.
 
-- [ ] **Step 2: Run the narrow test.**
+- [x] **Step 2: Run the narrow test.**
 
   Run: `python3 -m pytest tests/unit/test_config.py -q`
 
   Expected: FAIL because the package and configuration object do not exist.
 
-- [ ] **Step 3: Add the pinned project metadata and configuration.** `config.py` must expose a frozen `Settings` object with `external_host`, `external_port`, `api_port`, Agent ports, sidecar ports, `data_dir`, `secret_path`, and `event_retention_days=30`, `event_retention_count=10000`.
+- [x] **Step 3: Add the pinned project metadata and configuration.** `config.py` must expose a frozen `Settings` object with `external_host`, `external_port`, `api_port`, Agent ports, sidecar ports, `data_dir`, `secret_path`, and `event_retention_days=30`, `event_retention_count=10000`.
 
-- [ ] **Step 4: Run the narrow test and tool checks.**
+- [x] **Step 4: Run the narrow test and tool checks.**
 
   Run: `python3 -m pytest tests/unit/test_config.py -q`  
   Expected: PASS.  
   Run: `python3 -m compileall -q backend agents`  
   Expected: PASS.
 
-- [ ] **Step 5: Commit the scaffold.**
+- [x] **Step 5: Commit the scaffold.**
 
   ```bash
   git add masar-simulation-platform/pyproject.toml masar-simulation-platform/.gitignore masar-simulation-platform/.env.example masar-simulation-platform/Makefile masar-simulation-platform/backend masar-simulation-platform/agents masar-simulation-platform/tests/unit/test_config.py
   git commit -m "feat(platform): scaffold control plane"
   ```
+
+**Acceptance:** Passed on 2026-07-31. Narrow tests: `7 passed`; compile target: passed; Spec review: approved; code-quality re-review: approved. Integrated commits: `8f7b3b4`, `a3133b2`. Detailed evidence: [ACCEPTANCE.md](./ACCEPTANCE.md#task-0-scaffold-and-tooling).
 
 ## 4. Task 1: Scenario Schema, Profiles and Static Commands
 
@@ -594,4 +596,3 @@ Task 1 precedes all run work because no process may start without a validated sc
 6. Group behavior views show only real sensor/topic data and never fabricated generic behavior scores.
 7. Direct original commands retain their Qt/default behavior when platform parameters are unset.
 8. The release checklist contains image digests, lockfile hashes, port checks and all acceptance evidence.
-

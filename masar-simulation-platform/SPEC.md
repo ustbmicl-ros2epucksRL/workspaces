@@ -1,7 +1,7 @@
 # MASAR 统一仿真平台可执行 Spec
 
-状态：待书面审阅  
-版本：0.3-draft  
+状态：已批准，实施中  
+版本：0.3-approved  
 最后更新：2026-07-31  
 对应设计：[PLATFORM_DESIGN.md](./PLATFORM_DESIGN.md)
 
