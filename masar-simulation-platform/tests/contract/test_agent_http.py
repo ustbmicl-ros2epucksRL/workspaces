@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+from http.client import HTTPConnection
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import json
+from pathlib import Path
+import sys
+from threading import Thread
+import time
+from typing import Any
+
+import pytest
+
+from agents.runtime_agent.main import AgentApplication, create_server
+from agents.runtime_agent.processes import CommandPolicy, ProcessManager
+from agents.runtime_agent.protocol import signed_headers
+from masar_platform.agents import AgentClient, AgentHTTPError
+
+
+MASTER_SECRET = b"s" * 32
+
+
+def _request(
+    port: int,
+    method: str,
+    target: str,
+    *,
+    sequence: int | None = None,
+    payload: dict[str, Any] | None = None,
+) -> tuple[int, dict[str, Any]]:
+    body = b"" if payload is None else json.dumps(payload, separators=(",", ":")).encode()
+    headers: dict[str, str] = {"Content-Type": "application/json"}
+    if sequence is not None:
+        headers.update(signed_headers(MASTER_SECRET, "run-1", sequence, method, target, body))
+    connection = HTTPConnection("127.0.0.1", port, timeout=3)
+    connection.request(method, target, body=body, headers=headers)
+    response = connection.getresponse()
+    parsed = json.loads(response.read())
+    connection.close()
+    return response.status, parsed
+
+
+@pytest.fixture
+def running_agent(tmp_path: Path) -> tuple[int, ProcessManager]:
+    manager = ProcessManager(
+        agent_kind="test",
+        workspace=tmp_path,
+        runs_dir=tmp_path / "runs",
+        command_policies={"test.python": CommandPolicy("test", sys.executable)},
+    )
+    app = AgentApplication("test", MASTER_SECRET, manager)
+    server = create_server("127.0.0.1", 0, app)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield server.server_port, manager
+    finally:
+        for record in manager.probe("run-1"):
+            if record.status == "RUNNING":
+                manager.stop("run-1", record.process_id)
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+
+def test_health_is_loopback_safe_and_contains_no_secret(running_agent: tuple[int, ProcessManager]) -> None:
+    port, _ = running_agent
+
+    status, body = _request(port, "GET", "/healthz")
+
+    assert status == 200
+    assert body["ok"] is True
+    assert body["data"] == {"agent": "test", "protocol_version": 1, "status": "ok"}
+    assert MASTER_SECRET.decode() not in json.dumps(body)
+
+
+def test_v1_endpoint_rejects_missing_auth(running_agent: tuple[int, ProcessManager]) -> None:
+    port, _ = running_agent
+
+    status, body = _request(port, "GET", "/v1/runs/run-1/probe")
+
+    assert status == 401
+    assert body["error"]["code"] == "AUTH_MISSING_HEADER"
+
+
+def test_start_probe_logs_and_stop_contract(running_agent: tuple[int, ProcessManager]) -> None:
+    port, _ = running_agent
+    start_target = "/v1/runs/run-1/start"
+    payload = {
+        "process_id": "step-1",
+        "command_ref": "test.python",
+        "argv": [sys.executable, "-c", "import time; print('online', flush=True); time.sleep(30)"],
+        "environment": {},
+    }
+
+    status, started = _request(port, "POST", start_target, sequence=1, payload=payload)
+    assert status == 202
+    assert started["data"]["run_id"] == "run-1"
+    assert started["data"]["process_id"] == "step-1"
+
+    status, probed = _request(port, "GET", "/v1/runs/run-1/probe", sequence=2)
+    assert status == 200
+    assert probed["data"]["processes"][0]["pgid"] == started["data"]["pgid"]
+
+    deadline = time.monotonic() + 3
+    logs: dict[str, Any] = {}
+    sequence = 3
+    while time.monotonic() < deadline:
+        status, logs = _request(
+            port,
+            "GET",
+            "/v1/runs/run-1/logs?process_id=step-1&stream=stdout&after=0",
+            sequence=sequence,
+        )
+        if "online" in logs.get("data", {}).get("data", ""):
+            break
+        time.sleep(0.01)
+        sequence += 1
+    assert status == 200
+    assert "online" in logs["data"]["data"]
+
+    stop_payload = {"process_id": "step-1", "grace_seconds": {"sigint": 0.1, "sigterm": 0.1, "sigkill": 0.1}}
+    status, stopped = _request(port, "POST", "/v1/runs/run-1/stop", sequence=sequence + 1, payload=stop_payload)
+    assert status == 200
+    assert stopped["data"]["status"] == "STOPPED"
+
+
+def test_invalid_command_ref_returns_422_without_starting(running_agent: tuple[int, ProcessManager]) -> None:
+    port, manager = running_agent
+    payload = {
+        "process_id": "step-1",
+        "command_ref": "shell.anything",
+        "argv": ["/bin/sh", "-c", "echo unsafe"],
+        "environment": {},
+    }
+
+    status, body = _request(port, "POST", "/v1/runs/run-1/start", sequence=1, payload=payload)
+
+    assert status == 422
+    assert body["error"]["code"] == "COMMAND_NOT_ALLOWED"
+    assert manager.probe("run-1") == []
+    assert MASTER_SECRET.decode() not in json.dumps(body)
+
+
+class _RetryHandler(BaseHTTPRequestHandler):
+    counts = {"start": 0, "probe": 0}
+    sequences: list[int] = []
+
+    def do_POST(self) -> None:  # noqa: N802
+        type(self).counts["start"] += 1
+        self._reply(503, {"ok": False, "error": {"code": "UNAVAILABLE", "message": "retry", "details": {}}})
+
+    def do_GET(self) -> None:  # noqa: N802
+        type(self).counts["probe"] += 1
+        type(self).sequences.append(int(self.headers["X-Platform-Sequence"]))
+        if type(self).counts["probe"] == 1:
+            self._reply(503, {"ok": False, "error": {"code": "UNAVAILABLE", "message": "retry", "details": {}}})
+        else:
+            self._reply(200, {"ok": True, "data": {"processes": []}})
+
+    def _reply(self, status: int, payload: dict[str, Any]) -> None:
+        body = json.dumps(payload).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:
+        return
+
+
+def test_host_client_retries_probe_but_never_start() -> None:
+    _RetryHandler.counts = {"start": 0, "probe": 0}
+    _RetryHandler.sequences = []
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _RetryHandler)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    client = AgentClient("127.0.0.1", server.server_port, MASTER_SECRET, retry_attempts=1)
+    try:
+        with pytest.raises(AgentHTTPError):
+            client.start("run-1", {"process_id": "step-1", "command_ref": "test.python", "argv": []})
+        assert _RetryHandler.counts["start"] == 1
+
+        assert client.probe("run-1") == {"processes": []}
+        assert _RetryHandler.counts["probe"] == 2
+        assert _RetryHandler.sequences == sorted(_RetryHandler.sequences)
+        assert len(set(_RetryHandler.sequences)) == 2
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
