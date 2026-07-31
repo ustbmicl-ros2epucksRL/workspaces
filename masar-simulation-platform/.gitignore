@@ -1,0 +1,19 @@
+# Runtime data and archives
+runs/*.db
+runs/*.db-*
+runs/*/events.jsonl
+runs/*/archive.tar*
+runs/*/artifacts/
+
+# Python caches and local tooling
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+*.egg-info/
+
+# Local environment and generated frontend output
+.env
+frontend/node_modules/
+frontend/dist/
