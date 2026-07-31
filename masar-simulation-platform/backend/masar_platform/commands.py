@@ -14,6 +14,20 @@ if TYPE_CHECKING:
     from .contracts import ScenarioManifest
 
 
+_SHELL_FRAGMENT = re.compile(r"(?:\$\(|`|[|;&<>\n\r])")
+_ENVIRONMENT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+
+
+def _validate_environment(environment: tuple[tuple[str, str], ...]) -> None:
+    names: set[str] = set()
+    for name, value in environment:
+        if not _ENVIRONMENT_NAME.fullmatch(name) or name in names:
+            raise ValueError("fixed environment names must be unique uppercase identifiers")
+        if not value or not value.isprintable() or _SHELL_FRAGMENT.search(value):
+            raise ValueError(f"fixed environment value for {name} contains shell or control characters")
+        names.add(name)
+
+
 class CommandRenderError(ValueError):
     """Raised when a command ref or substituted parameter is not allowlisted."""
 
@@ -26,6 +40,25 @@ class CommandRef:
     launch_parameters: tuple[str, ...] = ()
     positional_parameters: tuple[str, ...] = ()
     fixed_args_after_parameters: bool = False
+    fixed_environment: tuple[tuple[str, str], ...] = ()
+
+    def __post_init__(self) -> None:
+        environment = tuple((str(name), str(value)) for name, value in self.fixed_environment)
+        _validate_environment(environment)
+        object.__setattr__(self, "fixed_environment", environment)
+
+
+@dataclass(frozen=True, slots=True)
+class CommandInvocation:
+    """A validated argv plus immutable process environment overrides."""
+
+    argv: tuple[str, ...]
+    environment: Mapping[str, str]
+
+    def __post_init__(self) -> None:
+        environment = tuple((str(name), str(value)) for name, value in self.environment.items())
+        _validate_environment(environment)
+        object.__setattr__(self, "environment", MappingProxyType(dict(environment)))
 
 
 _SWARM_PARAMETERS = (
@@ -84,7 +117,8 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros2.exploration_webots": CommandRef(
             agent="ros2",
             executable="./start_robosar_webots.sh",
-            fixed_args=("--no-vglrun", "webots_stream:=true", "webots_port:=18141"),
+            fixed_args=("--no-vglrun",),
+            fixed_environment=(("WEBOTS_STREAM", "true"), ("WEBOTS_PORT", "18141")),
         ),
         "ros1.exploration_webots": CommandRef(
             agent="ros1",
@@ -109,9 +143,6 @@ _CONTROLLER_MODES = frozenset(
         "transport-heuristic",
     }
 )
-_SHELL_FRAGMENT = re.compile(r"(?:\$\(|`|[|;&<>\n\r])")
-
-
 def render_command(
     command_ref: str,
     parameters: Mapping[str, Any] | None = None,
@@ -158,6 +189,31 @@ def render_command(
 
     _validate_argv(argv)
     return argv
+
+
+def command_environment(command_ref: str) -> Mapping[str, str]:
+    """Return immutable, validated environment overrides for a command ref."""
+
+    try:
+        environment = COMMAND_REFS[command_ref].fixed_environment
+    except KeyError as exc:
+        raise CommandRenderError(f"unknown command_ref: {command_ref}") from exc
+    _validate_environment(environment)
+    return MappingProxyType(dict(environment))
+
+
+def render_invocation(
+    command_ref: str,
+    parameters: Mapping[str, Any] | None = None,
+    *,
+    manifest: "ScenarioManifest | None" = None,
+) -> CommandInvocation:
+    """Render a complete immutable process invocation without executing it."""
+
+    return CommandInvocation(
+        argv=tuple(render_command(command_ref, parameters, manifest=manifest)),
+        environment=command_environment(command_ref),
+    )
 
 
 def _validate_without_manifest(
@@ -210,4 +266,12 @@ def _validate_argv(argv: list[str]) -> None:
             raise CommandRenderError("rendered argv violates the static command policy")
 
 
-__all__ = ["COMMAND_REFS", "CommandRef", "CommandRenderError", "render_command"]
+__all__ = [
+    "COMMAND_REFS",
+    "CommandInvocation",
+    "CommandRef",
+    "CommandRenderError",
+    "command_environment",
+    "render_command",
+    "render_invocation",
+]

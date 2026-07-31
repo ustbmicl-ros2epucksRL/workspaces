@@ -3,7 +3,14 @@ from pathlib import Path
 import pytest
 
 from masar_platform.catalog import ScenarioCatalog
-from masar_platform.commands import COMMAND_REFS, CommandRenderError, render_command
+from masar_platform.commands import (
+    COMMAND_REFS,
+    CommandRef,
+    CommandRenderError,
+    command_environment,
+    render_command,
+    render_invocation,
+)
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -62,9 +69,25 @@ def test_webots_exploration_enables_platform_stream_explicitly() -> None:
     assert render_command("ros2.exploration_webots", {}, manifest=manifest) == [
         "./start_robosar_webots.sh",
         "--no-vglrun",
-        "webots_stream:=true",
-        "webots_port:=18141",
     ]
+    invocation = render_invocation("ros2.exploration_webots", {}, manifest=manifest)
+    assert invocation.argv == ("./start_robosar_webots.sh", "--no-vglrun")
+    assert dict(invocation.environment) == {"WEBOTS_STREAM": "true", "WEBOTS_PORT": "18141"}
+    assert dict(command_environment("ros2.exploration_webots")) == {
+        "WEBOTS_STREAM": "true",
+        "WEBOTS_PORT": "18141",
+    }
+    with pytest.raises(TypeError):
+        invocation.environment["WEBOTS_PORT"] = "1"  # type: ignore[index]
+
+
+def test_fixed_environment_rejects_shell_and_control_characters() -> None:
+    with pytest.raises(ValueError, match="environment"):
+        CommandRef(
+            agent="ros2",
+            executable="./start_robosar_webots.sh",
+            fixed_environment=(("WEBOTS_STREAM", "true\nWEBOTS_PORT=1"),),
+        )
 
 
 def test_swarm_default_argv_preserves_start_simulation_defaults() -> None:
