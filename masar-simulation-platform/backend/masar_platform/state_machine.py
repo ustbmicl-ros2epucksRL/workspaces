@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+import sqlite3
 
 from .db import Database, datetime_from_text, datetime_to_text, utc_datetime
 from .events import EventStore
