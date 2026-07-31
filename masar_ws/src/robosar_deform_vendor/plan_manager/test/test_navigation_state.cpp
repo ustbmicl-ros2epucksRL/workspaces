@@ -11,13 +11,13 @@ using plan_manager::NavigationStateMachine;
 
 TEST(NavigationState, StartsStoppedWithoutMapOrMotionPermission)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     EXPECT_EQ(machine.update(NavigationInput(), 0.0).state, NavigationState::STOPPED);
 }
 
 TEST(NavigationState, MissingMapDeadlineProducesMapUnavailable)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     NavigationInput input;
     input.has_goal = true;
     input.motion_enabled = true;
@@ -29,7 +29,7 @@ TEST(NavigationState, MissingMapDeadlineProducesMapUnavailable)
 
 TEST(NavigationState, StaticNoPathDoesNotProduceDirectFallback)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     NavigationInput input;
     input.has_goal = input.motion_enabled = input.map_ready = input.odom_ready = true;
     input.planning_event = NavigationEvent::STATIC_NO_PATH;
@@ -41,7 +41,7 @@ TEST(NavigationState, StaticNoPathDoesNotProduceDirectFallback)
 
 TEST(NavigationState, PlanningFailureKeepsExactReasonAfterMotionGateCloses)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     NavigationInput input;
     input.has_goal = input.motion_enabled = input.map_ready = input.odom_ready = true;
     input.planning_event = NavigationEvent::START_IN_COLLISION;
@@ -56,27 +56,30 @@ TEST(NavigationState, PlanningFailureKeepsExactReasonAfterMotionGateCloses)
     EXPECT_FALSE(result.command_motion);
 }
 
-TEST(NavigationState, DynamicBlockRetriesOnlyAfterBackoffOrDataChange)
+TEST(NavigationState, DynamicBlockStopsOneCycleWithoutRequestingAnotherPlan)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     NavigationInput input;
     input.has_goal = input.motion_enabled = input.map_ready = input.odom_ready = true;
     input.planning_event = NavigationEvent::PLAN_READY;
     EXPECT_EQ(machine.update(input, 0.0).state, NavigationState::TRACKING);
 
     input.planning_event = NavigationEvent::DYNAMIC_BLOCKED;
-    EXPECT_FALSE(machine.update(input, 0.2).request_plan);
+    const auto blocked = machine.update(input, 0.2);
+    EXPECT_EQ(blocked.state, NavigationState::BLOCKED_DYNAMIC);
+    EXPECT_FALSE(blocked.command_motion);
+    EXPECT_FALSE(blocked.request_plan);
+
     input.planning_event = NavigationEvent::NONE;
-    EXPECT_FALSE(machine.update(input, 0.9).request_plan);
-    EXPECT_TRUE(machine.update(input, 1.2).request_plan);
-    EXPECT_FALSE(machine.update(input, 1.3).request_plan);
-    input.data_revision++;
-    EXPECT_TRUE(machine.update(input, 1.4).request_plan);
+    const auto recovered = machine.update(input, 0.3);
+    EXPECT_EQ(recovered.state, NavigationState::TRACKING);
+    EXPECT_TRUE(recovered.command_motion);
+    EXPECT_FALSE(recovered.request_plan);
 }
 
 TEST(NavigationState, StopPreservesGoalAndPathProgress)
 {
-    NavigationStateMachine machine(2.0, 1.0);
+    NavigationStateMachine machine(2.0);
     NavigationInput input;
     input.has_goal = input.motion_enabled = input.map_ready = input.odom_ready = true;
     input.planning_event = NavigationEvent::PLAN_READY;

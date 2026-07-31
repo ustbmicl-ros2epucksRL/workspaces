@@ -70,10 +70,8 @@ TransportApproachResult resolveTransportApproach(
     return result;
 }
 
-NavigationStateMachine::NavigationStateMachine(
-    double map_startup_timeout, double replan_backoff)
-  : map_startup_timeout_(std::max(0.0, map_startup_timeout)),
-    replan_backoff_(std::max(0.0, replan_backoff))
+NavigationStateMachine::NavigationStateMachine(double map_startup_timeout)
+  : map_startup_timeout_(std::max(0.0, map_startup_timeout))
 {
 }
 
@@ -142,25 +140,11 @@ NavigationDecision NavigationStateMachine::update(
         result.state = state_ = NavigationState::TRACKING;
         result.detail = "TRACKING";
         result.command_motion = true;
-        last_data_revision_ = input.data_revision;
         return result;
     }
     if (input.planning_event == NavigationEvent::DYNAMIC_BLOCKED) {
-        state_ = NavigationState::BLOCKED_DYNAMIC;
-        last_retry_time_ = now_seconds;
-        last_data_revision_ = input.data_revision;
-    }
-    if (state_ == NavigationState::BLOCKED_DYNAMIC) {
-        const bool changed = input.data_revision != last_data_revision_;
-        const bool backoff_elapsed = last_retry_time_ < 0.0 ||
-            now_seconds - last_retry_time_ >= replan_backoff_;
         result.state = NavigationState::BLOCKED_DYNAMIC;
         result.detail = "BLOCKED_DYNAMIC";
-        result.request_plan = changed || backoff_elapsed;
-        if (result.request_plan) {
-            last_retry_time_ = now_seconds;
-            last_data_revision_ = input.data_revision;
-        }
         return result;
     }
     if (state_ == NavigationState::TRACKING) {
@@ -180,7 +164,6 @@ void NavigationStateMachine::resetGoal()
     state_ = NavigationState::STOPPED;
     has_goal_ = false;
     runnable_since_ = -1.0;
-    last_retry_time_ = -1.0;
     path_progress_ = 0.0;
 }
 

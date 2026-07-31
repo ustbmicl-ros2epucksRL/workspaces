@@ -22,7 +22,6 @@ emergency_fire_radius: 0.10
 treat_unknown_as_occupied: true
 clearance_cost_weight: 0.08
 map_startup_timeout: 5.0
-replan_backoff: 1.0
 control_rate: 10.0
 odom_timeout: 0.8
 scan_timeout: 0.8

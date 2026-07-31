@@ -130,38 +130,6 @@ PathReference pathReference(
     return output;
 }
 
-std::uint64_t mapFingerprint(const nav_msgs::OccupancyGrid& map)
-{
-    std::uint64_t hash = 1469598103934665603ULL;
-    const std::size_t stride = std::max<std::size_t>(1, map.data.size() / 4096);
-    for (std::size_t index = 0; index < map.data.size(); index += stride) {
-        hash ^= static_cast<std::uint8_t>(map.data[index]);
-        hash *= 1099511628211ULL;
-    }
-    hash ^= map.info.width + (static_cast<std::uint64_t>(map.info.height) << 32U);
-    return hash;
-}
-
-std::uint64_t sceneFingerprint(const std::vector<SceneObstacle>& obstacles)
-{
-    std::uint64_t hash = 1469598103934665603ULL;
-    const auto mix = [&hash](std::uint64_t value) {
-        hash ^= value;
-        hash *= 1099511628211ULL;
-    };
-    for (const SceneObstacle& obstacle : obstacles) {
-        mix(static_cast<std::uint64_t>(obstacle.object_type));
-        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(obstacle.object_id)));
-        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(
-            std::llround(obstacle.center.x() * 1000.0))));
-        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(
-            std::llround(obstacle.center.y() * 1000.0))));
-        mix(static_cast<std::uint64_t>(static_cast<std::int64_t>(
-            std::llround(obstacle.radius * 1000.0))));
-    }
-    return hash;
-}
-
 NavigationEvent navigationEvent(PlanFailure failure)
 {
     switch (failure) {
@@ -197,7 +165,7 @@ class FormationNavigationNode
 public:
     FormationNavigationNode()
       : private_nh_("~"), tf_listener_(tf_buffer_),
-        state_machine_(parameter("map_startup_timeout", 5.0), parameter("replan_backoff", 1.0)),
+        state_machine_(parameter("map_startup_timeout", 5.0)),
         planner_(plannerConfig())
     {
         private_nh_.param("frame_id", frame_id_, std::string("map"));
@@ -354,8 +322,6 @@ private:
         assignment_ready_ = false;
         formation_yaw_ready_ = false;
         plan_failure_ = PlanFailure::NONE;
-        planned_external_discs_.clear();
-        plan_revision_ = 0;
     }
 
     void modeCallback(const std_msgs::String::ConstPtr& msg) { mode_ = msg->data; }
@@ -372,20 +338,10 @@ private:
             ROS_ERROR_THROTTLE(2.0, "Rejected invalid occupancy grid: %s", candidate->error().c_str());
             return;
         }
-        const std::uint64_t fingerprint = mapFingerprint(*msg);
-        const bool changed = !map_ready_ || fingerprint != map_fingerprint_;
         map_ = *msg;
         frame_id_ = msg->header.frame_id;
         clearance_grid_ = std::move(candidate);
         map_ready_ = true;
-        if (changed) {
-            map_fingerprint_ = fingerprint;
-            ++data_revision_;
-            path_.clear();
-            plan_failure_ = PlanFailure::NONE;
-            planned_external_discs_.clear();
-            state_machine_.resetGoal();
-        }
     }
 
     double emergencyObjectRadius(std::uint8_t object_type) const
@@ -401,8 +357,6 @@ private:
 
     void sceneCallback(const robosar_messages::EmergencyObjectArray::ConstPtr& msg)
     {
-        const std::uint64_t old_avoidance_fingerprint =
-            sceneFingerprint(nonActiveSceneObstacles());
         std::vector<SceneObstacle> next;
         next.reserve(msg->objects.size());
         for (const auto& object : msg->objects) {
@@ -434,21 +388,8 @@ private:
                 return left.object_type < right.object_type;
             return left.object_id < right.object_id;
         });
-        const std::uint64_t fingerprint = sceneFingerprint(next);
         scene_obstacles_ = std::move(next);
-        const std::uint64_t new_avoidance_fingerprint =
-            sceneFingerprint(nonActiveSceneObstacles());
-        const bool avoidance_changed = !scene_ready_ ||
-            old_avoidance_fingerprint != new_avoidance_fingerprint;
         scene_obstacle_stamp_ = ros::Time::now();
-        scene_ready_ = true;
-        scene_fingerprint_ = fingerprint;
-        if (avoidance_changed) {
-            ++data_revision_;
-            path_.clear();
-            plan_failure_ = PlanFailure::NONE;
-            state_machine_.resetGoal();
-        }
     }
 
     bool isActiveTaskObject(const SceneObstacle& obstacle) const
@@ -495,20 +436,6 @@ private:
             : robot_radius_;
         return sweptCircularObstacles(
             currentExternalDiscs(now), velocity_config_.time_horizon, resolution);
-    }
-
-    bool externalTrafficRequiresReplan(const ros::Time& now) const
-    {
-        if (path_.empty()) return false;
-        const std::vector<MovingDisc> current = currentExternalDiscs(now);
-        const double resolution = map_ready_
-            ? std::max(1e-3, static_cast<double>(map_.info.resolution))
-            : robot_radius_;
-        const double movement_threshold = std::max(
-            2.0 * resolution,
-            minimumCircularEnvelopeRadius(limits_, formation_clearance_));
-        return dynamicRouteNeedsRefresh(
-            current, planned_external_discs_, movement_threshold);
     }
 
     std::vector<CircularMapObstacle> planningSceneObstacles(
@@ -568,7 +495,6 @@ private:
                 std::cos(angle), std::sin(angle)));
         }
         robot.scan_stamp = msg->header.stamp.isZero() ? ros::Time::now() : msg->header.stamp;
-        ++data_revision_;
     }
 
     bool odomReady(const ros::Time& now) const
@@ -652,7 +578,6 @@ private:
                 plan_failure_ = PlanFailure::GOAL_IN_COLLISION;
                 path_.clear();
                 minimum_clearance_ = 0.0;
-                plan_revision_ = map_fingerprint_;
                 ROS_ERROR("No collision-free formation center exists in the transport "
                           "approach region; no direct fallback will be used");
                 return false;
@@ -680,7 +605,6 @@ private:
             planning_map, actual_center, goal_, actual_centers_clear,
             dynamic_obstacles);
         minimum_clearance_ = result.minimum_clearance;
-        plan_revision_ = map_fingerprint_ ^ scene_fingerprint_;
         if (result.failure != PlanFailure::NONE) {
             plan_failure_ = result.failure;
             path_.clear();
@@ -690,7 +614,6 @@ private:
         }
         plan_failure_ = PlanFailure::NONE;
         path_ = result.points;
-        planned_external_discs_ = currentExternalDiscs(planning_time);
         planning_clearance_grid_ = std::move(planning_grid);
         if (path_.size() >= 2) {
             const double initial_yaw = std::atan2(
@@ -721,22 +644,12 @@ private:
     {
         const ros::Time now = ros::Time::now();
         refreshExternalRobots(now);
-        if (motion_enabled_ && mode_ == "NAV_FORMATION" && odomReady(now) &&
-            externalTrafficRequiresReplan(now)) {
-            ROS_INFO_THROTTLE(
-                1.0, "Exploration traffic changed materially; reoptimizing the "
-                "formation center path");
-            path_.clear();
-            plan_failure_ = PlanFailure::NONE;
-            state_machine_.resetGoal();
-        }
         const bool has_goal = active_task_id_ != std::numeric_limits<int>::min();
         NavigationInput input;
         input.has_goal = has_goal;
         input.motion_enabled = motion_enabled_ && mode_ == "NAV_FORMATION";
         input.map_ready = map_ready_;
         input.odom_ready = odomReady(now);
-        input.data_revision = data_revision_;
         if (plan_failure_ != PlanFailure::NONE)
             input.planning_event = navigationEvent(plan_failure_);
         else if (plan_ready_event_) input.planning_event = NavigationEvent::PLAN_READY;
@@ -1057,7 +970,6 @@ private:
     std::unique_ptr<ClearanceGrid> clearance_grid_;
     std::unique_ptr<ClearanceGrid> planning_clearance_grid_;
     std::vector<SceneObstacle> scene_obstacles_;
-    std::vector<MovingDisc> planned_external_discs_;
     ros::Time scene_obstacle_stamp_;
     robosar_messages::EmergencyTask active_task_;
     geometry_msgs::PoseStamped nominal_target_pose_;
@@ -1069,12 +981,10 @@ private:
     std::string frame_id_, map_topic_, mode_ = "STOP";
     int active_task_id_ = std::numeric_limits<int>::min();
     ArrivalProfile profile_ = ArrivalProfile::WAYPOINT;
-    bool motion_enabled_ = false, map_ready_ = false, scene_ready_ = false;
+    bool motion_enabled_ = false, map_ready_ = false;
     bool assignment_ready_ = false, formation_yaw_ready_ = false;
     PlanFailure plan_failure_ = PlanFailure::NONE;
     bool plan_ready_event_ = false;
-    std::uint64_t data_revision_ = 0, map_fingerprint_ = 0, scene_fingerprint_ = 0,
-                  plan_revision_ = 0;
     double target_yaw_ = 0.0, formation_yaw_ = 0.0, minimum_clearance_ = 0.0;
     double nominal_side_, robot_radius_, safety_gap_, formation_clearance_;
     double transport_box_half_length_, emergency_victim_radius_, emergency_fire_radius_;

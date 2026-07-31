@@ -45,7 +45,6 @@ struct NavigationInput
     bool map_ready = false;
     bool odom_ready = false;
     NavigationEvent planning_event = NavigationEvent::NONE;
-    std::uint64_t data_revision = 0;
 };
 
 struct NavigationDecision
@@ -80,7 +79,7 @@ TransportApproachResult resolveTransportApproach(
 class NavigationStateMachine
 {
 public:
-    NavigationStateMachine(double map_startup_timeout, double replan_backoff);
+    explicit NavigationStateMachine(double map_startup_timeout);
     NavigationDecision update(const NavigationInput& input, double now_seconds);
     void resetGoal();
     bool hasGoal() const;
@@ -89,12 +88,9 @@ public:
 
 private:
     double map_startup_timeout_;
-    double replan_backoff_;
     NavigationState state_ = NavigationState::STOPPED;
     bool has_goal_ = false;
     double runnable_since_ = -1.0;
-    double last_retry_time_ = -1.0;
-    std::uint64_t last_data_revision_ = 0;
     double path_progress_ = 0.0;
 };
 
