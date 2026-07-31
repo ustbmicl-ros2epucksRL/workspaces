@@ -569,8 +569,8 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 | ref | argv 模板摘要 | stop grace |
 |---|---|---:|
 | `ros2.swarm` | `ros2 launch launch_webots create_enviroment.launch.py webots_world={world} pattern={pattern} number_robots={n} ... webots_stream:=true webots_port:=18141` | 10/5/5 s |
-| `ros1.response_deform` | `./run_response_deform_demo.sh --no-rviz --no-vglrun` + allowlisted launch args | 10/5/5 s |
-| `ros1.response_controller` | `./run_response_controller_demo.sh {mode} --no-rviz --no-vglrun` | 10/5/5 s |
+| `ros1.response_deform` | `./run_response_deform_demo.sh --no-rviz --no-vglrun --shared-master` + allowlisted launch args | 10/5/5 s |
+| `ros1.response_controller` | `./run_response_controller_demo.sh {mode} --no-rviz --no-vglrun --shared-master` | 10/5/5 s |
 | `ros1.exploration_gazebo` | `./launch_robosar_g.sh --no-rviz --no-vglrun` | 10/5/5 s |
 | `ros2.exploration_webots` | `./start_robosar_webots.sh --no-vglrun`，并设置 `webots_stream=true webots_port=18141` | 10/5/5 s |
 | `ros1.exploration_webots` | `./launch_robosar_w.sh --no-rviz --no-vglrun` | 10/5/5 s |
@@ -584,7 +584,7 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 |---|---|---:|---|
 | `swarm.webots.ros2swarm` | Webots stream TCP、`/clock`、`/robot_0/odom` | 180 s | `swarm_sensor` |
 | `control.gazebo.response-deform` | `/clock`、`/tb_0/odom`、`/response_group/status` | 120 s | `response_demo` |
-| `control.gazebo.response-controller` | `/clock`、`/tb_0/odom`、`/response_group/status` | 120 s | `response_demo` |
+| `control.gazebo.response-controller` | `/clock`、`/tb_0/odom`、`/response_group/behavior_mode` | 120 s | `response_demo` |
 | `exploration.gazebo.tepper` | `/clock`、`/sim_map`、`/percent_completed` | 180 s | `exploration` |
 | `exploration.webots.robosar` | ROS2 `/clock` + `/robot_0/odom`，ROS1 `/sim_map` + `/percent_completed` | 180 s | `exploration_webots` |
 | `rescue.gazebo.tepper-response` | `/clock`、`/sim_map`、`/response_group/status` | 180 s | `rescue` |
@@ -592,6 +592,8 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 每个 readiness 检查进程存活、端口可达、ROS graph 中的精确类型和最近一条消息。健康采样周期为 250 ms。消息 age 阈值为 `max(1.0 s, 3 / observed_hz)`；没有稳定频率时使用 1.0 s。超过阈值为 `STALE`，rosbridge 断开为 `DISCONNECTED`，类型错误为 `TYPE_MISMATCH`。
 
 profile 固定定义：`swarm_sensor` 只含 scan/odom/cmd_vel/camera/battery/safety 和可选 `/global_info`；`response_demo` 含 Burger odom、cmd_vel、`ResponseGroupStatus`、behavior mode 和 task result；`exploration` 含 `/sim_map`、frontier、allocation、progress、agent status、emergency objects；`exploration_webots` 以 ROS1 业务话题为权威，ROS2 raw robot topic 只作为可选传感器源；`rescue` 是 exploration 与 response_demo 的并集。
+
+控制器独立 demo 不发布 `ResponseGroupStatus`，其 readiness 因此使用 fixture 持续发布的 `/response_group/behavior_mode`。DEFORM 与 controller 的平台 argv 显式使用脚本已有的 `--shared-master`；该参数仅作用于平台启动，不改变两个原脚本的默认独立 master 行为。
 
 ### 19.5 API、错误和事件恢复
 

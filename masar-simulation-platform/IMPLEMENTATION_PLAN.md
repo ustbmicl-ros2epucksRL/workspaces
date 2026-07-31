@@ -321,16 +321,18 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 ## 9. Task 6: Webots Streaming Compatibility and Existing-Project Guardrails
 
 **Files:**
+- Modify: `/home/zjc/workspace/ROS2swarm_w/start_robosar_webots.sh`
 - Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py`
 - Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py` only if argument forwarding requires it
+- Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
 - Modify: `/home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py`
 - Create: `backend/masar_platform/webots.py`, `tests/integration/test_webots_proxy.py`
 
 - [ ] **Step 1: Capture the pre-change command baseline.** Run `--dry-run` for `start_simulation.sh` and `start_robosar_webots.sh`; save stdout under `tests/fixtures/baseline/` with the current commit SHA and do not edit the fixture manually.
 
-- [ ] **Step 2: Write failing compatibility tests.** Assert the current default launch still has `stream=false` and the existing port, while explicit `webots_stream=true webots_port=18141` passes `stream=True`, `port='18141'` to `WebotsLauncher`.
+- [ ] **Step 2: Write failing compatibility tests.** Assert the current default launch still has `stream=false` and the existing port, while `WEBOTS_STREAM=true WEBOTS_PORT=18141 ./start_robosar_webots.sh --dry-run --no-vglrun` forwards explicit `webots_stream:=true webots_port:=18141` launch arguments and both the swarm and RoboSAR launch paths pass `stream=True`, `port='18141'` to `WebotsLauncher`.
 
-- [ ] **Step 3: Implement the smallest default-off argument change.** Add declared launch arguments and forward them. Preserve the current defaults and all existing world, mode, GUI and supervisor behavior.
+- [ ] **Step 3: Implement the smallest default-off argument change.** Make `start_robosar_webots.sh` consume the platform-only `WEBOTS_STREAM`/`WEBOTS_PORT` environment metadata, add declared launch arguments to both Webots launch paths, and forward them. Preserve the current defaults and all existing world, mode, GUI and supervisor behavior when those variables are absent.
 
 - [ ] **Step 4: Run existing ROS2 tests and dry-run comparisons.**
 
@@ -348,7 +350,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - [ ] **Step 6: Commit the compatibility change separately from new platform code.**
 
   ```bash
-  git add /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py masar-simulation-platform/backend/masar_platform/webots.py masar-simulation-platform/tests/integration/test_webots_proxy.py
+  git add /home/zjc/workspace/ROS2swarm_w/start_robosar_webots.sh /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py masar-simulation-platform/backend/masar_platform/webots.py masar-simulation-platform/tests/integration/test_webots_proxy.py
   git commit -m "feat(ros2swarm): expose default-off Webots stream"
   ```
 

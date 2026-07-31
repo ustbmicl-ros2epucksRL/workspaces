@@ -43,7 +43,29 @@ def test_response_controller_mode_precedes_fixed_options() -> None:
     catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
     manifest = catalog.get("control.gazebo.response-controller")
     argv = render_command("ros1.response_controller", {"mode": "transport"}, manifest=manifest)
-    assert argv == ["./run_response_controller_demo.sh", "transport", "--no-rviz", "--no-vglrun"]
+    assert argv == [
+        "./run_response_controller_demo.sh",
+        "transport",
+        "--no-rviz",
+        "--no-vglrun",
+        "--shared-master",
+    ]
+
+
+def test_standalone_control_demos_join_the_platform_ros_master() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+
+    deform = catalog.get("control.gazebo.response-deform")
+    assert render_command("ros1.response_deform", {}, manifest=deform) == [
+        "./run_response_deform_demo.sh",
+        "--no-rviz",
+        "--no-vglrun",
+        "--shared-master",
+    ]
+
+    controller = catalog.get("control.gazebo.response-controller")
+    argv = render_command("ros1.response_controller", {}, manifest=controller)
+    assert argv[-1] == "--shared-master"
 
 
 def test_ros2_launch_renders_allowlisted_parameters() -> None:

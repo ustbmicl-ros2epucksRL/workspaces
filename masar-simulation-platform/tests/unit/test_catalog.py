@@ -47,7 +47,14 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
             (120, (("ros1_topic", "/clock"), ("ros1_topic", "/tb_0/odom"), ("ros1_topic", "/response_group/status")))
         ],
         "control.gazebo.response-controller": [
-            (120, (("ros1_topic", "/clock"), ("ros1_topic", "/tb_0/odom"), ("ros1_topic", "/response_group/status")))
+            (
+                120,
+                (
+                    ("ros1_topic", "/clock"),
+                    ("ros1_topic", "/tb_0/odom"),
+                    ("ros1_topic", "/response_group/behavior_mode"),
+                ),
+            )
         ],
         "exploration.gazebo.tepper": [
             (180, (("ros1_topic", "/clock"), ("ros1_topic", "/sim_map"), ("ros1_topic", "/percent_completed")))

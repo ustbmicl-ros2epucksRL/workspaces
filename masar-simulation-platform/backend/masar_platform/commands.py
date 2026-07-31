@@ -100,12 +100,12 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros1.response_deform": CommandRef(
             agent="ros1",
             executable="./run_response_deform_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun"),
+            fixed_args=("--no-rviz", "--no-vglrun", "--shared-master"),
         ),
         "ros1.response_controller": CommandRef(
             agent="ros1",
             executable="./run_response_controller_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun"),
+            fixed_args=("--no-rviz", "--no-vglrun", "--shared-master"),
             positional_parameters=("mode",),
             fixed_args_after_parameters=True,
         ),
