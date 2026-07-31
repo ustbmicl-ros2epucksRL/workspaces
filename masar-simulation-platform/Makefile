@@ -7,4 +7,6 @@ lint:
 	python3 -m ruff check backend tests
 
 compile:
-	python3 -m compileall -q backend agents
+	@paths="backend"; \
+	if [ -d agents ]; then paths="$$paths agents"; fi; \
+	python3 -m compileall -q $$paths

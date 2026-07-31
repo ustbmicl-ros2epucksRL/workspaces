@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from .config import get_settings
+
 
 class _MissingFastAPI:
     """Small import-safe placeholder when optional ASGI dependencies are absent."""
@@ -45,7 +47,13 @@ def run() -> None:
     except ImportError as exc:
         raise RuntimeError("Uvicorn is required to run the platform API") from exc
 
-    uvicorn.run("masar_platform.main:app", host="127.0.0.1", port=18_100, factory=False)
+    runtime_settings = get_settings()
+    uvicorn.run(
+        "masar_platform.main:app",
+        host=runtime_settings.api_host,
+        port=runtime_settings.api_port,
+        factory=False,
+    )
 
 
 __all__ = ["app", "create_app", "run"]

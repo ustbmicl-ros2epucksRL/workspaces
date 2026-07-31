@@ -115,3 +115,22 @@ def test_invalid_positive_values_are_rejected(monkeypatch: pytest.MonkeyPatch) -
 
     with pytest.raises(ValueError, match="api_port"):
         get_settings()
+
+
+@pytest.mark.parametrize(
+    ("variable", "field"),
+    (
+        ("MASAR_PLATFORM_DATA_DIR", "data_dir"),
+        ("MASAR_PLATFORM_SECRET_PATH", "secret_path"),
+    ),
+)
+def test_empty_paths_are_rejected(
+    monkeypatch: pytest.MonkeyPatch,
+    variable: str,
+    field: str,
+) -> None:
+    _clear_platform_env(monkeypatch)
+    monkeypatch.setenv(variable, "")
+
+    with pytest.raises(ValueError, match=field):
+        get_settings()

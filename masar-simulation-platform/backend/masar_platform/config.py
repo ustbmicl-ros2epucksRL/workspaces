@@ -15,8 +15,20 @@ from typing import Mapping
 
 _LOOPBACK = "127.0.0.1"
 _PLATFORM_ROOT = Path(__file__).resolve().parents[2]
-_DEFAULT_DATA_DIR = _PLATFORM_ROOT / "runs"
 _DEFAULT_SECRET_PATH = Path("/run/masar-platform/agent.secret")
+
+
+def _default_data_dir() -> Path:
+    """Use the checkout's runs directory, or a writable user path when installed."""
+
+    if (_PLATFORM_ROOT / "pyproject.toml").is_file():
+        return _PLATFORM_ROOT / "runs"
+    state_home = os.environ.get("XDG_STATE_HOME")
+    base = Path(state_home).expanduser() if state_home and state_home.strip() else Path.home() / ".local" / "state"
+    return base / "masar-platform" / "runs"
+
+
+_DEFAULT_DATA_DIR = _default_data_dir()
 
 
 def _env(environ: Mapping[str, str], name: str, default: str) -> str:
@@ -44,10 +56,10 @@ def _host(name: str, value: str) -> str:
 
 
 def _path(name: str, value: str | Path) -> Path:
-    path = Path(value).expanduser()
-    if not str(path):
+    raw_value = str(value)
+    if not raw_value.strip():
         raise ValueError(f"{name} must not be empty")
-    return path
+    return Path(raw_value).expanduser()
 
 
 @dataclass(frozen=True, slots=True)
