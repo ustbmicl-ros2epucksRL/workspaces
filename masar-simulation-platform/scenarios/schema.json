@@ -61,7 +61,7 @@
       "additionalProperties": false,
       "required": ["type", "name"],
       "properties": {
-        "type": {"enum": ["ros1_topic", "ros2_topic", "http", "file"]},
+        "type": {"enum": ["ros1_topic", "ros2_topic", "tcp", "http", "file"]},
         "name": {"type": "string", "minLength": 1},
         "required": {"type": "boolean", "default": true}
       }

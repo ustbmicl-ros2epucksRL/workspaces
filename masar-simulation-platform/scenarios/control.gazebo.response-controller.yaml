@@ -19,8 +19,10 @@ steps:
         - type: ros1_topic
           name: /clock
         - type: ros1_topic
-          name: /response_group/behavior_mode
-    start_timeout_seconds: 180
+          name: /tb_0/odom
+        - type: ros1_topic
+          name: /response_group/status
+    start_timeout_seconds: 120
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [response_controller]
 data_profile: response_demo

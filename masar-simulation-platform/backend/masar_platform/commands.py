@@ -25,6 +25,7 @@ class CommandRef:
     fixed_args: tuple[str, ...] = ()
     launch_parameters: tuple[str, ...] = ()
     positional_parameters: tuple[str, ...] = ()
+    fixed_args_after_parameters: bool = False
 
 
 _SWARM_PARAMETERS = (
@@ -54,7 +55,13 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros2.swarm": CommandRef(
             agent="ros2",
             executable="ros2",
-            fixed_args=("launch", "launch_webots", "create_enviroment.launch.py"),
+            fixed_args=(
+                "launch",
+                "launch_webots",
+                "create_enviroment.launch.py",
+                "webots_stream:=true",
+                "webots_port:=18141",
+            ),
             launch_parameters=_SWARM_PARAMETERS,
         ),
         "ros1.response_deform": CommandRef(
@@ -67,6 +74,7 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
             executable="./run_response_controller_demo.sh",
             fixed_args=("--no-rviz", "--no-vglrun"),
             positional_parameters=("mode",),
+            fixed_args_after_parameters=True,
         ),
         "ros1.exploration_gazebo": CommandRef(
             agent="ros1",
@@ -76,7 +84,7 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros2.exploration_webots": CommandRef(
             agent="ros2",
             executable="./start_robosar_webots.sh",
-            fixed_args=("--no-vglrun",),
+            fixed_args=("--no-vglrun", "webots_stream:=true", "webots_port:=18141"),
         ),
         "ros1.exploration_webots": CommandRef(
             agent="ros1",
@@ -135,7 +143,9 @@ def render_command(
         else:
             resolved = _validate_without_manifest(command_ref, definition, supplied)
 
-    argv = [definition.executable, *definition.fixed_args]
+    argv = [definition.executable]
+    if not definition.fixed_args_after_parameters:
+        argv.extend(definition.fixed_args)
     for name in definition.positional_parameters:
         if name not in resolved:
             raise CommandRenderError(f"missing required parameter: {name}")
@@ -143,6 +153,8 @@ def render_command(
     for name in definition.launch_parameters:
         if name in resolved:
             argv.append(f"{name}:={_safe_value(name, resolved[name])}")
+    if definition.fixed_args_after_parameters:
+        argv.extend(definition.fixed_args)
 
     _validate_argv(argv)
     return argv
@@ -178,7 +190,10 @@ def _default_manifest_for_command(command_ref: str) -> "ScenarioManifest | None"
 
 def _safe_value(name: str, value: Any) -> str:
     if isinstance(value, bool):
-        rendered = "true" if value else "false"
+        if name in {"driving_swarm", "logging"}:
+            rendered = "True" if value else "False"
+        else:
+            rendered = "true" if value else "false"
     elif isinstance(value, (str, int, float)) and not isinstance(value, complex):
         rendered = str(value)
     else:

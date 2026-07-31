@@ -15,7 +15,7 @@ steps:
           name: /clock
         - type: ros2_topic
           name: /robot_0/odom
-    start_timeout_seconds: 240
+    start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
   - id: ros1_robosar
     agent: ros1

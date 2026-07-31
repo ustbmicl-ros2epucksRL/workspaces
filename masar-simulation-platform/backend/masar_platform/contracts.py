@@ -51,7 +51,7 @@ class ParameterDefinition(BaseModel):
 class ReadinessProbe(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
-    type: Literal["ros1_topic", "ros2_topic", "http", "file"]
+    type: Literal["ros1_topic", "ros2_topic", "tcp", "http", "file"]
     name: str = Field(min_length=1)
     required: bool = True
 
@@ -76,7 +76,7 @@ class ScenarioStep(BaseModel):
     id: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9_-]*$")
     agent: Literal["ros1", "ros2"]
     command_ref: str = Field(min_length=1)
-    depends_on: tuple[str, ...] = ()
+    depends_on: tuple[str, ...]
     readiness: Readiness
     start_timeout_seconds: int = Field(gt=0)
     grace_seconds: GraceSeconds

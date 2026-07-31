@@ -29,3 +29,20 @@ def test_profile_type_checks_and_optional_topics() -> None:
 def test_display_and_artifact_profiles_are_referenced_registries() -> None:
     assert {"swarm", "control", "exploration", "rescue"}.issubset(DISPLAY_PROFILES)
     assert {"none", "swarm_default", "exploration_default", "rescue_default"}.issubset(ARTIFACT_PROFILES)
+
+
+def test_exploration_profile_uses_real_ros1_topic_types() -> None:
+    profile = TOPIC_PROFILES["exploration"]
+    expected = {
+        "/frontier_filter/filtered_frontiers": ("robosar_messages/PointArray",),
+        "/task_allocation_image": ("sensor_msgs/Image",),
+        "/percent_completed": ("std_msgs/Float32",),
+        "/robosar_agent_bringup_node/all_agent_status": ("robosar_messages/agents_status",),
+        "/robosar_sim/emergency_objects": ("robosar_messages/EmergencyObjectArray",),
+        "/robosar_sim/emergency_events": ("robosar_messages/EmergencyObject",),
+    }
+    topics = {topic.pattern: topic.message_types for topic in profile.topics}
+    assert expected.items() <= topics.items()
+    for inherited_name in ("exploration_webots", "rescue"):
+        inherited = {topic.pattern: topic.message_types for topic in TOPIC_PROFILES[inherited_name].topics}
+        assert expected.items() <= inherited.items()

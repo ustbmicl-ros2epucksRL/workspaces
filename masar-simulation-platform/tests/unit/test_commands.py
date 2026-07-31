@@ -32,12 +32,11 @@ def test_rendered_argv_is_shell_free_and_does_not_reference_retired_agent() -> N
             assert not any(token in item for item in argv for token in forbidden)
 
 
-def test_response_controller_mode_is_parameterized_after_fixed_options() -> None:
+def test_response_controller_mode_precedes_fixed_options() -> None:
     catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
     manifest = catalog.get("control.gazebo.response-controller")
     argv = render_command("ros1.response_controller", {"mode": "transport"}, manifest=manifest)
-    assert argv[:3] == ["./run_response_controller_demo.sh", "--no-rviz", "--no-vglrun"]
-    assert argv[3] == "transport"
+    assert argv == ["./run_response_controller_demo.sh", "transport", "--no-rviz", "--no-vglrun"]
 
 
 def test_ros2_launch_renders_allowlisted_parameters() -> None:
@@ -53,6 +52,51 @@ def test_ros2_launch_renders_allowlisted_parameters() -> None:
     assert "robot:=e_puck" in argv
     assert "sensor_type:=ir" in argv
     assert "number_robots:=3" in argv
+    assert "webots_stream:=true" in argv
+    assert "webots_port:=18141" in argv
+
+
+def test_webots_exploration_enables_platform_stream_explicitly() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    manifest = catalog.get("exploration.webots.robosar")
+    assert render_command("ros2.exploration_webots", {}, manifest=manifest) == [
+        "./start_robosar_webots.sh",
+        "--no-vglrun",
+        "webots_stream:=true",
+        "webots_port:=18141",
+    ]
+
+
+def test_swarm_default_argv_preserves_start_simulation_defaults() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    manifest = catalog.get("swarm.webots.ros2swarm")
+    assert render_command("ros2.swarm", {}, manifest=manifest) == [
+        "ros2",
+        "launch",
+        "launch_webots",
+        "create_enviroment.launch.py",
+        "webots_stream:=true",
+        "webots_port:=18141",
+        "webots_world:=command_world.wbt",
+        "pattern:=roundflocking_pattern",
+        "number_robots:=5",
+        "total_robots:=10",
+        "log_level:=info",
+        "webots_mode:=realtime",
+        "webots_gui:=true",
+        "robot:=burger",
+        "sensor_type:=lidar",
+        "x_min:=-1.0",
+        "x_max:=1.0",
+        "y_min:=-1.0",
+        "y_max:=1.0",
+        "min_distance:=0.2",
+        "z_height:=0.0",
+        "driving_swarm:=False",
+        "logging:=False",
+        "num_obstacles:=0",
+        "transport_object_shape:=cube",
+    ]
 
 
 def test_renderer_rejects_unknown_or_invalid_values() -> None:

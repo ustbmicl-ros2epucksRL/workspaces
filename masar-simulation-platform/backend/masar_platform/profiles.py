@@ -74,7 +74,6 @@ def _topic_regex(pattern: str) -> re.Pattern[str]:
 _ROS2_LASER = ("sensor_msgs/msg/LaserScan",)
 _ROS2_ODOM = ("nav_msgs/msg/Odometry",)
 _ROS2_TWIST = ("geometry_msgs/msg/Twist", "geometry_msgs/msg/TwistStamped")
-_ROS1_LASER = ("sensor_msgs/LaserScan",)
 _ROS1_ODOM = ("nav_msgs/Odometry",)
 _ROS1_TWIST = ("geometry_msgs/Twist", "geometry_msgs/TwistStamped")
 
@@ -101,18 +100,26 @@ _EXPLORATION_TOPICS = (
     TopicSpec("/sim_map", ("nav_msgs/OccupancyGrid",), "map", required=True),
     TopicSpec(
         "/frontier_filter/filtered_frontiers",
-        ("geometry_msgs/PoseArray", "visualization_msgs/MarkerArray"),
+        ("robosar_messages/PointArray",),
         "frontiers",
     ),
     TopicSpec("/task_allocation_image", ("sensor_msgs/Image",), "task_allocation_image"),
     TopicSpec("/percent_completed", ("std_msgs/Float32",), "exploration_progress"),
-    TopicSpec("/<agent>/status", ("std_msgs/String", "robosar_messages/AgentStatus"), "agent_status"),
     TopicSpec(
-        "/emergency_objects",
-        ("robosar_messages/EmergencyTask", "robosar_messages/EmergencyTaskArray"),
+        "/robosar_agent_bringup_node/all_agent_status",
+        ("robosar_messages/agents_status",),
+        "agent_status",
+    ),
+    TopicSpec(
+        "/robosar_sim/emergency_objects",
+        ("robosar_messages/EmergencyObjectArray",),
         "emergency_objects",
     ),
-    TopicSpec("/emergency_events", ("robosar_messages/EmergencyTask",), "emergency_events"),
+    TopicSpec(
+        "/robosar_sim/emergency_events",
+        ("robosar_messages/EmergencyObject",),
+        "emergency_events",
+    ),
 )
 
 _EXPLORATION_WEBOTS_TOPICS = _EXPLORATION_TOPICS + tuple(
