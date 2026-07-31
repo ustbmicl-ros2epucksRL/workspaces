@@ -117,18 +117,26 @@ class EventStore:
             if not isinstance(value, str) or not value:
                 raise EventValidationError(f"{field_name} must be a non-empty string")
 
-        sequence = connection.execute(
-            "SELECT COALESCE(MAX(sequence), 0) + 1 FROM events WHERE run_id = ?",
+        run_row = connection.execute(
+            "SELECT next_event_sequence FROM runs WHERE run_id = ?",
             (run_id,),
-        ).fetchone()[0]
+        ).fetchone()
+        if run_row is None:
+            raise EventValidationError(f"unknown run_id: {run_id}")
+        sequence = run_row[0]
+        connection.execute(
+            "UPDATE runs SET next_event_sequence = next_event_sequence + 1 WHERE run_id = ?",
+            (run_id,),
+        )
         stable_event_id = event_id or str(uuid.uuid4())
         connection.execute(
             """
             INSERT INTO events (
-                event_id, run_id, sequence, wall_time, sim_time_ns, source, kind, severity, payload
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                schema_version, event_id, run_id, sequence, wall_time, sim_time_ns, source, kind, severity, payload
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
+                1,
                 stable_event_id,
                 run_id,
                 sequence,
@@ -189,7 +197,20 @@ class EventStore:
         path = self.archive_path(run_id)
         with _ARCHIVE_WRITE_LOCK:
             path.parent.mkdir(parents=True, exist_ok=True)
+            last_sequence = _last_archived_sequence(path)
+            with self.database.connect() as connection:
+                rows = connection.execute(
+                    """
+                    SELECT * FROM events
+                    WHERE run_id = ? AND sequence > ?
+                    ORDER BY sequence
+                    """,
+                    (run_id, last_sequence),
+                ).fetchall()
             with path.open("a", encoding="utf-8") as stream:
+                for row in rows:
+                    stream.write(json.dumps(_event_from_row(row).as_dict(), separators=(",", ":"), sort_keys=True))
+                    stream.write("\n")
                 stream.flush()
                 os.fsync(stream.fileno())
         return path
@@ -245,7 +266,7 @@ def _encode_payload(payload: Mapping[str, Any]) -> tuple[dict[str, Any], str]:
 
 def _event_from_row(row: sqlite3.Row) -> Event:
     return Event(
-        schema_version=1,
+        schema_version=row["schema_version"],
         event_id=row["event_id"],
         run_id=row["run_id"],
         sequence=row["sequence"],

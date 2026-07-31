@@ -59,6 +59,8 @@ def test_database_initializes_five_indexed_wal_tables(tmp_path: Path) -> None:
                 for index in indexes
             }
             assert any(columns and columns[0] == "run_id" for columns in indexed_columns), table
+        event_columns = {column[1] for column in connection.execute("PRAGMA table_info(events)").fetchall()}
+        assert "schema_version" in event_columns
         event_indexes = connection.execute("PRAGMA index_list(events)").fetchall()
         unique_event_indexes = {
             tuple(
@@ -171,6 +173,26 @@ def test_failed_jsonl_mirror_happens_after_database_commit(tmp_path: Path) -> No
     assert (row["sequence"], row["kind"]) == (2, "COMMITTED")
 
 
+def test_prepare_archive_repairs_a_committed_mirror_gap(tmp_path: Path) -> None:
+    _, events, leases = _store(tmp_path)
+    leases.acquire("run-1", "scenario-1", "owner-1", at=NOW)
+    events.append(
+        "run-1",
+        source="test",
+        kind="COMMITTED",
+        severity="info",
+        payload={},
+        wall_time=NOW + timedelta(seconds=1),
+    )
+    archive = events.archive_path("run-1")
+    first_line = archive.read_text(encoding="utf-8").splitlines()[0]
+    archive.write_text(first_line + "\n", encoding="utf-8")
+
+    events.prepare_archive("run-1")
+
+    assert [json.loads(line)["sequence"] for line in archive.read_text(encoding="utf-8").splitlines()] == [1, 2]
+
+
 def test_live_retention_uses_age_or_count_without_touching_archive(tmp_path: Path) -> None:
     _, events, leases = _store(tmp_path, retention_days=30, retention_count=3)
     leases.acquire("run-1", "scenario-1", "owner-1", at=NOW - timedelta(days=40))
@@ -192,6 +214,34 @@ def test_live_retention_uses_age_or_count_without_touching_archive(tmp_path: Pat
     assert [event.sequence for event in events.list("run-1")] == [3, 4, 5]
     assert archive.read_bytes() == archive_before
     assert events.archive_path("run-1") == tmp_path / "runs" / "run-1" / "events.jsonl"
+
+
+def test_sequence_remains_monotonic_after_retention_removes_all_live_rows(tmp_path: Path) -> None:
+    _, events, leases = _store(tmp_path, retention_days=30, retention_count=3)
+    old = NOW - timedelta(days=40)
+    leases.acquire("run-1", "scenario-1", "owner-1", at=old)
+    events.append(
+        "run-1",
+        source="test",
+        kind="OLD",
+        severity="info",
+        payload={},
+        wall_time=old,
+    )
+
+    assert events.prune(at=NOW) == 2
+
+    event = events.append(
+        "run-1",
+        source="test",
+        kind="AFTER_PRUNE",
+        severity="info",
+        payload={},
+        wall_time=NOW,
+    )
+
+    assert event.sequence == 3
+    assert [json.loads(line)["sequence"] for line in events.archive_path("run-1").read_text().splitlines()] == [1, 2, 3]
 
 
 def test_list_supports_reconnect_cursor(tmp_path: Path) -> None:

@@ -76,7 +76,8 @@ CREATE TABLE IF NOT EXISTS runs (
     reason_code TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
-    ended_at TEXT
+    ended_at TEXT,
+    next_event_sequence INTEGER NOT NULL DEFAULT 1 CHECK (next_event_sequence > 0)
 );
 
 CREATE TABLE IF NOT EXISTS run_steps (
@@ -100,6 +101,7 @@ CREATE TABLE IF NOT EXISTS leases (
 );
 
 CREATE TABLE IF NOT EXISTS events (
+    schema_version INTEGER NOT NULL CHECK (schema_version = 1),
     event_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
     sequence INTEGER NOT NULL CHECK (sequence > 0),
