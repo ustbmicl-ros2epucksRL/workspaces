@@ -8,7 +8,7 @@ review all pass. The next task must not start before that point.
 |---|---|---|---|---|---|
 | 0. Scaffold and Tooling | PASS | `7 passed`; `make compile` passed | APPROVED | APPROVED after fixes | `8f7b3b4`, `a3133b2` |
 | 1. Scenario Schema, Profiles and Static Commands | PASS | `25 passed`; full unit suite `32 passed`; schema, compile, Ruff, container dry-runs passed | APPROVED | APPROVED after fixes | `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, `f2be4c6` |
-| 2. SQLite State, Lease and Events | PENDING | - | - | - | - |
+| 2. SQLite State, Lease and Events | PASS | `35 passed`; full unit suite `67 passed`; schema, compile, Ruff passed | APPROVED after fixes | APPROVED after fixes | `bc1e0b4`, `bcade1a`, `d553693` |
 | 3. Runtime Agent and Process Ownership | PENDING | - | - | - | - |
 | 4. Orchestrator and REST/WebSocket API | PENDING | - | - | - | - |
 | 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PENDING | - | - | - | - |
@@ -45,3 +45,17 @@ Date: 2026-08-01
 - Code quality: initial review rejected mutable manifest contracts and Schema/Pydantic divergence. Both were fixed; re-review approved with no Critical or Important findings.
 - Integrated commits: `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, and `f2be4c6`.
 - Scope: no platform dependency on `masar-unified-platform`, its Agent, or port `18088`; no integration of `multi-agent-neat`; direct-run defaults remain unchanged.
+
+## Task 2: SQLite State, Lease and Events
+
+Date: 2026-08-01
+
+- TDD evidence: the prescribed narrow command first failed collection with three `ModuleNotFoundError` errors because `db.py`, `state_machine.py`, `leases.py`, and `events.py` did not exist. Retention and archive regression tests separately failed before their fixes.
+- Automated acceptance: `python3 -m pytest tests/unit/test_state_machine.py tests/unit/test_leases.py tests/unit/test_events.py -q` returned `35 passed`; `python3 -m pytest tests/unit -q` returned `67 passed`.
+- Database acceptance: SQLite uses WAL and foreign keys; exactly `runs`, `run_steps`, `leases`, `events`, and `artifacts` are created with primary keys and `run_id` indexes; `(run_id, sequence)` is unique; acquisition uses `BEGIN IMMEDIATE`.
+- State and lease acceptance: every approved and rejected public transition is tested; state and event persist atomically; one of two concurrent acquisitions wins; heartbeat is 2 seconds and expiry is 10 seconds; all frozen terminal reason codes are covered.
+- Event and archive acceptance: per-run sequences remain monotonic across concurrent writers and after live-row retention; `schema_version` is durable; JSONL writes happen after commit; `prepare_archive()` repairs committed mirror gaps; retention leaves the archive unchanged.
+- Spec compliance: initial review found sequence reuse after full live retention and a missing persisted `schema_version`. Both were fixed and covered by regression tests; the final line-by-line re-review passed.
+- Code quality: Ruff found an unresolved `sqlite3.Row` annotation import. It was fixed; final Ruff, `make compile`, `compileall`, and `git diff --check` all passed with no remaining Critical or Important findings.
+- Integrated commits: `bc1e0b4`, `bcade1a`, and `d553693`.
+- Scope: only the seven Task 2 platform files changed; no existing ROS project, abandoned platform, or training project was modified.

@@ -1,6 +1,6 @@
 # MASAR Unified Simulation Platform Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **Implementation mode:** One Codex agent executes this plan in gated batches. Each batch is implemented, verified, merged into the main workspace, recorded in `ACCEPTANCE.md`, and reported to the user before the next batch starts. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Build a single-user Web workbench that launches and observes the six approved MASAR simulation scenarios without changing the default behavior of `ROS2swarm_w` or `masar_ws`.
 
@@ -19,6 +19,7 @@
 - Do not use `pkill`; every process is owned by a `run_id` and a process group.
 - Write tests before implementation in every task. Run the narrow test before the full suite.
 - Commit only intentional files for the task. Never stage the whole workspace because the two existing ROS projects may contain unrelated work.
+- Do not delegate implementation or review to task agents. Complete one batch locally, report its acceptance result, and wait for user confirmation before starting the next batch.
 
 ## 1. File Map and Responsibility
 
@@ -189,20 +190,20 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `backend/masar_platform/db.py`, `state_machine.py`, `leases.py`, `events.py`
 - Create: `tests/unit/test_state_machine.py`, `tests/unit/test_leases.py`, `tests/unit/test_events.py`
 
-- [ ] **Step 1: Write state and concurrency tests.** Cover every transition in `SPEC.md`, duplicate run acquisition, lease heartbeat/expiry, monotonically increasing event sequence, `USER_STOP`, `NORMAL_EXIT`, `UNEXPECTED_PROCESS_EXIT`, and `NEEDS_INSPECTION` reason codes.
+- [x] **Step 1: Write state and concurrency tests.** Cover every transition in `SPEC.md`, duplicate run acquisition, lease heartbeat/expiry, monotonically increasing event sequence, `USER_STOP`, `NORMAL_EXIT`, `UNEXPECTED_PROCESS_EXIT`, and `NEEDS_INSPECTION` reason codes.
 
-- [ ] **Step 2: Run the tests and confirm failure.**
+- [x] **Step 2: Run the tests and confirm failure.**
 
   Run: `python3 -m pytest tests/unit/test_state_machine.py tests/unit/test_leases.py tests/unit/test_events.py -q`  
   Expected: FAIL because the SQLite tables and transition functions are absent.
 
-- [ ] **Step 3: Implement the five-table SQLite schema.** Use `sqlite3` with `PRAGMA journal_mode=WAL`, foreign keys, `runs`, `run_steps`, `leases`, `events`, and `artifacts`; add indexes on `run_id` and `(run_id, sequence)`. Use `BEGIN IMMEDIATE` for run lease acquisition so two API requests cannot both win.
+- [x] **Step 3: Implement the five-table SQLite schema.** Use `sqlite3` with `PRAGMA journal_mode=WAL`, foreign keys, `runs`, `run_steps`, `leases`, `events`, and `artifacts`; add indexes on `run_id` and `(run_id, sequence)`. Use `BEGIN IMMEDIATE` for run lease acquisition so two API requests cannot both win.
 
-- [ ] **Step 4: Implement state transitions and event append.** Reject invalid transitions with a typed `InvalidTransition` error. Persist state and event in one transaction. Mirror each event to the run-local JSONL file only after the transaction commits.
+- [x] **Step 4: Implement state transitions and event append.** Reject invalid transitions with a typed `InvalidTransition` error. Persist state and event in one transaction. Mirror each event to the run-local JSONL file only after the transaction commits.
 
-- [ ] **Step 5: Implement retention and archive handoff.** The retention job deletes only live rows older than 30 days or beyond 10000 rows per run; `orchestrator.finalize()` has already copied the full run stream to `runs/<run_id>/events.jsonl` before retention can touch it.
+- [x] **Step 5: Implement retention and archive handoff.** The retention job deletes only live rows older than 30 days or beyond 10000 rows per run; `orchestrator.finalize()` has already copied the full run stream to `runs/<run_id>/events.jsonl` before retention can touch it.
 
-- [ ] **Step 6: Run tests and commit.**
+- [x] **Step 6: Run tests and commit.**
 
   Run: `python3 -m pytest tests/unit/test_state_machine.py tests/unit/test_leases.py tests/unit/test_events.py -q`  
   Expected: PASS.
@@ -211,6 +212,8 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
   git add masar-simulation-platform/backend/masar_platform/db.py masar-simulation-platform/backend/masar_platform/state_machine.py masar-simulation-platform/backend/masar_platform/leases.py masar-simulation-platform/backend/masar_platform/events.py masar-simulation-platform/tests/unit/test_state_machine.py masar-simulation-platform/tests/unit/test_leases.py masar-simulation-platform/tests/unit/test_events.py
   git commit -m "feat(platform): add run state lease and event store"
   ```
+
+**Acceptance:** Passed on 2026-08-01. Task-specific tests: `35 passed`; full unit suite: `67 passed`; SQLite WAL/five-table/foreign-key/schema contract, `make compile`, `compileall`, Ruff, and `git diff --check` passed. Spec and quality findings were fixed and re-verified. Integrated commits: `bc1e0b4`, `bcade1a`, `d553693`. Detailed evidence: [ACCEPTANCE.md](./ACCEPTANCE.md#task-2-sqlite-state-lease-and-events).
 
 ## 6. Task 3: Runtime Agent and Process Ownership
 
