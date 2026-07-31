@@ -9,7 +9,7 @@ review all pass. The next task must not start before that point.
 | 0. Scaffold and Tooling | PASS | `7 passed`; `make compile` passed | APPROVED | APPROVED after fixes | `8f7b3b4`, `a3133b2` |
 | 1. Scenario Schema, Profiles and Static Commands | PASS | `25 passed`; full unit suite `32 passed`; schema, compile, Ruff, container dry-runs passed | APPROVED | APPROVED after fixes | `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, `f2be4c6` |
 | 2. SQLite State, Lease and Events | PASS | `35 passed`; full unit suite `67 passed`; schema, compile, Ruff passed | APPROVED after fixes | APPROVED after fixes | `bc1e0b4`, `bcade1a`, `d553693` |
-| 3. Runtime Agent and Process Ownership | PENDING | - | - | - | - |
+| 3. Runtime Agent and Process Ownership | PASS | `23 passed`; full suite `90 passed`; Ruff, compileall, diff check and both container py_compile/--help checks passed | APPROVED | APPROVED after Python 3.8 fix | `16b56e6`, `043fc10`, `a9df88a` |
 | 4. Orchestrator and REST/WebSocket API | PENDING | - | - | - | - |
 | 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PENDING | - | - | - | - |
 | 6. Webots Stream Compatibility | PENDING | - | - | - | - |
@@ -59,3 +59,16 @@ Date: 2026-08-01
 - Code quality: Ruff found an unresolved `sqlite3.Row` annotation import. It was fixed; final Ruff, `make compile`, `compileall`, and `git diff --check` all passed with no remaining Critical or Important findings.
 - Integrated commits: `bc1e0b4`, `bcade1a`, and `d553693`.
 - Scope: only the seven Task 2 platform files changed; no existing ROS project, abandoned platform, or training project was modified.
+
+## Task 3: Runtime Agent and Process Ownership
+
+Date: 2026-08-01
+
+- TDD evidence: the prescribed Agent/process narrow tests were implemented before the runtime Agent and process manager; the completed narrow suite returned `23 passed`.
+- Protocol acceptance: HMAC signatures cover method, target, sequence and body; missing, invalid, stale and reordered requests are rejected; health responses and errors never contain the master secret; the host client retries health/probe only and never retries start.
+- Ownership acceptance: every started process receives a new session/PGID, persisted run/process ownership records, stdout/stderr paths and cursors; stop uses owned-PGID SIGINT, SIGTERM, SIGKILL escalation and refuses unverifiable ownership.
+- Tooling acceptance: full suite returned `90 passed`; Ruff, `compileall`, and `git diff --check` passed.
+- Container acceptance: `masar_ros1_srv-g` Python `3.8.10` and `masar_ros2_bridge-w` Python `3.10.12` both passed `py_compile` for all Agent modules and `main.py --help`. Temporary loopback Agents in both containers passed health and signed probe checks; temporary secrets, processes, ports and run directories were removed.
+- Compatibility regression: Ruff had emitted Python 3.10-only parenthesized multi-context `with` syntax. The process launch code now uses nested `with` blocks, and a source guard prevents reintroduction; this was verified with the real ROS1 Python 3.8 compiler.
+- Scope: no files in `ROS2swarm_w`, `masar_ws`, `multi-agent-neat`, or abandoned `masar-unified-platform` were modified; no package installation or image rebuild was required.
+- Integrated commits: `16b56e6`, `043fc10`, and `a9df88a`.
