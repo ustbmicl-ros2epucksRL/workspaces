@@ -1,0 +1,35 @@
+schema_version: 1
+scenario_id: exploration.webots.robosar
+module: exploration
+simulator: webots
+display_profile: exploration
+parameters: {}
+steps:
+  - id: ros2_webots_bridge
+    agent: ros2
+    command_ref: ros2.exploration_webots
+    depends_on: []
+    readiness:
+      all:
+        - type: ros2_topic
+          name: /clock
+        - type: ros2_topic
+          name: /robot_0/odom
+    start_timeout_seconds: 240
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+  - id: ros1_robosar
+    agent: ros1
+    command_ref: ros1.exploration_webots
+    depends_on: [ros2_webots_bridge]
+    readiness:
+      all:
+        - type: ros1_topic
+          name: /sim_map
+        - type: ros1_topic
+          name: /percent_completed
+    start_timeout_seconds: 180
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+stop_order: [ros1_robosar, ros2_webots_bridge]
+data_profile: exploration_webots
+artifact_profile: exploration_default
+minimum_free_bytes: 2147483648

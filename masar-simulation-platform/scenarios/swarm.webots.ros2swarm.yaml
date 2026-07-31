@@ -1,0 +1,107 @@
+schema_version: 1
+scenario_id: swarm.webots.ros2swarm
+module: swarm
+simulator: webots
+display_profile: swarm
+parameters:
+  webots_world:
+    type: string
+    default: command_world.wbt
+    enum: [command_world.wbt, obstacle_world.wbt, robosar_apartment.wbt, robosar_apartment_small.wbt, robosar_apartment_smallv1.wbt]
+    description: Existing Webots world template.
+  pattern:
+    type: string
+    default: aggregation_pattern
+    enum: [aggregation_pattern, attraction_pattern, dispersion_pattern, navigation_pattern, roundflocking_pattern, transport_pattern, drive_pattern, navigation_pattern_neat, roundflocking_pattern_neat, transport_pattern_neat]
+    description: Existing ROS2swarm behavior launch.
+  number_robots:
+    type: integer
+    minimum: 1
+    maximum: 20
+    default: 5
+  total_robots:
+    type: integer
+    minimum: 1
+    maximum: 20
+    default: 5
+  log_level:
+    type: string
+    default: info
+    enum: [debug, info, warn, error, fatal]
+  webots_mode:
+    type: string
+    default: realtime
+    enum: [pause, realtime, fast, rendering]
+  webots_gui:
+    type: boolean
+    default: true
+  robot:
+    type: string
+    default: e_puck
+    enum: [e_puck, burger]
+  sensor_type:
+    type: string
+    default: ir
+    enum: [lidar, ir]
+  x_min:
+    type: number
+    minimum: -100.0
+    maximum: 100.0
+    default: -1.0
+  x_max:
+    type: number
+    minimum: -100.0
+    maximum: 100.0
+    default: 1.0
+  y_min:
+    type: number
+    minimum: -100.0
+    maximum: 100.0
+    default: -1.0
+  y_max:
+    type: number
+    minimum: -100.0
+    maximum: 100.0
+    default: 1.0
+  min_distance:
+    type: number
+    minimum: 0.01
+    maximum: 10.0
+    default: 0.2
+  z_height:
+    type: number
+    minimum: -10.0
+    maximum: 10.0
+    default: 0.0
+  driving_swarm:
+    type: boolean
+    default: false
+  logging:
+    type: boolean
+    default: false
+  num_obstacles:
+    type: integer
+    minimum: 0
+    maximum: 100
+    default: 0
+  transport_object_shape:
+    type: string
+    default: cube
+    enum: [cube, cylinder, triangular_prism]
+steps:
+  - id: swarm_simulation
+    agent: ros2
+    command_ref: ros2.swarm
+    depends_on: []
+    readiness:
+      all:
+        - type: ros2_topic
+          name: /clock
+        - type: ros2_topic
+          name: /robot_0/odom
+    start_timeout_seconds: 180
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+stop_order: [swarm_simulation]
+data_profile: swarm_sensor
+artifact_profile: swarm_default
+minimum_free_bytes: 2147483648

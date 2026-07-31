@@ -1,0 +1,27 @@
+schema_version: 1
+scenario_id: rescue.gazebo.tepper-response
+module: rescue
+simulator: gazebo
+display_profile: rescue
+parameters: {}
+steps:
+  - id: tepper_response
+    agent: ros1
+    command_ref: ros1.tepper_response
+    depends_on: []
+    readiness:
+      all:
+        - type: ros1_topic
+          name: /clock
+        - type: ros1_topic
+          name: /sim_map
+        - type: ros1_topic
+          name: /percent_completed
+        - type: ros1_topic
+          name: /response_group/status
+    start_timeout_seconds: 300
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+stop_order: [tepper_response]
+data_profile: rescue
+artifact_profile: rescue_default
+minimum_free_bytes: 2147483648

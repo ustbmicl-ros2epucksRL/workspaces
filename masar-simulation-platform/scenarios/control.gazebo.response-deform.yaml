@@ -1,0 +1,23 @@
+schema_version: 1
+scenario_id: control.gazebo.response-deform
+module: control
+simulator: gazebo
+display_profile: control
+parameters: {}
+steps:
+  - id: response_demo
+    agent: ros1
+    command_ref: ros1.response_deform
+    depends_on: []
+    readiness:
+      all:
+        - type: ros1_topic
+          name: /clock
+        - type: ros1_topic
+          name: /response_group/status
+    start_timeout_seconds: 180
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+stop_order: [response_demo]
+data_profile: response_demo
+artifact_profile: none
+minimum_free_bytes: 2147483648

@@ -1,0 +1,118 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://masar.local/schemas/scenario-manifest-v1.json",
+  "title": "MASAR scenario manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "scenario_id",
+    "module",
+    "simulator",
+    "display_profile",
+    "parameters",
+    "steps",
+    "stop_order",
+    "data_profile",
+    "artifact_profile",
+    "minimum_free_bytes"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "scenario_id": {"type": "string", "pattern": "^[a-z][a-z0-9.-]*$"},
+    "module": {"enum": ["swarm", "control", "exploration", "rescue"]},
+    "simulator": {"enum": ["gazebo", "webots"]},
+    "display_profile": {"type": "string", "minLength": 1},
+    "parameters": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/parameter"}
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/step"}
+    },
+    "stop_order": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "data_profile": {"type": "string", "minLength": 1},
+    "artifact_profile": {"type": "string", "minLength": 1},
+    "minimum_free_bytes": {"const": 2147483648}
+  },
+  "$defs": {
+    "parameter": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "default"],
+      "properties": {
+        "type": {"enum": ["string", "integer", "number", "boolean"]},
+        "default": {},
+        "enum": {"type": "array", "minItems": 1, "uniqueItems": true},
+        "minimum": {"type": "number"},
+        "maximum": {"type": "number"},
+        "description": {"type": "string"}
+      }
+    },
+    "probe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "name"],
+      "properties": {
+        "type": {"enum": ["ros1_topic", "ros2_topic", "http", "file"]},
+        "name": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean", "default": true}
+      }
+    },
+    "readiness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["all"],
+      "properties": {
+        "all": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/probe"}
+        }
+      }
+    },
+    "grace": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sigint", "sigterm", "sigkill"],
+      "properties": {
+        "sigint": {"const": 10},
+        "sigterm": {"const": 5},
+        "sigkill": {"const": 5}
+      }
+    },
+    "step": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "agent",
+        "command_ref",
+        "depends_on",
+        "readiness",
+        "start_timeout_seconds",
+        "grace_seconds"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*$"},
+        "agent": {"enum": ["ros1", "ros2"]},
+        "command_ref": {"type": "string", "minLength": 1},
+        "depends_on": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "readiness": {"$ref": "#/$defs/readiness"},
+        "start_timeout_seconds": {"type": "integer", "minimum": 1},
+        "grace_seconds": {"$ref": "#/$defs/grace"}
+      }
+    }
+  }
+}

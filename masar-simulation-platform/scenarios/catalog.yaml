@@ -1,0 +1,14 @@
+schema_version: 1
+scenarios:
+  - scenario_id: swarm.webots.ros2swarm
+    manifest: swarm.webots.ros2swarm.yaml
+  - scenario_id: control.gazebo.response-deform
+    manifest: control.gazebo.response-deform.yaml
+  - scenario_id: control.gazebo.response-controller
+    manifest: control.gazebo.response-controller.yaml
+  - scenario_id: exploration.gazebo.tepper
+    manifest: exploration.gazebo.tepper.yaml
+  - scenario_id: exploration.webots.robosar
+    manifest: exploration.webots.robosar.yaml
+  - scenario_id: rescue.gazebo.tepper-response
+    manifest: rescue.gazebo.tepper-response.yaml

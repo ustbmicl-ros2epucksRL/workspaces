@@ -1,0 +1,25 @@
+schema_version: 1
+scenario_id: exploration.gazebo.tepper
+module: exploration
+simulator: gazebo
+display_profile: exploration
+parameters: {}
+steps:
+  - id: exploration_gazebo
+    agent: ros1
+    command_ref: ros1.exploration_gazebo
+    depends_on: []
+    readiness:
+      all:
+        - type: ros1_topic
+          name: /clock
+        - type: ros1_topic
+          name: /sim_map
+        - type: ros1_topic
+          name: /percent_completed
+    start_timeout_seconds: 240
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
+stop_order: [exploration_gazebo]
+data_profile: exploration
+artifact_profile: exploration_default
+minimum_free_bytes: 2147483648
