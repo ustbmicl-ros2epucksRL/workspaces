@@ -7,9 +7,10 @@ fragments; process launchers resolve command references through ``commands``.
 from __future__ import annotations
 
 from collections.abc import Mapping
+from types import MappingProxyType
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
 
 class ManifestValidationError(ValueError):
@@ -42,6 +43,13 @@ class ParameterDefinition(BaseModel):
             raise ValueError("string parameters require an explicit enum allowlist")
         if self.type in {"integer", "number"} and (self.minimum is None or self.maximum is None):
             raise ValueError("numeric parameters require minimum and maximum")
+        if self.type in {"string", "boolean"} and (self.minimum is not None or self.maximum is not None):
+            raise ValueError(f"{self.type} parameters do not accept numeric bounds")
+        if self.enum is not None:
+            for index, item in enumerate(self.enum):
+                if any(item == previous for previous in self.enum[:index]):
+                    raise ValueError("enum values must be unique")
+                _validate_value(self.type, item, None, None, None, "enum value")
         _validate_value(self.type, self.default, self.enum, self.minimum, self.maximum, "default")
         if self.enum is not None and not self.enum:
             raise ValueError("enum must not be empty")
@@ -90,7 +98,7 @@ class ScenarioManifest(BaseModel):
     module: Literal["swarm", "control", "exploration", "rescue"]
     simulator: Literal["gazebo", "webots"]
     display_profile: str = Field(min_length=1)
-    parameters: dict[str, ParameterDefinition]
+    parameters: Mapping[str, ParameterDefinition]
     steps: tuple[ScenarioStep, ...] = Field(min_length=1)
     stop_order: tuple[str, ...] = Field(min_length=1)
     data_profile: str = Field(min_length=1)
@@ -122,11 +130,16 @@ class ScenarioManifest(BaseModel):
         if self.module == "rescue" and self.simulator == "webots":
             raise ValueError("complete/rescue + webots is not supported")
         _validate_manifest_compatibility(self)
+        object.__setattr__(self, "parameters", MappingProxyType(dict(self.parameters)))
         return self
 
     @property
     def parameters_defaults(self) -> dict[str, Any]:
         return {name: definition.default for name, definition in self.parameters.items()}
+
+    @field_serializer("parameters")
+    def _serialize_parameters(self, value: Mapping[str, ParameterDefinition]) -> dict[str, ParameterDefinition]:
+        return dict(value)
 
     def resolve_parameters(self, values: Mapping[str, Any] | None = None) -> dict[str, Any]:
         values = {} if values is None else dict(values)

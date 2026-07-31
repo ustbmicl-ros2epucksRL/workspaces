@@ -44,17 +44,76 @@
   },
   "$defs": {
     "parameter": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["type", "default"],
-      "properties": {
-        "type": {"enum": ["string", "integer", "number", "boolean"]},
-        "default": {},
-        "enum": {"type": "array", "minItems": 1, "uniqueItems": true},
-        "minimum": {"type": "number"},
-        "maximum": {"type": "number"},
-        "description": {"type": "string"}
-      }
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "default", "enum"],
+          "properties": {
+            "type": {"const": "string"},
+            "default": {"type": "string"},
+            "enum": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "description": {"type": "string"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "default", "minimum", "maximum"],
+          "properties": {
+            "type": {"const": "integer"},
+            "default": {"type": "integer"},
+            "enum": {
+              "type": "array",
+              "items": {"type": "integer"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "minimum": {"type": "number"},
+            "maximum": {"type": "number"},
+            "description": {"type": "string"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "default", "minimum", "maximum"],
+          "properties": {
+            "type": {"const": "number"},
+            "default": {"type": "number"},
+            "enum": {
+              "type": "array",
+              "items": {"type": "number"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "minimum": {"type": "number"},
+            "maximum": {"type": "number"},
+            "description": {"type": "string"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "default"],
+          "properties": {
+            "type": {"const": "boolean"},
+            "default": {"type": "boolean"},
+            "enum": {
+              "type": "array",
+              "items": {"type": "boolean"},
+              "minItems": 1,
+              "uniqueItems": true
+            },
+            "description": {"type": "string"}
+          }
+        }
+      ]
     },
     "probe": {
       "type": "object",

@@ -1,7 +1,11 @@
 import json
+from collections.abc import Callable, Mapping
+from copy import deepcopy
 from pathlib import Path
 
 import pytest
+import yaml
+from jsonschema import Draft202012Validator
 
 from masar_platform.catalog import CatalogError, ScenarioCatalog
 from masar_platform.contracts import ScenarioManifest
@@ -31,7 +35,7 @@ def test_manifests_have_required_runtime_contract() -> None:
         assert manifest.data_profile
         assert manifest.artifact_profile
         assert manifest.stop_order
-        assert isinstance(manifest.parameters, dict)
+        assert isinstance(manifest.parameters, Mapping)
         assert manifest.steps
         for step in manifest.steps:
             assert step.grace_seconds.model_dump() == {"sigint": 10, "sigterm": 5, "sigkill": 5}
@@ -93,6 +97,36 @@ def test_depends_on_is_required_by_runtime_model_and_json_schema(tmp_path: Path)
     assert set(file_schema["$defs"]["step"]["required"]) == set(
         model_schema["$defs"]["ScenarioStep"]["required"]
     )
+
+
+@pytest.mark.parametrize(
+    ("parameter", "mutation"),
+    (
+        ("pattern", lambda definition: definition.pop("enum")),
+        ("number_robots", lambda definition: definition.pop("minimum")),
+        ("pattern", lambda definition: definition.update(enum=["roundflocking_pattern"] * 2)),
+    ),
+)
+def test_parameter_definition_failures_match_json_schema_and_runtime(
+    parameter: str,
+    mutation: Callable[[dict[str, object]], object],
+) -> None:
+    payload = yaml.safe_load((ROOT / "scenarios" / "swarm.webots.ros2swarm.yaml").read_text(encoding="utf-8"))
+    invalid = deepcopy(payload)
+    mutation(invalid["parameters"][parameter])
+
+    schema = json.loads((ROOT / "scenarios" / "schema.json").read_text(encoding="utf-8"))
+    assert list(Draft202012Validator(schema).iter_errors(invalid))
+    with pytest.raises((ValueError, TypeError)):
+        ScenarioManifest.model_validate(invalid)
+
+
+def test_catalog_parameter_contract_cannot_be_mutated() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    manifest = catalog.get("swarm.webots.ros2swarm")
+
+    with pytest.raises(TypeError):
+        manifest.parameters["number_robots"] = manifest.parameters["total_robots"]  # type: ignore[index]
 
 
 def test_unknown_manifest_fields_are_rejected(tmp_path: Path) -> None:
