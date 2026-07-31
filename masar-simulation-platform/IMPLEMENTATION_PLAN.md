@@ -143,17 +143,17 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `backend/masar_platform/contracts.py`, `catalog.py`, `commands.py`, `profiles.py`
 - Create: `tests/unit/test_catalog.py`, `tests/unit/test_commands.py`, `tests/unit/test_profiles.py`
 
-- [ ] **Step 1: Write catalog tests.** Assert exactly these scenario IDs: `swarm.webots.ros2swarm`, `control.gazebo.response-deform`, `control.gazebo.response-controller`, `exploration.gazebo.tepper`, `exploration.webots.robosar`, `rescue.gazebo.tepper-response`. Assert unknown fields, unsupported controller mode, `number_robots=0`, and `complete + webots` are rejected.
+- [x] **Step 1: Write catalog tests.** Assert exactly these scenario IDs: `swarm.webots.ros2swarm`, `control.gazebo.response-deform`, `control.gazebo.response-controller`, `exploration.gazebo.tepper`, `exploration.webots.robosar`, `rescue.gazebo.tepper-response`. Assert unknown fields, unsupported controller mode, `number_robots=0`, and `complete + webots` are rejected.
 
-- [ ] **Step 2: Run the tests to capture failure.**
+- [x] **Step 2: Run the tests to capture failure.**
 
   Run: `python3 -m pytest tests/unit/test_catalog.py tests/unit/test_commands.py tests/unit/test_profiles.py -q`
 
   Expected: FAIL because no catalog, command registry or profiles exist.
 
-- [ ] **Step 3: Write `schema.json` and all six manifests.** Every manifest must include full `parameters`, `steps`, `stop_order`, readiness probes, `data_profile`, `artifact_profile`, `display_profile`, `minimum_free_bytes=2147483648`, and per-step `grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}`. Do not copy the single example from `SPEC.md` as a seventh partial manifest.
+- [x] **Step 3: Write `schema.json` and all six manifests.** Every manifest must include full `parameters`, `steps`, `stop_order`, readiness probes, `data_profile`, `artifact_profile`, `display_profile`, `minimum_free_bytes=2147483648`, and per-step `grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}`. Do not copy the single example from `SPEC.md` as a seventh partial manifest.
 
-- [ ] **Step 4: Implement static command rendering.** `commands.py` must use a mapping such as:
+- [x] **Step 4: Implement static command rendering.** `commands.py` must use a mapping such as:
 
   ```python
   COMMAND_REFS = {
@@ -169,17 +169,19 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
   The renderer validates every substituted value against the manifest before returning argv. It never calls a shell.
 
-- [ ] **Step 5: Run catalog and command tests.**
+- [x] **Step 5: Run catalog and command tests.**
 
   Run: `python3 -m pytest tests/unit/test_catalog.py tests/unit/test_commands.py tests/unit/test_profiles.py -q`  
   Expected: PASS, including an assertion that no rendered argv contains `18088`, `masar-unified-platform`, `agent.py`, `bash -c`, or shell metacharacters.
 
-- [ ] **Step 6: Commit the catalog.**
+- [x] **Step 6: Commit the catalog.**
 
   ```bash
   git add masar-simulation-platform/scenarios masar-simulation-platform/backend/masar_platform/contracts.py masar-simulation-platform/backend/masar_platform/catalog.py masar-simulation-platform/backend/masar_platform/commands.py masar-simulation-platform/backend/masar_platform/profiles.py masar-simulation-platform/tests/unit/test_catalog.py masar-simulation-platform/tests/unit/test_commands.py masar-simulation-platform/tests/unit/test_profiles.py
   git commit -m "feat(platform): add scenario catalog and command allowlist"
   ```
+
+**Acceptance:** Passed on 2026-08-01. Task-specific tests: `25 passed`; full unit suite: `32 passed`; six manifests passed Draft 2020-12 validation; `make compile` and Ruff passed; both ROS1 control-demo dry-runs preserved the caller's ROS graph with `--shared-master`. Spec review and code-quality re-review approved. Integrated commits: `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, `f2be4c6`. Detailed evidence: [ACCEPTANCE.md](./ACCEPTANCE.md#task-1-scenario-schema-profiles-and-static-commands).
 
 ## 5. Task 2: SQLite State, Lease and Events
 
