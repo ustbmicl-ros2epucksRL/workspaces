@@ -15,6 +15,7 @@ import time
 from typing import Any, Mapping
 from urllib.parse import urlencode
 
+
 class SecretFileError(RuntimeError):
     pass
 
@@ -197,9 +198,7 @@ def _signed_headers(
         b"masar-platform-run\0" + run_id.encode("utf-8"),
         hashlib.sha256,
     ).digest()
-    canonical = "\n".join(
-        (method.upper(), target, str(sequence), hashlib.sha256(body).hexdigest())
-    ).encode("utf-8")
+    canonical = "\n".join((method.upper(), target, str(sequence), hashlib.sha256(body).hexdigest())).encode("utf-8")
     signature = hmac.new(run_key, canonical, hashlib.sha256).hexdigest()
     return {
         "X-Platform-Run": run_id,

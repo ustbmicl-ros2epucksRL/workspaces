@@ -139,7 +139,9 @@ def test_persisted_owner_can_be_probed_and_stopped_after_manager_restart(tmp_pat
     assert stopped.status == "STOPPED"
 
 
-def test_failed_ownership_record_write_reaps_the_started_process(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_failed_ownership_record_write_reaps_the_started_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     manager = _manager(tmp_path)
     captured: list[object] = []
 

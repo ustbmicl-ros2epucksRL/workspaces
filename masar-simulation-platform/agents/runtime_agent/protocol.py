@@ -120,7 +120,9 @@ class RequestAuthenticator:
             if sequence == last:
                 raise AuthenticationError("AUTH_STALE_SEQUENCE", "request sequence was already used")
             if sequence < last:
-                raise AuthenticationError("AUTH_REORDERED_SEQUENCE", "request sequence is older than the accepted sequence")
+                raise AuthenticationError(
+                    "AUTH_REORDERED_SEQUENCE", "request sequence is older than the accepted sequence"
+                )
             self._last_sequences[run_id] = sequence
         return AuthenticationContext(run_id=run_id, sequence=sequence)
 

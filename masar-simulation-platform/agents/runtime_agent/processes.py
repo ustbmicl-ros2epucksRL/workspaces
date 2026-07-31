@@ -158,7 +158,10 @@ class ProcessManager:
             stderr_path = process_dir / "stderr.log"
             child_environment = os.environ.copy()
             child_environment.update(normalized_environment)
-            with stdout_path.open("ab", buffering=0) as stdout_stream, stderr_path.open("ab", buffering=0) as stderr_stream:
+            with (
+                stdout_path.open("ab", buffering=0) as stdout_stream,
+                stderr_path.open("ab", buffering=0) as stderr_stream,
+            ):
                 child = subprocess.Popen(
                     list(normalized_argv),
                     cwd=str(self.workspace),

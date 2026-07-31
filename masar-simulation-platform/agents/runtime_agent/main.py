@@ -133,7 +133,9 @@ class AgentApplication:
                 data = {"run_id": run_id, "process_id": process_id, "stream": stream}
                 data.update(chunk.as_dict())
                 return 200, success_response(data, request_id=request_id)
-            return 405, error_response("METHOD_NOT_ALLOWED", "method is not allowed for this route", request_id=request_id)
+            return 405, error_response(
+                "METHOD_NOT_ALLOWED", "method is not allowed for this route", request_id=request_id
+            )
         except AuthenticationError as exc:
             return 401, error_response(exc.code, str(exc), request_id=request_id)
         except CommandNotAllowed as exc:
@@ -287,7 +289,9 @@ def _required_string_list(payload: Mapping[str, Any], name: str) -> list:
 
 
 def _string_mapping(value: Any, name: str) -> Dict[str, str]:
-    if not isinstance(value, dict) or any(not isinstance(key, str) or not isinstance(item, str) for key, item in value.items()):
+    if not isinstance(value, dict) or any(
+        not isinstance(key, str) or not isinstance(item, str) for key, item in value.items()
+    ):
         raise ValueError(name + " must be a string map")
     return value
 
