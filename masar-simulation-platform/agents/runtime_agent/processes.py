@@ -158,20 +158,18 @@ class ProcessManager:
             stderr_path = process_dir / "stderr.log"
             child_environment = os.environ.copy()
             child_environment.update(normalized_environment)
-            with (
-                stdout_path.open("ab", buffering=0) as stdout_stream,
-                stderr_path.open("ab", buffering=0) as stderr_stream,
-            ):
-                child = subprocess.Popen(
-                    list(normalized_argv),
-                    cwd=str(self.workspace),
-                    env=child_environment,
-                    stdin=subprocess.DEVNULL,
-                    stdout=stdout_stream,
-                    stderr=stderr_stream,
-                    start_new_session=True,
-                    shell=False,
-                )
+            with stdout_path.open("ab", buffering=0) as stdout_stream:
+                with stderr_path.open("ab", buffering=0) as stderr_stream:
+                    child = subprocess.Popen(
+                        list(normalized_argv),
+                        cwd=str(self.workspace),
+                        env=child_environment,
+                        stdin=subprocess.DEVNULL,
+                        stdout=stdout_stream,
+                        stderr=stderr_stream,
+                        start_new_session=True,
+                        shell=False,
+                    )
             try:
                 pgid = os.getpgid(child.pid)
                 record = ProcessRecord(

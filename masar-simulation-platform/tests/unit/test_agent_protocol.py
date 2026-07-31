@@ -160,3 +160,10 @@ def test_host_client_imports_with_only_the_backend_package_on_pythonpath(tmp_pat
     )
 
     assert completed.returncode == 0, completed.stderr
+
+
+def test_runtime_agent_sources_avoid_python_38_incompatible_with_syntax() -> None:
+    project_root = Path(__file__).resolve().parents[2]
+    for path in sorted((project_root / "agents" / "runtime_agent").glob("*.py")):
+        source = path.read_text(encoding="utf-8")
+        assert "with (\\n" not in source

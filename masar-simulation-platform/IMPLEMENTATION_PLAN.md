@@ -223,20 +223,20 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `tests/unit/test_agent_protocol.py`, `tests/unit/test_process_ownership.py`, `tests/contract/test_agent_http.py`
 - Create: `deploy/agent-bootstrap.sh`
 
-- [ ] **Step 1: Write Agent protocol tests.** Assert HMAC rejection for missing, stale and reordered sequence headers; accepted response schema; invalid command ref rejection; log cursor behavior; and no response body containing the master secret.
++ [x] **Step 1: Write Agent protocol tests.** Assert HMAC rejection for missing, stale and reordered sequence headers; accepted response schema; invalid command ref rejection; log cursor behavior; and no response body containing the master secret.
 
-- [ ] **Step 2: Write process ownership tests using a fake command.** Spawn a Python `sleep` child with `start_new_session=True`; assert the Agent records `pid`, `pgid`, `run_id`, command ref and argv; stop it through SIGINT/SIGTERM/SIGKILL; assert a separate same-name process remains alive.
++ [x] **Step 2: Write process ownership tests using a fake command.** Spawn a Python `sleep` child with `start_new_session=True`; assert the Agent records `pid`, `pgid`, `run_id`, command ref and argv; stop it through SIGINT/SIGTERM/SIGKILL; assert a separate same-name process remains alive.
 
-- [ ] **Step 3: Run the tests before implementation.**
++ [x] **Step 3: Run the tests before implementation.**
 
   Run: `python3 -m pytest tests/unit/test_agent_protocol.py tests/unit/test_process_ownership.py tests/contract/test_agent_http.py -q`  
   Expected: FAIL because the Agent server and process owner do not exist.
 
-- [ ] **Step 4: Implement the standard-library HTTP Agent.** Expose `GET /healthz`, `POST /v1/runs/{run_id}/start`, `POST /v1/runs/{run_id}/stop`, `GET /v1/runs/{run_id}/probe`, and `GET /v1/runs/{run_id}/logs?after=<cursor>`. The Agent accepts only a signed `CommandRef` ID and validated argv from the control plane, calls `os.setsid`, writes stdout/stderr to the run directory, and never invokes `shell=True`.
++ [x] **Step 4: Implement the standard-library HTTP Agent.** Expose `GET /healthz`, `POST /v1/runs/{run_id}/start`, `POST /v1/runs/{run_id}/stop`, `GET /v1/runs/{run_id}/probe`, and `GET /v1/runs/{run_id}/logs?after=<cursor>`. The Agent accepts only a signed `CommandRef` ID and validated argv from the control plane, calls `os.setsid`, writes stdout/stderr to the run directory, and never invokes `shell=True`.
 
-- [ ] **Step 5: Implement the host Agent client.** Use `http.client` or `httpx` with a 3 s connect timeout and 10 s read timeout. Send `X-Platform-Run`, `X-Platform-Signature`, and an increasing sequence. Retry only idempotent health/probe calls; never retry start automatically.
++ [x] **Step 5: Implement the host Agent client.** Use `http.client` or `httpx` with a 3 s connect timeout and 10 s read timeout. Send `X-Platform-Run`, `X-Platform-Signature`, and an increasing sequence. Retry only idempotent health/probe calls; never retry start automatically.
 
-- [ ] **Step 6: Test in both existing containers without changing images.**
++ [x] **Step 6: Test in both existing containers without changing images.**
 
   ```bash
   docker exec masar_ros1_srv-g python3 /root/workspace/masar-simulation-platform/agents/runtime_agent/main.py --help
