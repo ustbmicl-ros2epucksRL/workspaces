@@ -1,0 +1,23 @@
+node:internal/fs/watchers:329
+    throw error;
+    ^
+
+Error: EMFILE: too many open files, watch '/home/zjc/workspace/masar-simulation-platform/.superpowers/brainstorm/2368135-1785496996/content'
+    at FSWatcher.<computed> (node:internal/fs/watchers:321:19)
+    at Object.watch (node:fs:2548:36)
+    at startServer (/home/zjc/.codex/plugins/cache/openai-api-curated/superpowers/11c74d6b/skills/brainstorming/scripts/server.cjs:276:22)
+    at Object.<anonymous> (/home/zjc/.codex/plugins/cache/openai-api-curated/superpowers/11c74d6b/skills/brainstorming/scripts/server.cjs:351:3)
+    at Module._compile (node:internal/modules/cjs/loader:1871:14)
+    at Object..js (node:internal/modules/cjs/loader:2002:10)
+    at Module.load (node:internal/modules/cjs/loader:1594:32)
+    at Module._load (node:internal/modules/cjs/loader:1396:12)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)
+    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5) {
+  errno: -24,
+  syscall: 'watch',
+  code: 'EMFILE',
+  path: '/home/zjc/workspace/masar-simulation-platform/.superpowers/brainstorm/2368135-1785496996/content',
+  filename: '/home/zjc/workspace/masar-simulation-platform/.superpowers/brainstorm/2368135-1785496996/content'
+}
+
+Node.js v24.18.0

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>MASAR 仿真验证平台 - 架构与工作台评审</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101417;
+      --surface: #181e22;
+      --surface-2: #20272c;
+      --line: #344047;
+      --text: #edf2f4;
+      --muted: #aab5bb;
+      --teal: #39b7a2;
+      --amber: #e9b44c;
+      --red: #e76f51;
+      --blue: #5ca7d9;
+      --green: #7bc47f;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, "Noto Sans SC", system-ui, sans-serif;
+      letter-spacing: 0;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 60px;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(16, 20, 23, 0.96);
+    }
+    header h1 { margin: 0; font-size: 18px; font-weight: 650; }
+    header span { color: var(--muted); font-size: 13px; }
+    main { max-width: 1520px; margin: 0 auto; padding: 28px; }
+    section { margin-bottom: 42px; }
+    h2 { margin: 0 0 8px; font-size: 22px; }
+    .lead { margin: 0 0 22px; color: var(--muted); line-height: 1.6; }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: minmax(170px, 0.8fr) 42px minmax(270px, 1.25fr) 42px minmax(220px, 1fr);
+      gap: 12px;
+      align-items: stretch;
+    }
+    .lane {
+      border: 1px solid var(--line);
+      background: var(--surface);
+      min-width: 0;
+    }
+    .lane-title {
+      padding: 11px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+    .node {
+      margin: 12px;
+      padding: 13px;
+      border-left: 3px solid var(--blue);
+      background: var(--surface-2);
+    }
+    .node strong { display: block; margin-bottom: 5px; font-size: 14px; }
+    .node small { color: var(--muted); line-height: 1.45; }
+    .node.control { border-color: var(--teal); }
+    .node.media { border-color: var(--amber); }
+    .node.legacy { border-color: var(--green); }
+    .arrow {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 28px;
+    }
+    .contract {
+      margin-top: 16px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-left: 3px solid var(--teal);
+      background: var(--surface);
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .workbench {
+      display: grid;
+      grid-template-rows: 48px minmax(520px, 66vh) 170px;
+      min-width: 1020px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: #111619;
+    }
+    .wb-top {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      padding: 0 14px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface);
+      font-size: 13px;
+    }
+    .wb-status { display: flex; gap: 18px; align-items: center; color: var(--muted); }
+    .dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--green); }
+    .actions { display: flex; gap: 8px; }
+    .button { padding: 7px 11px; border: 1px solid var(--line); background: #283238; font-size: 12px; }
+    .button.primary { border-color: var(--teal); color: #d9fff8; }
+    .button.stop { border-color: var(--red); color: #ffd9d0; }
+
+    .wb-main { display: grid; grid-template-columns: 230px minmax(480px, 1fr) 300px; min-height: 0; }
+    .sidebar, .inspector { overflow: auto; background: var(--surface); }
+    .sidebar { border-right: 1px solid var(--line); }
+    .inspector { border-left: 1px solid var(--line); }
+    .panel-head { padding: 11px 13px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+    .field { padding: 11px 13px; border-bottom: 1px solid #293239; }
+    .field label { display: block; margin-bottom: 5px; color: var(--muted); font-size: 11px; }
+    .value { padding: 8px 9px; background: #111619; font-size: 12px; }
+
+    .center { display: grid; grid-template-rows: 1fr 0.85fr; min-height: 0; }
+    .viewport, .map { position: relative; min-height: 0; overflow: hidden; }
+    .viewport { border-bottom: 1px solid var(--line); background: #20282c; }
+    .viewport::before {
+      content: "WEBOTS W3D / GAZEBO noVNC";
+      position: absolute;
+      inset: 46% 0 auto;
+      text-align: center;
+      color: #849198;
+      font-size: 14px;
+    }
+    .scene-grid {
+      position: absolute;
+      inset: 0;
+      opacity: 0.18;
+      background-image: linear-gradient(#748087 1px, transparent 1px), linear-gradient(90deg, #748087 1px, transparent 1px);
+      background-size: 36px 36px;
+      transform: perspective(420px) rotateX(58deg) scale(1.35);
+    }
+    .tabs { position: absolute; top: 10px; left: 12px; display: flex; gap: 4px; }
+    .tab { padding: 7px 10px; background: rgba(16,20,23,.86); color: var(--muted); font-size: 11px; }
+    .tab.active { color: var(--text); border-bottom: 2px solid var(--teal); }
+    .map { background: #151b1e; }
+    .map::before {
+      content: "2D 占据地图 · 前沿点 · 任务分配 · 编队轨迹";
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .map-path { position: absolute; left: 18%; top: 58%; width: 58%; height: 4px; background: var(--teal); transform: rotate(-13deg); }
+    .robot { position: absolute; width: 13px; height: 13px; border: 2px solid var(--blue); background: #111619; transform: rotate(45deg); }
+    .r1 { left: 28%; top: 56%; } .r2 { left: 39%; top: 49%; } .r3 { left: 48%; top: 64%; } .r4 { left: 62%; top: 42%; }
+    .target { position: absolute; right: 18%; top: 30%; width: 16px; height: 16px; border: 2px solid var(--red); border-radius: 50%; }
+
+    .metric { display: grid; grid-template-columns: 1fr auto; gap: 4px; padding: 11px 13px; border-bottom: 1px solid #293239; font-size: 12px; }
+    .metric span { color: var(--muted); }
+    .task { margin: 10px; padding: 10px; border-left: 3px solid var(--amber); background: var(--surface-2); font-size: 12px; }
+    .task strong { display: block; margin-bottom: 5px; }
+    .task small { color: var(--muted); }
+
+    .wb-bottom { display: grid; grid-template-columns: 1.2fr 1fr; border-top: 1px solid var(--line); min-height: 0; }
+    .timeline, .logs { overflow: hidden; }
+    .timeline { border-right: 1px solid var(--line); }
+    .rows { padding: 8px 12px; color: var(--muted); font: 11px/1.8 ui-monospace, monospace; }
+    .rows b { color: var(--text); font-weight: 500; }
+
+    .review-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .review-item { padding: 16px; border: 1px solid var(--line); background: var(--surface); }
+    .review-item strong { display: block; margin-bottom: 7px; color: var(--teal); }
+    .review-item p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.55; }
+
+    @media (max-width: 1100px) {
+      .architecture { grid-template-columns: 1fr; }
+      .arrow { transform: rotate(90deg); min-height: 30px; }
+      .workbench { overflow-x: auto; }
+      .review-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>MASAR 仿真验证平台</h1>
+    <span>架构与工作台评审 · 方案 A</span>
+  </header>
+
+  <main>
+    <section>
+      <h2>运行架构</h2>
+      <p class="lead">单一控制入口管理一个活动运行；ROS 数据、仿真画面和桌面画面走独立通道，任何一个可视化组件失效都不应终止仿真。</p>
+      <div class="architecture">
+        <div class="lane">
+          <div class="lane-title">浏览器 · 单端口</div>
+          <div class="node control"><strong>任务控制台</strong><small>场景选择、预检、启动、停止、START / STOP / HOME</small></div>
+          <div class="node"><strong>ROS 可视化</strong><small>地图、TF、轨迹、LaserScan、图像与指标</small></div>
+          <div class="node media"><strong>仿真视图</strong><small>Webots W3D；Gazebo / RViz noVNC</small></div>
+        </div>
+        <div class="arrow">⇄</div>
+        <div class="lane">
+          <div class="lane-title">新平台 · 独立部署</div>
+          <div class="node control"><strong>Reverse Proxy + Platform API</strong><small>REST / WebSocket、单运行锁、状态机、命令审计、运行归档</small></div>
+          <div class="node"><strong>场景目录与编排器</strong><small>合法组合、参数 Schema、预检、就绪条件、退出策略</small></div>
+          <div class="node"><strong>ROS1 / ROS2 Web Gateway</strong><small>rosbridge、TF republisher、web_video_server、话题白名单</small></div>
+          <div class="node media"><strong>Visual Desktop Sidecar</strong><small>TurboVNC / noVNC；隔离 Gazebo、RViz 和可选 Qt 桌面</small></div>
+        </div>
+        <div class="arrow">⇄</div>
+        <div class="lane">
+          <div class="lane-title">现有容器 · 保持原逻辑</div>
+          <div class="node legacy"><strong>masar_ros1_srv-g</strong><small>ROS1 Noetic、Gazebo、RoboSAR、Qt；平台代理按进程组管理</small></div>
+          <div class="node legacy"><strong>masar_ros2_bridge-w</strong><small>ROS2 Humble、Webots R2025a、群行为、ROS1 bridge</small></div>
+          <div class="node legacy"><strong>现有启动脚本</strong><small>默认行为不变；平台功能仅由显式可选参数启用</small></div>
+        </div>
+      </div>
+      <div class="contract"><strong>隔离原则：</strong>平台停止只终止当前 <code>run_id</code> 创建的进程组；不得使用模糊的 <code>pkill</code>，不得清理不属于本次运行的 ROS 图或容器进程。</div>
+    </section>
+
+    <section>
+      <h2>统一工作台</h2>
+      <p class="lead">操作区保持固定，仿真、地图、任务与日志可调整尺寸。搜救场景显示完整业务状态；普通群行为场景自动隐藏无关面板。</p>
+      <div class="workbench">
+        <div class="wb-top">
+          <div class="wb-status"><b>TEPPER 搜索 + 响应组</b><span><i class="dot"></i>RUNNING</span><span>00:18:42</span><span>RTF 0.93</span></div>
+          <div class="actions"><div class="button primary">开始任务</div><div class="button">返航</div><div class="button stop">停止运行</div></div>
+        </div>
+        <div class="wb-main">
+          <aside class="sidebar">
+            <div class="panel-head">运行配置</div>
+            <div class="field"><label>系统模式</label><div class="value">完整搜救系统</div></div>
+            <div class="field"><label>仿真器</label><div class="value">Gazebo Classic</div></div>
+            <div class="field"><label>环境</label><div class="value">Tepper 大场景</div></div>
+            <div class="field"><label>机器人组</label><div class="value">搜索组 + 响应组</div></div>
+            <div class="field"><label>数据记录</label><div class="value">事件 + 日志 + rosbag</div></div>
+            <div class="field"><label>运行编号</label><div class="value">run_20260731_181204</div></div>
+          </aside>
+          <div class="center">
+            <div class="viewport">
+              <div class="scene-grid"></div>
+              <div class="tabs"><div class="tab active">仿真</div><div class="tab">RViz</div><div class="tab">相机</div><div class="tab">传感器</div></div>
+            </div>
+            <div class="map">
+              <div class="map-path"></div><i class="robot r1"></i><i class="robot r2"></i><i class="robot r3"></i><i class="robot r4"></i><i class="target"></i>
+            </div>
+          </div>
+          <aside class="inspector">
+            <div class="panel-head">任务与系统状态</div>
+            <div class="metric"><span>探索完成度</span><b>67.4%</b></div>
+            <div class="metric"><span>前沿任务</span><b>12 / 18</b></div>
+            <div class="metric"><span>已发现目标</span><b>3</b></div>
+            <div class="metric"><span>响应组状态</span><b>NAVIGATING</b></div>
+            <div class="metric"><span>最小净空</span><b>0.46 m</b></div>
+            <div class="metric"><span>最大槽位误差</span><b>0.18 m</b></div>
+            <div class="task"><strong>#17 火点响应</strong><small>EN_ROUTE · robot_5 / robot_6 / robot_7</small></div>
+            <div class="task"><strong>#18 受困人员</strong><small>DISPATCHED · staging pose ready</small></div>
+          </aside>
+        </div>
+        <div class="wb-bottom">
+          <div class="timeline"><div class="panel-head">任务时间线</div><div class="rows"><b>18:12:04</b> 运行预检完成<br><b>18:12:27</b> Gazebo 与 ROS 图就绪<br><b>18:16:48</b> robot_2 发现火点 #17<br><b>18:16:49</b> 响应任务 #17 已分配</div></div>
+          <div class="logs"><div class="panel-head">运行日志</div><div class="rows">[search] frontier batch accepted<br>[response] plan ready, 84 points<br>[bridge] ros1 ↔ ros2 healthy<br>[recording] bag writer active</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h2>本轮需要确认</h2>
+      <div class="review-grid">
+        <div class="review-item"><strong>职责边界</strong><p>平台管理运行，ROS 网关只传数据，现有容器继续承载业务和仿真。</p></div>
+        <div class="review-item"><strong>主工作流</strong><p>先配置并预检，再进入运行工作台；停止运行和任务 STOP 是两个不同命令。</p></div>
+        <div class="review-item"><strong>信息密度</strong><p>仿真与地图居中，任务状态常驻右侧，日志和时间线固定在底部。</p></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
