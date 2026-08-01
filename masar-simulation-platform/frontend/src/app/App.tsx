@@ -10,6 +10,7 @@ import { ResponsePanel } from "../panels/ResponsePanel";
 import { RvizPanel } from "../panels/RvizPanel";
 import { SensorPanel } from "../panels/SensorPanel";
 import { SimulationPanel } from "../panels/SimulationPanel";
+import { useRosDataSources } from "../ros/RosDataRuntime";
 
 const workspaceMeta: Record<
   WorkspaceId,
@@ -58,6 +59,8 @@ let initializationStarted = false;
 
 export function App() {
   const state = useRunStore((value) => value);
+  const observedSources = useRosDataSources(state.run?.run_id ?? null, state.dataSources);
+  const dataSources = observedSources.length > 0 ? observedSources : state.dataSources;
   useEffect(() => {
     if (!initializationStarted) {
       initializationStarted = true;
@@ -70,7 +73,7 @@ export function App() {
   if (popupPanel && state.scenario) {
     return (
       <main className="popup-workbench" data-testid="workbench" data-workspace={state.selectedWorkspace}>
-        {renderPanel(popupPanel, state.scenario, state)}
+        {renderPanel(popupPanel, state.scenario, { ...state, dataSources })}
       </main>
     );
   }
@@ -158,10 +161,10 @@ export function App() {
             {state.scenario.panels.includes("rviz") ? (
               <RvizPanel scenario={state.scenario} run={state.run} />
             ) : (
-              <MapPanel sources={state.dataSources} trajectoryOnly />
+              <MapPanel sources={dataSources} trajectoryOnly />
             )}
-            {state.scenario.panels.includes("map") ? <MapPanel sources={state.dataSources} /> : null}
-            <SensorPanel sources={state.dataSources} running={running} />
+            {state.scenario.panels.includes("map") ? <MapPanel sources={dataSources} /> : null}
+            <SensorPanel sources={dataSources} running={running} />
           </section>
         ) : null}
 
@@ -169,8 +172,8 @@ export function App() {
           {state.selectedWorkspace !== "group_behavior" || state.scenario?.module === "control" ? (
             <MissionPanel run={state.run} events={state.events} workspace={state.selectedWorkspace} />
           ) : null}
-          {state.selectedWorkspace === "rescue" ? <ResponsePanel sources={state.dataSources} /> : null}
-          <HealthPanel sources={state.dataSources} running={running} />
+          {state.selectedWorkspace === "rescue" ? <ResponsePanel sources={dataSources} /> : null}
+          <HealthPanel sources={dataSources} running={running} />
           <EventLogPanel events={state.events} />
           <ProcessLogPanel running={running} />
         </aside>

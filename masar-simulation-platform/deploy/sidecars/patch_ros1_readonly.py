@@ -9,7 +9,7 @@ ORIGINAL = (
     "rosbridge_capabilities = [CallService, Advertise, Publish, Subscribe, Defragment, "
     "AdvertiseService, ServiceResponse, UnadvertiseService]"
 )
-READ_ONLY = "rosbridge_capabilities = [Subscribe, Defragment]"
+READ_ONLY = "rosbridge_capabilities = [CallService, Subscribe, Defragment]"
 LISTEN_DEFAULT = "listenWS(factory, context_factory)"
 LISTEN_EXPLICIT = "listenWS(factory, context_factory, interface=address)"
 

@@ -91,7 +91,12 @@ function json(route: Route, body: unknown, status = 200) {
 
 export async function installMockApi(
   page: Page,
-  options: { activeRun?: boolean; restorableRun?: boolean } = {}
+  options: {
+    activeRun?: boolean;
+    restorableRun?: boolean;
+    runScenario?: string;
+    dataSources?: Array<Record<string, unknown>>;
+  } = {}
 ) {
   const context = page.context();
   await context.route("https://cyberbotics.com/**", (route) => route.abort());
@@ -123,7 +128,7 @@ export async function installMockApi(
         run: options.activeRun
           ? {
               run_id: "run-layout-test",
-              scenario_id: "exploration.gazebo.tepper",
+              scenario_id: options.runScenario ?? "exploration.gazebo.tepper",
               state: "RUNNING",
               reason_code: null,
               created_at: "2026-08-01T10:00:00Z",
@@ -148,7 +153,7 @@ export async function installMockApi(
     }
     if (path.endsWith("/data-sources")) {
       return json(route, {
-        data_sources: [
+        data_sources: options.dataSources ?? [
           { topic_pattern: "/sim_map", capability: "map", required: true, availability: "ONLINE" },
           { topic_pattern: "/robot_2/camera", capability: "camera", required: false, availability: "UNAVAILABLE" },
           { topic_pattern: "/robot_0/odom", capability: "odometry", required: true, availability: "STALE" },

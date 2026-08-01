@@ -41,7 +41,7 @@ services:
       <<: *platform-environment
       ROS_MASTER_URI: http://127.0.0.1:11311
       ROS_HOSTNAME: 127.0.0.1
-      MASAR_ROS1_TOPICS_GLOB: "'[*]'"
+      MASAR_ROS1_TOPICS_GLOB: "[*]"
     healthcheck:
       test: [CMD, /usr/local/bin/sidecar-health, "18111", "18121"]
       interval: 10s

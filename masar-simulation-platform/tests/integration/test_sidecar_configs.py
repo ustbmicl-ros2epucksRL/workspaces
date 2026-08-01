@@ -52,8 +52,11 @@ def test_sidecar_images_pin_ros_distro_and_packages() -> None:
     assert "ros-noetic-web-video-server" in ros1
     assert "patch_ros1_readonly.py" in ros1
     patch = (DEPLOY / "sidecars" / "patch_ros1_readonly.py").read_text(encoding="utf-8")
-    assert "rosbridge_capabilities = [Subscribe, Defragment]" in patch
+    assert "rosbridge_capabilities = [CallService, Subscribe, Defragment]" in patch
     assert "listenWS(factory, context_factory, interface=address)" in patch
+    ros1_runner = (DEPLOY / "sidecars" / "run-ros1-sidecar").read_text(encoding="utf-8")
+    assert "roslaunch rosbridge_server rosbridge_websocket.launch" in ros1_runner
+    assert "services_glob:=\"[rosapi/topics,/rosapi/topics]\"" in ros1_runner
 
     assert re.search(r"^FROM ros:humble-ros-base-jammy@sha256:[0-9a-f]{64}$", ros2, re.MULTILINE)
     assert "ros-humble-rosbridge-suite" in ros2
@@ -63,6 +66,7 @@ def test_sidecar_images_pin_ros_distro_and_packages() -> None:
     assert "topics_glob:=\"'[]'\"" in ros2_runner
     assert "topics_pub_glob:=\"'[]'\"" in ros2_runner
     assert "topics_sub_glob:=\"${MASAR_ROS2_TOPICS_GLOB" in ros2_runner
+    assert "services_glob:=\"'[rosapi/topics,/rosapi/topics]'\"" in ros2_runner
 
 
 def test_supervisor_manifests_have_exact_ports_and_read_only_policy() -> None:

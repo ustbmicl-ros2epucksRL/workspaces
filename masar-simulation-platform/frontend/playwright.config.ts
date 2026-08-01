@@ -5,6 +5,7 @@ process.env.no_proxy = "127.0.0.1,localhost,::1";
 
 export default defineConfig({
   testDir: "./tests",
+  testIgnore: ["**/*.unit.spec.ts"],
   fullyParallel: false,
   timeout: 30_000,
   expect: { timeout: 5_000 },

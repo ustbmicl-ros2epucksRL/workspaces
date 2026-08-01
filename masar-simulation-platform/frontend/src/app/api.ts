@@ -90,10 +90,14 @@ export interface DataSource {
   topic_pattern: string;
   message_types?: string[];
   graph?: "ros1" | "ros2";
+  topic?: string;
+  message_type?: string;
   capability: string;
   required: boolean;
   availability: DataAvailability;
   last_age_seconds?: number;
+  last_message_age_ms?: number;
+  observed_hz?: number;
 }
 
 export interface RunEvent {

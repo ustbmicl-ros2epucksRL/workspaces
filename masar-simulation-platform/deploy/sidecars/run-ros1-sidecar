@@ -6,14 +6,14 @@ set -u
 
 case "${1:-}" in
   rosbridge)
-    exec rosrun rosbridge_server rosbridge_websocket \
-      _address:=127.0.0.1 \
-      _port:=18111 \
-      _retry_startup_delay:=2 \
-      _websocket_null_origin:=false \
-      _topics_glob:="${MASAR_ROS1_TOPICS_GLOB:-'[*]'}" \
-      _services_glob:="'[]'" \
-      _params_glob:="'[]'"
+    exec roslaunch rosbridge_server rosbridge_websocket.launch \
+      address:=127.0.0.1 \
+      port:=18111 \
+      retry_startup_delay:=2 \
+      websocket_null_origin:=false \
+      topics_glob:="${MASAR_ROS1_TOPICS_GLOB:-'[*]'}" \
+      services_glob:="[rosapi/topics,/rosapi/topics]" \
+      params_glob:="[]"
     ;;
   tf2_web_republisher)
     exec rosrun tf2_web_republisher tf2_web_republisher

@@ -12,7 +12,7 @@ case "${1:-}" in
       topics_glob:="'[]'" \
       topics_pub_glob:="'[]'" \
       topics_sub_glob:="${MASAR_ROS2_TOPICS_GLOB:-'[*]'}" \
-      services_glob:="'[]'" \
+      services_glob:="'[rosapi/topics,/rosapi/topics]'" \
       params_glob:="'[]'"
     ;;
   tf2_web_republisher)
