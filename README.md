@@ -6,6 +6,7 @@
 - `VectorizedMultiAgentSimulator` 是 `multi-agent-neat` 训练和评估使用的 VMAS 向量化环境代码，主要作为上游开源环境依赖，不是当前工作的主要开发对象。
 - `ROS2swarm_w` 负责把群行为策略落到 ROS2 Humble + Webots 的 3D 物理仿真中验证，包括势场/规则策略和从 VMAS/NEAT 训练得到的策略。
 - `masar_ws` 负责未知环境下的多智能体搜救系统，保留 RoboSAR 的搜索、SLAM、任务生成、任务分配、导航、控制和 GUI 主链路，并扩展 Gazebo/Webots 验证、ROS1-ROS2 桥接和应急响应组能力。
+- `masar-simulation-platform` 是上述 ROS1/ROS2 仿真的统一 Web 控制与观测入口，按“群行为验证、探索组运行、完整搜救”三个模块组织场景。
 - `DEFORM` 是可变编队导航的参考/上游工作区；`masar_ws` 内当前使用的是 `src/robosar_deform_vendor` 里的 ROS1 vendor 拷贝。
 
 ## 目录说明
@@ -17,7 +18,23 @@
 | [VectorizedMultiAgentSimulator](VectorizedMultiAgentSimulator/README.md) | VMAS 开源环境                  | PyTorch 向量化 2D 多智能体仿真器，为 `multi-agent-neat` 提供 `flocking`、`transport` 等训练/评估环境            |
 | [ROS2swarm_w](ROS2swarm_w/README.md)                                     | ROS2 + Webots 群行为验证        | Webots 场景、`robot_N` 节点、e-puck/Burger 支持、ROS2swarm 行为策略、NEAT/VMAS 策略加载、RoboSAR Webots 桥接适配 |
 | [masar_ws](masar_ws/README.md)                                           | ROS1 RoboSAR 搜救系统          | 多机器人 SLAM、任务生成、任务分配、导航控制、GUI、Gazebo 搜救闭环、Webots 桥接闭环、应急响应组与 DEFORM 集成                     |
+| [masar-simulation-platform](masar-simulation-platform/PLATFORM_DESIGN.md) | 统一仿真验证与可视化平台 | React 工作台、运行编排 API、Gazebo/RViz noVNC、Webots streaming、ROS Web sidecar 和运行归档 |
 | [DEFORM](DEFORM/)                                                        | 可变编队导航参考项目                 | ROS1 Noetic 下的多机器人可变编队规划与局部避障参考实现                                                         |
+
+## 统一平台预览
+
+当前统一前端、场景目录 API、Gazebo/RViz 显示 sidecar 和 Caddy 单入口已经可以运行。服务器端启动/更新预览：
+
+```bash
+cd /home/zjc/workspace/masar-simulation-platform/frontend
+npm ci
+npm run build
+
+cd /home/zjc/workspace/masar-simulation-platform/deploy
+docker compose --profile dev-api up -d --build api display webots-guard caddy
+```
+
+SSH 配置保持 `LocalForward 18089 127.0.0.1:18090` 后，在本地浏览器打开 `http://127.0.0.1:18089/`。`dev-api` 在未挂载 Runtime Agent secret 时可安全查看真实的三模块/六场景目录，但不能启动 ROS 业务进程；完整场景联调将在平台 Agent 与 Robot Web Tools 适配阶段接通。
 
 
 ## 总体关系

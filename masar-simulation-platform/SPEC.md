@@ -544,7 +544,7 @@ masar-simulation-platform/
 └── runs/                         # 运行时生成，不提交 Git
 ```
 
-基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.0.7；TypeScript 5.7.2；Playwright 1.49.1；`roslib` 2.1.0；`ros3d` 1.1.0；`ros2d` 0.10.0。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。
+基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Playwright 1.62.1；`roslib` 2.1.0；`ros3d` 1.1.0；`ros2d` 0.10.0。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞。
 
 控制平面作为 host systemd 服务运行，sidecar 使用 Docker Compose；浏览器不能接触 Docker socket。两个既有业务容器只运行 Agent 和业务进程，不修改镜像层。
 

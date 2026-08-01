@@ -15,7 +15,7 @@ review all pass. The next task must not start before that point.
 | 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | `8936d8a` |
 | 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | `65ab31c` |
 | 7. Gazebo/RViz/noVNC Displays | PASS | `10 passed`; full suite `144 passed`; live dual-canvas/HTTP/listener checks passed | APPROVED | APPROVED after ownership fixes | `8b202f8` |
-| 8. React Workbench | PENDING | - | - | - | - |
+| 8. React Workbench | PASS | `7 passed`; typecheck/build/audit and live Caddy Chromium review passed | APPROVED | APPROVED after truthful-data and dependency fixes | `5a54a9b` |
 | 9. Robot Web Tools Adapters | PENDING | - | - | - | - |
 | 10. Artifact Recording and Download | PENDING | - | - | - | - |
 | 11. Scenario Integration and Regression | PENDING | - | - | - | - |
@@ -140,3 +140,18 @@ Date: 2026-08-01
 - Automated acceptance: the Task 7 suite returned `10 passed`; the platform suite returned `144 passed`; the existing ROS2 Webots suite returned `15 passed`. Ruff `0.9.2`, `compileall`, Compose validation, Docker image rebuild, `git diff --check` and the two Caddy HTTP probes passed.
 - Dependency lock: the display image uses digest-pinned Ubuntu 22.04, noVNC `v1.7.0` and websockify `v0.13.0` from commit-addressed tarballs with verified SHA-256 values.
 - Integrated implementation commit: `8b202f8`.
+
+## Task 8: React Workbench and Responsive Layout
+
+Date: 2026-08-01
+
+- TDD evidence: the layout suite first failed because `/src/main.tsx` and all panels were absent. The server environment also exposed two infrastructure constraints that are now explicit in test config: loopback must bypass the host proxy, and Vite uses low-frequency polling to avoid the shared server's file-watcher limit.
+- Module acceptance: the workbench exposes exactly three primary tracks: group behavior/control validation, exploration-only operation, and the complete exploration-plus-response rescue system. Group behavior has simulation, trajectory, sensors, health and logs without RViz or invented behavior scores; exploration and rescue show simulation, RViz, map and sensors simultaneously.
+- Layout acceptance: at `1440x900`, all four exploration/rescue core panels were visible inside the viewport. At `390x844`, the toolbar was exactly 56 px, document width was exactly 390 px, and the four panels were ordered without overlap or horizontal overflow.
+- State acceptance: one external store owns the active `run_id`, scenario, parameters, event cursor and panel state. Resize, maximize, restore and popout caused no `POST /runs`; popout and refresh restore the same run through URL/current/localStorage lookup and cursor persistence.
+- Truthful-data acceptance: `UNAVAILABLE`, `WAITING`, `ONLINE`, `STALE`, `TYPE_MISMATCH` and `DISCONNECTED` render explicitly. An absent camera shows `未提供`; empty maps contain no decorative robot positions, and lifecycle progress is zero until backed by a real run state.
+- Browser acceptance: controlled Chromium reviewed group behavior, exploration, rescue and mobile layouts through the production Caddy origin. The three desktop screenshots had no horizontal overflow; exploration/rescue core panels ended within the 900 px viewport; the console contained no errors.
+- Gateway acceptance: Caddy serves the built React bundle at `/` with SPA fallback after all reserved proxy handlers. The root, scenario API, Gazebo noVNC and RViz noVNC returned HTTP 200; Compose API, Caddy and display services remained healthy.
+- Dependency acceptance: React `19.0.0`, TypeScript `5.7.2`, Vite `6.4.3` and Playwright `1.62.1` are exact-lock dependencies. The originally planned Vite `6.0.7` and Playwright `1.49.1` were rejected after npm reported high-severity advisories; `npm audit --audit-level=moderate` now reports zero vulnerabilities.
+- Automated acceptance: frontend `7 passed`; `npm run typecheck`, `npm run build`, Compose config and Caddy validation passed. The Python suite remained `144 passed`; Ruff, compileall and `git diff --check` passed.
+- Integrated implementation commit: `5a54a9b`.

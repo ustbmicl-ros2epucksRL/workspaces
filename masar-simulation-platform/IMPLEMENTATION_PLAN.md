@@ -6,7 +6,7 @@
 
 **Architecture:** A host FastAPI control plane owns a SQLite WAL run lease and invokes two standard-library runtime Agents inside the existing ROS containers. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, TF and video; Caddy exposes one loopback origin. A React/TypeScript workbench renders synchronized simulation, RViz, map, sensor, state and log panels.
 
-**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.0.7, TypeScript 5.7.2, Playwright 1.49.1, `roslib` 2.1.0, `ros3d` 1.1.0, `ros2d` 0.10.0, Docker Compose and Caddy.
+**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, `ros3d` 1.1.0, `ros2d` 0.10.0, Docker Compose and Caddy.
 
 ---
 
@@ -420,20 +420,20 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `frontend/src/styles/layout.css`, `frontend/src/styles/tokens.css`
 - Create: `frontend/tests/layout.spec.ts`, `frontend/tests/panel-state.spec.ts`
 
-- [ ] **Step 1: Write Playwright layout tests.** At 1440x900 assert the four required panels are simultaneously visible for exploration/rescue; at 390x844 assert single-column order, toolbar height at most 56 px, no horizontal overflow and no overlapping bounding boxes. At swarm scenarios assert RViz and generic behavior metric labels are absent.
+- [x] **Step 1: Write Playwright layout tests.** At 1440x900 assert the four required panels are simultaneously visible for exploration/rescue; at 390x844 assert single-column order, toolbar height at most 56 px, no horizontal overflow and no overlapping bounding boxes. At swarm scenarios assert RViz and generic behavior metric labels are absent.
 
-- [ ] **Step 2: Run the browser tests before implementation.**
+- [x] **Step 2: Run the browser tests before implementation.**
 
   Run: `cd frontend && npm ci && npx playwright test tests/layout.spec.ts --project=chromium`  
   Expected: FAIL because the Vite app and panels are absent.
 
-- [ ] **Step 3: Implement the shell and state store.** Use a single `run_id` store, explicit panel registry, CSS grid areas and panel actions `resize`, `maximize`, `restore`, `popout`. Popout uses the existing run store and never calls `POST /runs`.
+- [x] **Step 3: Implement the shell and state store.** Use a single `run_id` store, explicit panel registry, CSS grid areas and panel actions `resize`, `maximize`, `restore`, `popout`. Popout uses the existing run store and never calls `POST /runs`.
 
-- [ ] **Step 4: Implement the three module layouts.** Swarm uses simulation, trajectory, sensor, health and logs; exploration adds RViz, map and progress; rescue adds mission timeline and response status. Render no behavior score fields anywhere in the swarm layouts.
+- [x] **Step 4: Implement the three module layouts.** Swarm uses simulation, trajectory, sensor, health and logs; exploration adds RViz, map and progress; rescue adds mission timeline and response status. Render no behavior score fields anywhere in the swarm layouts.
 
-- [ ] **Step 5: Implement missing-data states.** `UNAVAILABLE`, `WAITING`, `ONLINE`, `STALE`, `TYPE_MISMATCH` and `DISCONNECTED` must be rendered from API data. The SensorPanel renders `未提供` for an absent camera and never replaces it with zero or sample values.
+- [x] **Step 5: Implement missing-data states.** `UNAVAILABLE`, `WAITING`, `ONLINE`, `STALE`, `TYPE_MISMATCH` and `DISCONNECTED` must be rendered from API data. The SensorPanel renders `未提供` for an absent camera and never replaces it with zero or sample values.
 
-- [ ] **Step 6: Run Playwright tests and commit.**
+- [x] **Step 6: Run Playwright tests and commit.** Integrated implementation commit: `5a54a9b`.
 
   Run: `cd frontend && npm ci && npx playwright test tests/layout.spec.ts tests/panel-state.spec.ts --project=chromium`  
   Expected: PASS.
@@ -442,6 +442,8 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
   git add masar-simulation-platform/frontend
   git commit -m "feat(frontend): add synchronized simulation workbench"
   ```
+
+  Accepted on 2026-08-01: seven Playwright tests passed across desktop and mobile layouts; TypeScript and the production Vite build passed; `npm audit` reported zero vulnerabilities; the platform suite remained `144 passed`. Caddy served the production bundle at `/` while preserving API, ROS, Webots and both noVNC routes. Real Chromium screenshots covered all three modules and 390x844 mobile layout with no console errors or horizontal overflow.
 
 ## 12. Task 9: Robot Web Tools Adapters
 
