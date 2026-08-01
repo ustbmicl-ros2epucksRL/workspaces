@@ -491,32 +491,34 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 ## 13. Task 10: Artifact Recording and Download
 
 **Files:**
-- Modify: `backend/masar_platform/artifacts.py`, `orchestrator.py`, `api.py`
+- Modify: `agents/runtime_agent/main.py`, `probes.py`, `processes.py`; `backend/masar_platform/agents.py`, `artifacts.py`, `db.py`, `events.py`, `orchestrator.py`, `api.py`
 - Create: `backend/masar_platform/recording.py`
 - Create: `tests/unit/test_artifacts.py`, `tests/contract/test_download.py`
 
-- [ ] **Step 1: Write artifact tests.** Assert fixed manifest/summary keys, SHA-256 artifact IDs, GNU checksum format, complete events copied before retention, path traversal rejection, and Range responses (`206`, `Content-Range`, `Accept-Ranges`).
+- [x] **Step 1: Write artifact tests.** Assert fixed manifest/summary keys, SHA-256 artifact IDs, GNU checksum format, complete events copied before retention, path traversal rejection, and Range responses (`206`, `Content-Range`, `Accept-Ranges`).
 
-- [ ] **Step 2: Run tests to verify failure.**
+- [x] **Step 2: Run tests to verify failure.** Artifact, download, recorder ownership, finalization retry and display-recovery regressions were each observed failing before implementation or correction.
 
   Run: `python3 -m pytest tests/unit/test_artifacts.py tests/contract/test_download.py -q`  
-  Expected: FAIL because artifact and recording implementations are absent.
+  Initial expected result: FAIL because artifact and recording implementations are absent.
 
-- [ ] **Step 3: Implement finalization.** Write resolved manifest, complete events, process logs, ROS graph snapshot, summary and checksums atomically through `.partial` files and `os.replace`. Keep the original failed-start reason and missing-data list.
+- [x] **Step 3: Implement finalization.** Write resolved manifest, complete events, process logs, ROS graph snapshot, summary and checksums atomically through `.partial` files and `os.replace`. Keep the original failed-start reason and durable missing-data list across finalization retries and API recovery.
 
-- [ ] **Step 4: Implement recording profiles.** Start only the manifest-declared ROS1/ROS2 bag recorder commands; reject arbitrary topic arguments; stop recorders before process groups and add their bags to the artifact index.
+- [x] **Step 4: Implement recording profiles.** Start only exact manifest-derived ROS1/ROS2 recorder command refs and topic regexes; reject `-a`, `/.*`, mismatched profiles and caller-selected topics; stop and prove recorder inactivity before process groups and bag indexing.
 
-- [ ] **Step 5: Implement secure streaming download.** Resolve an `artifact_id` from SQLite, reject path traversal and symlinks, and support single-range streaming with checksum headers.
+- [x] **Step 5: Implement secure streaming download.** Resolve an `artifact_id` from SQLite, open each path component with `O_NOFOLLOW`, verify size and full SHA-256 on the opened descriptor outside the event loop, reject traversal/symlinks/tampering, and support single-range streaming with checksum headers.
 
-- [ ] **Step 6: Run tests and commit.**
+- [x] **Step 6: Run tests and commit.** Implementation commit: `fccb40e`.
 
   Run: `python3 -m pytest tests/unit/test_artifacts.py tests/contract/test_download.py -q`  
   Expected: PASS.
 
   ```bash
-  git add masar-simulation-platform/backend/masar_platform/artifacts.py masar-simulation-platform/backend/masar_platform/orchestrator.py masar-simulation-platform/backend/masar_platform/api.py masar-simulation-platform/backend/masar_platform/recording.py masar-simulation-platform/tests/unit/test_artifacts.py masar-simulation-platform/tests/contract/test_download.py
+  git add masar-simulation-platform/agents/runtime_agent masar-simulation-platform/backend/masar_platform masar-simulation-platform/tests
   git commit -m "feat(platform): archive runs and stream artifacts"
   ```
+
+  Accepted on 2026-08-02: the narrow artifact/download suite returned `18 passed` and the full Python suite returned `176 passed`. Ruff, compileall, Compose validation, shell syntax and diff checks passed. Real Noetic and Humble containers produced valid strict-profile ROS1 and ROS2 bags and graph snapshots; all isolated publishers, Agents, secrets and run data were removed. The final API image and existing Compose volume passed health and schema migration checks. Frontend regression returned 17 unit tests and seven Chromium tests with two live-only skips; typecheck, build and npm audit passed. Final independent review reported no P0/P1/P2 findings.
 
 ## 14. Task 11: Scenario Integration and Regression Gates
 

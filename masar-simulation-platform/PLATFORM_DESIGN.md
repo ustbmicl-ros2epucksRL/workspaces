@@ -385,19 +385,24 @@ MVP 每次运行生成：
 
 ```text
 runs/<run_id>/
+├── request.json
+├── resolved-scenario.json
 ├── manifest.json
 ├── resolved-scenario.yaml
 ├── events.jsonl
-├── process-logs/
+├── process-logs/*.stdout.log|*.stderr.log
 ├── ros/
+│   ├── ros1-graph.json / ros2-graph.json（按场景实际 Agent）
 │   ├── topics-snapshot.json
 │   └── nodes-snapshot.json
 ├── bags/
+│   ├── ros1/*.bag
+│   └── ros2/metadata.yaml + *.db3
 ├── summary.json
 └── checksums.sha256
 ```
 
-MVP 支持列表、查看摘要和下载 rosbag，不实现时间同步回放或多次实验图表对比。
+所有固定文件使用 `.partial`、`fsync` 和原子替换；`checksums.sha256` 精确覆盖除自身外的已索引文件。录制器必须先于 RViz 和业务进程停止，只有 Agent 所有权记录证明录制器已终止才索引 bag。下载从防符号链接的已打开文件描述符流式读取并支持单 Range。MVP 支持列表、查看摘要和下载归档/rosbag，不实现时间同步回放或多次实验图表对比。
 
 后续阶段：
 

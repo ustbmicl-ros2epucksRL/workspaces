@@ -17,7 +17,7 @@ review all pass. The next task must not start before that point.
 | 7. Gazebo/RViz/noVNC Displays | PASS | `10 passed`; full suite `144 passed`; live dual-canvas/HTTP/listener checks passed | APPROVED | APPROVED after ownership fixes | `8b202f8` |
 | 8. React Workbench | PASS | `7 passed`; typecheck/build/audit and live Caddy Chromium review passed | APPROVED | APPROVED after truthful-data and dependency fixes | `5a54a9b` |
 | 9. Robot Web Tools Adapters | PASS | `17 passed`; `7 passed + 2 skipped`; live ROS `2 passed`; full suite `144 passed` | APPROVED with ros3d security deviation | APPROVED after reconnect/resource fixes | `9587ac2` |
-| 10. Artifact Recording and Download | PENDING | - | - | - | - |
+| 10. Artifact Recording and Download | PASS | `18 passed`; full suite `176 passed`; real ROS1/ROS2 bag smoke passed | APPROVED | APPROVED after ownership/recovery fixes | `fccb40e` |
 | 11. Scenario Integration and Regression | PENDING | - | - | - | - |
 | 12. Security and Release Gate | PENDING | - | - | - | - |
 
@@ -170,3 +170,17 @@ Date: 2026-08-01
 - Automated acceptance: adapter unit tests returned `17 passed`; standard Playwright returned `7 passed, 2 skipped`; environment-gated live ROS Playwright returned `2 passed`; the Python suite returned `144 passed`. TypeScript, Vite build, Ruff, compileall, Compose validation, shell syntax, Caddy health, diff checks and npm audit passed. The Vite build retains a non-blocking 506 kB chunk-splitting advisory.
 - Cleanup acceptance: live ROS1/ROS2 publishers were stopped by exact container PID and verified absent. Existing business containers and native ROS project commands were not modified.
 - Integrated implementation commit: `9587ac2`.
+
+## Task 10: Artifact Recording and Download
+
+Date: 2026-08-02
+
+- TDD evidence: artifact/download modules first failed because their contracts were absent. Later review regressions separately reproduced non-transactional legacy migration, live-bag indexing after an unconfirmed stop, blocking file hashing, incomplete checksum coverage, missing recorder/display ownership and loss of display state across API restart before each correction.
+- Archive acceptance: terminal and failed-start runs atomically contain the original request, resolved YAML, complete events, process logs, per-Agent and aggregate ROS graph snapshots, fixed manifest/summary documents and GNU-format checksums. Archive conditions persist in SQLite, retries verify exact index/checksum coverage, and recovery cannot erase `ownership_unproven`, `shutdown_unconfirmed` or unsettled-bag evidence.
+- Recording acceptance: the browser supplies only `{enabled, profile}`. Recorder commands and anchored topic regexes are derived from the scenario data/artifact profiles; the Agent rejects `-a`, `/.*`, arbitrary topics and cross-profile command refs. Recorders stop before RViz and business steps, and bags are indexed only after ownership records prove a terminal process state.
+- Download acceptance: duplicate content may share a content-derived `artifact_id` while `(run_id, path)` remains the database identity. Downloads open every directory component and the final file with `O_NOFOLLOW`, verify regular-file type, size and full SHA-256 on the same descriptor in a worker thread, then stream full or single-range responses with checksum and range headers. Traversal, symlink, multi-range and post-index tamper tests pass.
+- Recovery acceptance: legacy artifact migration uses a verified `BEGIN IMMEDIATE` transaction and safely resumes an interrupted `artifacts_legacy` migration. Optional RViz start state is persisted in `run_steps`; successful or uncertain starts require shutdown proof after restart, explicit pre-start 4xx rejection remains optional, and pre-upgrade active runs are conservatively backfilled from Agent records.
+- Container acceptance: isolated Noetic master `/percent_completed` recording created a valid ROS1 bag; isolated Humble domain 98 `/global_info` recording created `metadata.yaml` and a non-empty `.db3`. Both signed graph routes reported the real topics, both recorders stopped with SIGINT, and exact temporary PIDs, secrets and run directories were verified absent afterward.
+- Integrated acceptance: the narrow suite returned `18 passed`; the full suite returned `176 passed`; Ruff, compileall, Compose validation, Bash syntax and diff checks passed. The final API image was rebuilt, remained healthy and migrated the existing Compose SQLite volume. Frontend regression returned `17 passed` unit tests and `7 passed, 2 skipped` Chromium tests; TypeScript, Vite production build and npm audit passed.
+- Review and scope: final independent review reported no P0/P1/P2 findings. No file in `masar_ws`, `ROS2swarm_w`, `multi-agent-neat` or the abandoned platform was changed.
+- Integrated implementation commit: `fccb40e`.

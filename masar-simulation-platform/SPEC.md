@@ -418,7 +418,7 @@ Agent 只管理当前 `run_id` 创建的进程组。禁止按名称清理所有 
 ### 13.2 rosbag
 
 - 录制关闭时 manifest 明确记录 `recording.enabled=false`。
-- 录制开启时 topic 列表来自 artifact profile，不允许网页任意 `-a`。
+- 录制开启时 ROS1/ROS2 选择来自 artifact profile，topic 列表来自场景 data profile；网页不能传 topic、`-a` 或通配全部话题。
 - ROS1 与 ROS2 bag 分目录保存。
 - 下载 API 必须支持大文件流式传输和 Range 请求。
 
@@ -630,9 +630,9 @@ SQLite 文件为 `runs/platform.sqlite3`，开启 WAL。`runs`、`run_steps`、`
 
 每个场景必须有独立文件 `scenarios/<scenario_id>.yaml`，并在 `scenarios/catalog.yaml` 注册。六个文件都必须包含 `schema_version`、`scenario_id`、`module`、`simulator`、`parameters`、`steps`、`stop_order`、`data_profile` 和 `artifact_profile`，不得只使用第 6 节示例文件。
 
-`manifest.json` 固定包含 `run_id`、`scenario_id`、resolved parameters、platform_version、agent_versions、started_at、ended_at、final_state、failure_reason、step_results 和 `artifact_ids`。`summary.json` 固定包含 `run_id`、duration_seconds、final_state、missing_data[]、topic_health[]、`task_counts`、`exploration_progress_final`（无则 null）和 `response_group`（无则 null）。`artifact_id` 为 `sha256:` 加文件 SHA-256 的前 32 个十六进制字符；`checksums.sha256` 使用 GNU coreutils 格式。
+`manifest.json` 固定包含 `run_id`、`scenario_id`、resolved parameters、platform_version、agent_versions、started_at、ended_at、final_state、failure_reason、step_results、`artifact_ids` 和 `recording`。`summary.json` 固定包含 `run_id`、duration_seconds、final_state、missing_data[]、topic_health[]、`task_counts`、`exploration_progress_final`（无则 null）和 `response_group`（无则 null）。`artifact_id` 为 `sha256:` 加文件 SHA-256 的前 32 个十六进制字符，完整摘要保存在 `checksum`；相同内容允许共享 `artifact_id`，单次运行中的文件身份由 `(run_id, path)` 唯一确定。`checksums.sha256` 必须精确覆盖除其自身外的全部已索引文件，并使用 GNU coreutils 格式。
 
-录包 profile 固定为 `none`、`swarm_default`、`exploration_default`、`rescue_default` 四种。每种 profile 都列出 ROS1/ROS2 topic、消息类型和最大字节率；下载端点支持 HTTP Range，并在响应头提供 `Accept-Ranges: bytes` 和 checksum。
+场景 `artifact_profile` 固定为 `none`、`swarm_default`、`exploration_default`、`rescue_default` 四种；浏览器录制请求当前只接受 `profile=default`，再由场景 profile 决定 ROS1/ROS2 图选择和最大字节率，实际 topic/type 来自对应 data profile。下载端点只支持单个 HTTP Range，并在响应头提供 `Accept-Ranges: bytes` 和 checksum。服务端必须在已打开且通过 `O_NOFOLLOW`、文件类型、长度与完整 SHA-256 校验的同一文件描述符上流式读取，避免路径替换竞态。
 
 ### 19.7 移动布局与控制认证
 
