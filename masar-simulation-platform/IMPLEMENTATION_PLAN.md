@@ -6,7 +6,7 @@
 
 **Architecture:** A host FastAPI control plane owns a SQLite WAL run lease and invokes two standard-library runtime Agents inside the existing ROS containers. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, TF and video; Caddy exposes one loopback origin. A React/TypeScript workbench renders synchronized simulation, RViz, map, sensor, state and log panels.
 
-**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, `ros3d` 1.1.0, `ros2d` 0.10.0, Docker Compose and Caddy.
+**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, `ros2d` 0.10.0, Docker Compose and Caddy. `ros3d` 1.1.0 was evaluated but is not a production dependency because its legacy Three.js chain fails the current vulnerability gate.
 
 ---
 
@@ -450,38 +450,43 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 **Files:**
 - Create: `frontend/src/ros/RosConnectionManager.ts`, `TopicRegistry.ts`, `TopicHealth.ts`, `TfClient.ts`, `VideoClient.ts`
 - Modify: `frontend/src/panels/MapPanel.tsx`, `SensorPanel.tsx`, `HealthPanel.tsx`
-- Create: `frontend/tests/ros-adapters.spec.ts`
+- Create: `frontend/tests/ros-adapters.unit.spec.ts`, `frontend/tests/ros-live.spec.ts`
 
-- [ ] **Step 1: Write adapter tests with a mock rosbridge server.** Cover one shared ROS1 connection, one shared ROS2 connection, topic type rejection, queue length one, 10 Hz render cap, stale transition at the profile threshold, TF frame selection, and releasing the previous video stream within 5 seconds.
+- [x] **Step 1: Write adapter tests with controlled ROS doubles and live sidecars.** Cover one shared ROS1 connection, one shared ROS2 connection, reconnect without losing subscriptions, topic type rejection, queue length one, 10 Hz render cap, stale transition at the profile threshold, TF frame selection, and synchronously releasing the previous video stream.
 
-- [ ] **Step 2: Run tests and capture failure.**
+- [x] **Step 2: Run tests and capture failure.** The final review added five regression cases that first failed for reconnect, registry replacement, timer leakage, video/topic health interference and large LaserScan stack overflow; a sixth case then exposed unchanged health snapshots emitting every 500 ms.
 
-  Run: `cd frontend && npx vitest run tests/ros-adapters.spec.ts`  
+  Run: `cd frontend && npm run test:unit`
   Expected: FAIL because adapters do not exist.
 
-- [ ] **Step 3: Implement the singleton connection manager.** Use `roslib` 2.1.0 and route all topic subscriptions through `TopicRegistry`. Components cannot create raw WebSockets. `TopicHealth` records observed frequency and last age as transport health only.
+- [x] **Step 3: Implement the singleton connection manager.** Use `roslib` 2.1.0 and route all topic subscriptions through `TopicRegistry`. Components cannot create raw WebSockets. `TopicHealth` records observed frequency and last age as transport health only. ROS1 and ROS2 reconnect with bounded backoff while an unchanged contract preserves the existing subscription registry.
 
-- [ ] **Step 4: Implement map and TF adapters.** Wrap ros3djs 1.1.0 and ros2djs 0.10.0 behind `MapRenderer`; request only visible frames through `tf2_web_republisher`; disable PointCloud2 by default.
+- [x] **Step 4: Implement map and TF adapters.** Wrap locally bundled ros2djs 0.10.0 behind `MapRenderer` for OccupancyGrid and odometry traces; expose an explicit-frame-only `TfClient` for panels that require transforms; keep PointCloud2 disabled. ros3djs 1.1.0 was removed after `npm audit` traced two high-severity findings to its obsolete Three.js dependency.
 
-- [ ] **Step 5: Implement video and sensor adapters.** Build web-video URLs from the same-origin API capability response; unsubscribe and abort the old stream before selecting a new one. Decode only profile-approved LaserScan, Odometry and Twist messages.
+- [x] **Step 5: Implement video and sensor adapters.** Build web-video URLs from the same-origin API capability response; synchronously clear the old stream before selecting a new one. Decode only profile-approved LaserScan, Odometry and Twist messages. Native MJPEG `<img>` load/error is reported as connection health without inventing per-frame timestamps.
 
-- [ ] **Step 6: Run adapter, browser and TypeScript checks.**
+- [x] **Step 6: Run adapter, browser and TypeScript checks.**
 
   ```bash
   cd frontend
-  npx vitest run tests/ros-adapters.spec.ts
+  npm run test:unit
   npm run typecheck
-  npx playwright test tests/panel-state.spec.ts --project=chromium
+  npm run build
+  npm run test:e2e
+  MASAR_LIVE_ROS=1 npx playwright test tests/ros-live.spec.ts
+  npm audit --audit-level=moderate
   ```
 
   Expected: all commands PASS.
 
-- [ ] **Step 7: Commit the adapters.**
+- [x] **Step 7: Commit the adapters.** Implementation commit: `9587ac2`.
 
   ```bash
   git add masar-simulation-platform/frontend/src/ros masar-simulation-platform/frontend/src/panels masar-simulation-platform/frontend/tests
-  git commit -m "feat(frontend): add Robot Web Tools adapters"
+  git commit -m "feat(platform): integrate Robot Web Tools data plane"
   ```
+
+  Accepted on 2026-08-01: 17 adapter unit tests, seven standard Chromium tests and two live ROS browser tests passed. The live checks rendered a real ROS1 `nav_msgs/OccupancyGrid`, ROS2 `nav_msgs/msg/Odometry` trajectory and bounded `sensor_msgs/msg/LaserScan` values through the production same-origin gateway. TypeScript, Vite build, npm audit, the 144-test Python suite, Ruff, compileall, Compose validation, shell syntax and diff checks passed. All temporary test publishers were removed by exact container PID.
 
 ## 13. Task 10: Artifact Recording and Download
 

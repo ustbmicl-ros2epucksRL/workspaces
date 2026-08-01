@@ -252,7 +252,7 @@ ROS1 和 ROS2 分别使用与发行版匹配、按 digest 锁定基础镜像的 
 - `tf2_web_republisher`：按需下采样 TF。
 - `web_video_server`：相机图像到浏览器友好格式。
 
-sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源路径。Noetic 版本没有区分发布与订阅 glob 的参数，因此镜像构建时移除 advertise、publish 和 service-call capability，只保留订阅/分片能力；Humble 使用空 `topics_pub_glob` 和按场景限制的 `topics_sub_glob`。Caddy 与两个 sidecar 均有健康检查，且所有 Compose 服务固定设置 `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`。
+sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源路径。Noetic 版本没有区分发布与订阅 glob 的参数，因此镜像构建时移除 advertise、publish 和服务端能力，只保留订阅、分片以及精确限制到 `rosapi/topics`（兼容带/不带前导斜杠）的 `CallService` 数据发现能力；Humble 使用空 `topics_pub_glob`、按场景限制的 `topics_sub_glob` 和同样的精确发现服务列表。ROS1 使用官方 rosbridge launch 以同时提供 rosapi；已有 ROS master 时复用它，没有 master 时该 sidecar 会创建仅供平台数据面的本机 master。Caddy 与两个 sidecar 均有健康检查，且所有 Compose 服务固定设置 `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`。
 
 ### 6.4 图形界面
 
@@ -276,17 +276,17 @@ Webots path-prefix 反向代理和鼠标交互已通过真实 Chromium 验证：
 | [rosbridge_suite](https://github.com/RobotWebTools/rosbridge_suite) | ROS1/ROS2 到浏览器的 WebSocket 网关 | 默认分支为 `ros2`；协议成熟，ROS1/ROS2 前端接口统一 | 不是安全边界；只能 loopback + 反向代理，限制消息大小和允许话题 |
 | [roslibjs](https://github.com/RobotWebTools/roslibjs) | topic/service/param 客户端和连接管理 | npm `roslib` 当前核对为 2.1.0，BSD-2-Clause | 封装成平台 connection/topic adapter，不允许组件各自建连接 |
 | [tf2_web_republisher](https://github.com/RobotWebTools/tf2_web_republisher) | 按固定帧和目标帧提供精简 TF | 避免浏览器订阅完整 `/tf` 与 `/tf_static` | ROS1/ROS2 sidecar 分别部署；缓存和频率由场景配置 |
-| [web_video_server](https://github.com/RobotWebTools/web_video_server) | 相机图像浏览器显示 | 避免在前端手写 ROS Image 编解码 | 同时最多激活一个主视频源；断流显示原因和最后帧时间 |
+| [web_video_server](https://github.com/RobotWebTools/web_video_server) | 相机图像浏览器显示 | 避免在前端手写 ROS Image 编解码 | 同时最多激活一个主视频源；原生 MJPEG `<img>` 只报告可信的 load/error 连接状态，不伪造浏览器无法观测的逐帧时间 |
 | [noVNC](https://github.com/novnc/noVNC) | Gazebo、RViz、必要时 Qt 的远程桌面 | 支持鼠标键盘和缩放，适合保留原生 GUI | 每个面板使用独立虚拟显示；浏览器默认只查看，控制按场景授权 |
 
 ### 7.2 条件采用并隔离
 
 | 工具 | 用途 | 风险 | 处理 |
 |---|---|---|---|
-| [ros3djs](https://github.com/RobotWebTools/ros3djs) | OccupancyGrid、TF、Path、Marker、LaserScan、PointCloud2、URDF | npm `ros3d` 为 1.1.0，依赖较旧 Three.js API；旧示例 CDN 不可靠 | 锁定版本，放入独立 `Ros3DPanel` 适配层；业务组件不直接调用；PointCloud2 默认关闭 |
-| [ros2djs](https://github.com/RobotWebTools/ros2djs) | 轻量二维 OccupancyGrid | npm `ros2d` 为 0.10.0，依赖旧 EaselJS | 仅用于稳定二维地图路径；若兼容性验证失败，由同一 `MapPanel` 接口切换到 ros3djs 平面视图 |
+| [ros3djs](https://github.com/RobotWebTools/ros3djs) | OccupancyGrid、TF、Path、Marker、LaserScan、PointCloud2、URDF | npm `ros3d` 1.1.0 的旧 Three.js 依赖在当前 npm audit 中产生两个高危项 | 暂不进入生产依赖；保留 `MapPanel` 适配边界，待安全版本或受维护替代品通过同一验收后再接入 |
+| [ros2djs](https://github.com/RobotWebTools/ros2djs) | 轻量二维 OccupancyGrid、轨迹和朝向 | npm `ros2d` 为 0.10.0，依赖旧 EaselJS | 已通过真实 ROS1/ROS2 Chromium 验证；固定版本、本地打包并完全封装在 `MapRenderer` 中 |
 
-“条件采用”不是重新实现渲染器。它表示先做固定版本的兼容性验证，再通过平台适配层使用，避免老依赖扩散到整个前端。
+“条件采用”不是重新实现渲染器。它表示先做固定版本的兼容性与漏洞验证，再通过平台适配层使用；验证失败的依赖不因已有示例丰富而绕过安全门禁。
 
 ### 7.3 暂不作为主体
 

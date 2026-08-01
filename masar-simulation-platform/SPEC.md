@@ -342,7 +342,7 @@ Webots、Gazebo 和 RViz 面板支持其原生鼠标拖动、旋转或缩放。�
 
 ### RW-003 TF
 
-地图面板通过 `tf2_web_republisher` 请求固定帧和当前可见机器人帧。默认不传输完整 TF 树。
+需要坐标变换的地图图层通过 `tf2_web_republisher` 请求固定帧和显式可见机器人帧。当前直接使用 OccupancyGrid 与 Odometry 的二维路径不发起多余 TF 请求；默认不传输完整 TF 树。
 
 ### RW-004 视频
 
@@ -350,7 +350,7 @@ Webots、Gazebo 和 RViz 面板支持其原生鼠标拖动、旋转或缩放。�
 
 ### RW-005 地图
 
-`MapPanel` 对上层提供稳定接口。优先验证 ros3djs OccupancyGrid/Path/Marker；二维只读地图可使用 ros2djs。依赖版本锁定，不使用 CDN。
+`MapPanel` 对上层提供稳定接口。MVP 使用隔离并本地打包的 ros2djs 显示 OccupancyGrid、轨迹和机器人朝向，不使用 CDN。ros3djs 1.1.0 因旧 Three.js 传递依赖未通过当前漏洞门禁，在安全版本或受维护替代品验证前不进入生产依赖。
 
 ### RW-006 背压
 
@@ -544,7 +544,7 @@ masar-simulation-platform/
 └── runs/                         # 运行时生成，不提交 Git
 ```
 
-基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Playwright 1.62.1；`roslib` 2.1.0；`ros3d` 1.1.0；`ros2d` 0.10.0。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞。
+基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Playwright 1.62.1；`roslib` 2.1.0；`ros2d` 0.10.0；EaselJS 1.0.2。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞；`ros3d` 1.1.0 同样因其旧 Three.js 链产生两个高危审计项而从生产基线移除。
 
 控制平面作为 host systemd 服务运行，sidecar 使用 Docker Compose；浏览器不能接触 Docker socket。两个既有业务容器只运行 Agent 和业务进程，不修改镜像层。
 

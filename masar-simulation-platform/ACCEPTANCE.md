@@ -16,7 +16,7 @@ review all pass. The next task must not start before that point.
 | 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | `65ab31c` |
 | 7. Gazebo/RViz/noVNC Displays | PASS | `10 passed`; full suite `144 passed`; live dual-canvas/HTTP/listener checks passed | APPROVED | APPROVED after ownership fixes | `8b202f8` |
 | 8. React Workbench | PASS | `7 passed`; typecheck/build/audit and live Caddy Chromium review passed | APPROVED | APPROVED after truthful-data and dependency fixes | `5a54a9b` |
-| 9. Robot Web Tools Adapters | PENDING | - | - | - | - |
+| 9. Robot Web Tools Adapters | PASS | `17 passed`; `7 passed + 2 skipped`; live ROS `2 passed`; full suite `144 passed` | APPROVED with ros3d security deviation | APPROVED after reconnect/resource fixes | `9587ac2` |
 | 10. Artifact Recording and Download | PENDING | - | - | - | - |
 | 11. Scenario Integration and Regression | PENDING | - | - | - | - |
 | 12. Security and Release Gate | PENDING | - | - | - | - |
@@ -155,3 +155,18 @@ Date: 2026-08-01
 - Dependency acceptance: React `19.0.0`, TypeScript `5.7.2`, Vite `6.4.3` and Playwright `1.62.1` are exact-lock dependencies. The originally planned Vite `6.0.7` and Playwright `1.49.1` were rejected after npm reported high-severity advisories; `npm audit --audit-level=moderate` now reports zero vulnerabilities.
 - Automated acceptance: frontend `7 passed`; `npm run typecheck`, `npm run build`, Compose config and Caddy validation passed. The Python suite remained `144 passed`; Ruff, compileall and `git diff --check` passed.
 - Integrated implementation commit: `5a54a9b`.
+
+## Task 9: Robot Web Tools Adapters
+
+Date: 2026-08-01
+
+- TDD evidence: the final review introduced six regressions before their fixes. The suite first reproduced missing reconnect, registry replacement after rediscovery, a leaked health interval, camera/topic health interference, a large LaserScan call-stack overflow and unchanged snapshots causing 500 ms global store emissions.
+- Connection acceptance: the browser owns at most one read-only roslib connection per ROS graph, reconnects with bounded backoff and preserves active subscriptions when rosapi resolves the same exact graph/topic/type contracts. Panels cannot publish; browser control remains on the authenticated REST command plane.
+- Discovery and sidecar acceptance: ROS1 and ROS2 expose only exact `rosapi/topics` service discovery while publish globs/capabilities remain disabled. The prior Compose quoting error was removed, all services retain exact `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`, and both rebuilt sidecars remained healthy.
+- Rendering acceptance: the locally bundled ROS2D/EaselJS adapter rendered a real ROS1 `nav_msgs/OccupancyGrid` and ROS2 `nav_msgs/msg/Odometry` trajectory/heading in Chromium with pan and zoom. `TfClient` accepts only explicit safe frames at 10 Hz; no panel requests a full TF tree.
+- Sensor acceptance: one same-origin `web_video_server` request is active at a time and the previous URL is cleared synchronously. LaserScan, Odometry and Twist payloads are shape/finite-value checked; a 200,000-beam LaserScan regression passes without spreading values onto the JavaScript call stack.
+- Truthful-health acceptance: WAITING/ONLINE/STALE/TYPE_MISMATCH/DISCONNECTED, observed Hz and message age come from actual transport observations. MJPEG reports only browser-observable load/error connection state; it does not fabricate per-frame timestamps. Releasing the final topic subscription stops health polling.
+- Security deviation: `ros3d` 1.1.0 was evaluated and removed because its obsolete Three.js chain produced two high-severity npm audit findings. ROS2D remains isolated behind `MapRenderer`; `npm audit --audit-level=moderate` reports zero vulnerabilities.
+- Automated acceptance: adapter unit tests returned `17 passed`; standard Playwright returned `7 passed, 2 skipped`; environment-gated live ROS Playwright returned `2 passed`; the Python suite returned `144 passed`. TypeScript, Vite build, Ruff, compileall, Compose validation, shell syntax, Caddy health, diff checks and npm audit passed. The Vite build retains a non-blocking 506 kB chunk-splitting advisory.
+- Cleanup acceptance: live ROS1/ROS2 publishers were stopped by exact container PID and verified absent. Existing business containers and native ROS project commands were not modified.
+- Integrated implementation commit: `9587ac2`.
