@@ -96,6 +96,14 @@ class AgentClient:
     def probe(self, run_id: str) -> dict[str, Any]:
         return self._request("GET", f"/v1/runs/{run_id}/probe", run_id, None, retry=True)
 
+    def probe_readiness(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        """Run an idempotent set of exact readiness probes inside the Agent."""
+
+        return self._request("POST", f"/v1/runs/{run_id}/probe", run_id, payload, retry=True)
+
+    def command(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return self._request("POST", f"/v1/runs/{run_id}/command", run_id, payload, retry=False)
+
     def logs(
         self,
         run_id: str,

@@ -2,6 +2,9 @@ schema_version: 1
 scenario_id: exploration.gazebo.tepper
 module: exploration
 simulator: gazebo
+runtime:
+  ros1_master_uri: http://127.0.0.1:11311
+  ros2_domain_id: 0
 display_profile: exploration
 parameters: {}
 steps:
@@ -13,10 +16,13 @@ steps:
       all:
         - type: ros1_topic
           name: /clock
+          message_type: rosgraph_msgs/Clock
         - type: ros1_topic
           name: /sim_map
+          message_type: nav_msgs/OccupancyGrid
         - type: ros1_topic
           name: /percent_completed
+          message_type: std_msgs/Float32
     start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [exploration_gazebo]

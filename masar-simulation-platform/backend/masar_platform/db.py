@@ -35,6 +35,7 @@ class Database:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         with self.connect() as connection:
             connection.executescript(_SCHEMA)
+            _migrate_runs_contract(connection)
 
     @contextmanager
     def transaction(self, *, immediate: bool = False) -> Iterator[sqlite3.Connection]:
@@ -77,6 +78,10 @@ CREATE TABLE IF NOT EXISTS runs (
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL,
     ended_at TEXT,
+    request_json TEXT NOT NULL DEFAULT '{}' CHECK (json_valid(request_json) AND json_type(request_json) = 'object'),
+    resolved_manifest_json TEXT NOT NULL DEFAULT '{}' CHECK (
+        json_valid(resolved_manifest_json) AND json_type(resolved_manifest_json) = 'object'
+    ),
     next_event_sequence INTEGER NOT NULL DEFAULT 1 CHECK (next_event_sequence > 0)
 );
 
@@ -134,6 +139,22 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_single_active
     ON runs ((1))
     WHERE state IN ('PREFLIGHT', 'STARTING', 'RUNNING', 'STOPPING');
 """
+
+
+def _migrate_runs_contract(connection: sqlite3.Connection) -> None:
+    """Add pre-release Task 4 columns to databases created by earlier tasks."""
+
+    columns = {row[1] for row in connection.execute("PRAGMA table_info(runs)")}
+    if "request_json" not in columns:
+        connection.execute(
+            "ALTER TABLE runs ADD COLUMN request_json TEXT NOT NULL DEFAULT '{}' "
+            "CHECK (json_valid(request_json) AND json_type(request_json) = 'object')"
+        )
+    if "resolved_manifest_json" not in columns:
+        connection.execute(
+            "ALTER TABLE runs ADD COLUMN resolved_manifest_json TEXT NOT NULL DEFAULT '{}' "
+            "CHECK (json_valid(resolved_manifest_json) AND json_type(resolved_manifest_json) = 'object')"
+        )
 
 
 __all__ = [

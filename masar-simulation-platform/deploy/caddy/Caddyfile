@@ -1,0 +1,81 @@
+{
+	admin off
+	auto_https off
+	default_bind 127.0.0.1
+	servers {
+		protocols h1 h2
+	}
+}
+
+http://127.0.0.1:18090 {
+	bind 127.0.0.1
+	@traversal path_regexp traversal (?i)(?:^|/)(?:\.{2}|%2e%2e)(?:/|$)
+	respond @traversal "invalid path" 400
+
+	handle /gateway-healthz {
+		respond "ok" 200
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:18100 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle /ws/* {
+		reverse_proxy 127.0.0.1:18100 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle_path /ros1/* {
+		reverse_proxy 127.0.0.1:18111 {
+			header_up Host 127.0.0.1:18111
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle_path /ros2/* {
+		reverse_proxy 127.0.0.1:18112 {
+			header_up Host 127.0.0.1:18112
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle_path /video/ros1/* {
+		reverse_proxy 127.0.0.1:18121
+	}
+
+	handle_path /video/ros2/* {
+		reverse_proxy 127.0.0.1:18122
+	}
+
+	handle_path /display/gazebo/* {
+		reverse_proxy 127.0.0.1:18131 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle_path /display/rviz/* {
+		reverse_proxy 127.0.0.1:18132 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle_path /webots/* {
+		reverse_proxy 127.0.0.1:18141 {
+			header_up Upgrade {http.request.header.Upgrade}
+			header_up Connection {http.request.header.Connection}
+		}
+	}
+
+	handle {
+		respond "MASAR frontend has not been built yet" 503
+	}
+}

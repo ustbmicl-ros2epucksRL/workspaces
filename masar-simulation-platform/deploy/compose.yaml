@@ -1,0 +1,88 @@
+name: masar-simulation-platform
+
+x-platform-environment: &platform-environment
+  NO_PROXY: 127.0.0.1,localhost,::1
+  no_proxy: 127.0.0.1,localhost,::1
+
+services:
+  api:
+    profiles: [dev-api]
+    build:
+      context: ..
+      dockerfile: deploy/api/Dockerfile
+    network_mode: host
+    environment:
+      <<: *platform-environment
+      MASAR_PLATFORM_API_HOST: 127.0.0.1
+      MASAR_PLATFORM_API_PORT: "18100"
+      MASAR_PLATFORM_DATA_DIR: /var/lib/masar-platform/runs
+      MASAR_PLATFORM_SCENARIO_DIR: /opt/masar-platform/scenarios
+      MASAR_PLATFORM_VISUAL_STACK_READY: "false"
+    volumes:
+      - platform-runs:/var/lib/masar-platform/runs
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18100/healthz', timeout=2).read()"
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  ros1-web:
+    build:
+      context: ..
+      dockerfile: deploy/ros1-web/Dockerfile
+    network_mode: host
+    environment:
+      <<: *platform-environment
+      ROS_MASTER_URI: http://127.0.0.1:11311
+      ROS_HOSTNAME: 127.0.0.1
+      MASAR_ROS1_TOPICS_GLOB: "'[*]'"
+    healthcheck:
+      test: [CMD, /usr/local/bin/sidecar-health, "18111", "18121"]
+      interval: 10s
+      timeout: 4s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  ros2-web:
+    build:
+      context: ..
+      dockerfile: deploy/ros2-web/Dockerfile
+    network_mode: host
+    ipc: host
+    environment:
+      <<: *platform-environment
+      ROS_DOMAIN_ID: ${MASAR_ROS2_DOMAIN_ID:-0}
+      ROS_LOCALHOST_ONLY: ${MASAR_ROS2_LOCALHOST_ONLY:-0}
+      MASAR_ROS2_TOPICS_GLOB: "'[*]'"
+    healthcheck:
+      test: [CMD, /usr/local/bin/sidecar-health, "18112", "18122"]
+      interval: 10s
+      timeout: 4s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    network_mode: host
+    environment:
+      <<: *platform-environment
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+    healthcheck:
+      test: [CMD, wget, -qO-, http://127.0.0.1:18090/gateway-healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 3s
+    restart: unless-stopped
+
+volumes:
+  platform-runs:

@@ -120,6 +120,29 @@ def test_log_cursor_reads_only_new_bytes(tmp_path: Path) -> None:
     assert third.eof is True
 
 
+def test_child_environment_always_enables_platform_mode_and_local_no_proxy(tmp_path: Path) -> None:
+    manager = _manager(tmp_path)
+    script = (
+        "import os; "
+        "print(os.environ['MASAR_PLATFORM_MODE']); "
+        "print(os.environ['NO_PROXY']); "
+        "print(os.environ['no_proxy'])"
+    )
+    manager.start(
+        "run-1",
+        "step-1",
+        "test.python",
+        [sys.executable, "-c", script],
+        {"NO_PROXY": "example.internal", "no_proxy": "example.internal"},
+    )
+    _wait_for(lambda: manager.get("run-1", "step-1").status == "EXITED")
+
+    lines = manager.read_logs("run-1", "step-1", "stdout", after=0).data.splitlines()
+    assert lines[0] == "1"
+    for value in lines[1:]:
+        assert value.split(",") == ["example.internal", "127.0.0.1", "localhost", "::1"]
+
+
 def test_persisted_owner_can_be_probed_and_stopped_after_manager_restart(tmp_path: Path) -> None:
     first = _manager(tmp_path)
     record = first.start(

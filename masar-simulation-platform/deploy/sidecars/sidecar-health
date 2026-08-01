@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import socket
+import subprocess
+import sys
+
+
+PROGRAMS = ("rosbridge", "tf2_web_republisher", "web_video_server")
+
+
+def main() -> int:
+    status = subprocess.run(
+        ["supervisorctl", "-c", "/etc/supervisor/supervisord.conf", "status", *PROGRAMS],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=3,
+    )
+    if status.returncode != 0 or any("RUNNING" not in line for line in status.stdout.splitlines()):
+        return 1
+
+    for raw_port in sys.argv[1:]:
+        with socket.create_connection(("127.0.0.1", int(raw_port)), timeout=1):
+            pass
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

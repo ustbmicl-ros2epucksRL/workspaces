@@ -94,8 +94,20 @@ def test_webots_exploration_enables_platform_stream_explicitly() -> None:
     ]
     invocation = render_invocation("ros2.exploration_webots", {}, manifest=manifest)
     assert invocation.argv == ("./start_robosar_webots.sh", "--no-vglrun")
-    assert dict(invocation.environment) == {"WEBOTS_STREAM": "true", "WEBOTS_PORT": "18141"}
+    assert dict(invocation.environment) == {
+        "MASAR_PLATFORM_MODE": "1",
+        "NO_PROXY": "127.0.0.1,localhost,::1",
+        "no_proxy": "127.0.0.1,localhost,::1",
+        "WEBOTS_STREAM": "true",
+        "WEBOTS_PORT": "18141",
+        "ROS_MASTER_URI": "http://127.0.0.1:11311",
+        "ROS_DOMAIN_ID": "0",
+        "ROS1_MASTER_IP": "127.0.0.1",
+    }
     assert dict(command_environment("ros2.exploration_webots")) == {
+        "MASAR_PLATFORM_MODE": "1",
+        "NO_PROXY": "127.0.0.1,localhost,::1",
+        "no_proxy": "127.0.0.1,localhost,::1",
         "WEBOTS_STREAM": "true",
         "WEBOTS_PORT": "18141",
     }
@@ -142,6 +154,22 @@ def test_swarm_default_argv_preserves_start_simulation_defaults() -> None:
         "num_obstacles:=0",
         "transport_object_shape:=cube",
     ]
+
+
+def test_manifest_runtime_is_injected_without_overriding_native_script_defaults() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    swarm = render_invocation("ros2.swarm", {}, manifest=catalog.get("swarm.webots.ros2swarm"))
+    assert swarm.environment["ROS_DOMAIN_ID"] == "42"
+    assert swarm.environment["ROS_MASTER_URI"] == "http://127.0.0.1:11311"
+    assert swarm.environment["MASAR_PLATFORM_MODE"] == "1"
+
+    rescue = render_invocation(
+        "ros1.tepper_response",
+        {},
+        manifest=catalog.get("rescue.gazebo.tepper-response"),
+    )
+    assert rescue.argv[-2:] == ("--no-gui", "--shared-master")
+    assert rescue.environment["ROS_DOMAIN_ID"] == "0"
 
 
 def test_renderer_rejects_unknown_or_invalid_values() -> None:

@@ -2,6 +2,9 @@ schema_version: 1
 scenario_id: swarm.webots.ros2swarm
 module: swarm
 simulator: webots
+runtime:
+  ros1_master_uri: http://127.0.0.1:11311
+  ros2_domain_id: 42
 display_profile: swarm
 parameters:
   webots_world:
@@ -99,8 +102,11 @@ steps:
           name: 127.0.0.1:18141
         - type: ros2_topic
           name: /clock
+          message_type: rosgraph_msgs/msg/Clock
         - type: ros2_topic
           name: /robot_0/odom
+          message_type: nav_msgs/msg/Odometry
+          qos_profile: sensor_data
     start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [swarm_simulation]

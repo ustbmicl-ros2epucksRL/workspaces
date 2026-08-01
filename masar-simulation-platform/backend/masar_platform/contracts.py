@@ -10,6 +10,7 @@ from collections.abc import Mapping
 from copy import deepcopy
 from types import MappingProxyType
 from typing import Any, Literal
+from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator, model_validator
 
@@ -69,7 +70,48 @@ class ReadinessProbe(BaseModel):
 
     type: Literal["ros1_topic", "ros2_topic", "tcp", "http", "file"]
     name: str = Field(min_length=1)
+    message_type: str | None = Field(default=None, min_length=1)
     required: bool = True
+    max_age_seconds: float = Field(default=1.0, gt=0, le=30)
+    qos_profile: Literal[
+        "unknown",
+        "system_default",
+        "sensor_data",
+        "services_default",
+        "parameters",
+        "parameter_events",
+        "action_status_default",
+    ] = "system_default"
+
+    @model_validator(mode="after")
+    def _validate_probe_contract(self) -> "ReadinessProbe":
+        is_ros_probe = self.type in {"ros1_topic", "ros2_topic"}
+        if is_ros_probe and self.message_type is None:
+            raise ValueError("ROS readiness probes require message_type")
+        if not is_ros_probe and self.message_type is not None:
+            raise ValueError("non-ROS readiness probes do not accept message_type")
+        if self.type != "ros2_topic" and self.qos_profile != "system_default":
+            raise ValueError("qos_profile is only configurable for ROS2 topic probes")
+        return self
+
+
+class RuntimeProfile(BaseModel):
+    """Per-scenario ROS graph identity inherited by processes and probes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    ros1_master_uri: str
+    ros2_domain_id: int = Field(ge=0, le=232)
+
+    @field_validator("ros1_master_uri")
+    @classmethod
+    def _loopback_ros_master(cls, value: str) -> str:
+        parsed = urlsplit(value)
+        if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+            raise ValueError("ros1_master_uri must be an HTTP loopback URL")
+        if parsed.port is None or parsed.path not in {"", "/"} or parsed.query or parsed.fragment:
+            raise ValueError("ros1_master_uri must include only a loopback host and explicit port")
+        return value
 
 
 class Readiness(BaseModel):
@@ -105,6 +147,7 @@ class ScenarioManifest(BaseModel):
     scenario_id: str = Field(min_length=1, pattern=r"^[a-z][a-z0-9.-]*$")
     module: Literal["swarm", "control", "exploration", "rescue"]
     simulator: Literal["gazebo", "webots"]
+    runtime: RuntimeProfile
     display_profile: str = Field(min_length=1)
     parameters: Mapping[str, ParameterDefinition]
     steps: tuple[ScenarioStep, ...] = Field(min_length=1)
@@ -264,6 +307,7 @@ __all__ = [
     "ParameterDefinition",
     "Readiness",
     "ReadinessProbe",
+    "RuntimeProfile",
     "ScenarioManifest",
     "ScenarioStep",
 ]

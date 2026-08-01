@@ -16,7 +16,8 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 
 
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
-_ENVIRONMENT_NAME = re.compile(r"^[A-Z_][A-Z0-9_]*$")
+_ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_LOCAL_NO_PROXY_ENTRIES = ("127.0.0.1", "localhost", "::1")
 
 
 class ProcessManagerError(RuntimeError):
@@ -158,6 +159,9 @@ class ProcessManager:
             stderr_path = process_dir / "stderr.log"
             child_environment = os.environ.copy()
             child_environment.update(normalized_environment)
+            child_environment["MASAR_PLATFORM_MODE"] = "1"
+            child_environment["NO_PROXY"] = _merge_no_proxy(child_environment.get("NO_PROXY", ""))
+            child_environment["no_proxy"] = _merge_no_proxy(child_environment.get("no_proxy", ""))
             with stdout_path.open("ab", buffering=0) as stdout_stream:
                 with stderr_path.open("ab", buffering=0) as stderr_stream:
                     child = subprocess.Popen(
@@ -336,6 +340,14 @@ class ProcessManager:
             if time.monotonic() >= deadline:
                 return False
             time.sleep(min(0.02, max(0.001, wait_seconds / 10.0)))
+
+
+def _merge_no_proxy(value: str) -> str:
+    entries = [entry.strip() for entry in value.split(",") if entry.strip()]
+    for required in _LOCAL_NO_PROXY_ENTRIES:
+        if required not in entries:
+            entries.append(required)
+    return ",".join(entries)
 
 
 def _validate_identifier(name: str, value: str) -> None:

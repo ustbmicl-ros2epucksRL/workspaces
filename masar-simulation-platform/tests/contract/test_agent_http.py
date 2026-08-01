@@ -20,6 +20,23 @@ from masar_platform.agents import AgentClient, AgentHTTPError
 MASTER_SECRET = b"s" * 32
 
 
+class _FakeActionPublisher:
+    calls: list[tuple[str, dict[str, Any]]] = []
+
+    def publish(self, action: str, runtime: dict[str, Any]) -> dict[str, Any]:
+        type(self).calls.append((action, runtime))
+        if action not in {"ros1.mission.start", "ros1.mission.stop"}:
+            from agents.runtime_agent.actions import ActionNotAllowed
+
+            raise ActionNotAllowed("action is not allowlisted")
+        return {
+            "action": action,
+            "topic": "/system_mission_command",
+            "message_type": "robosar_messages/mission_command",
+            "published": True,
+        }
+
+
 def _request(
     port: int,
     method: str,
@@ -48,7 +65,8 @@ def running_agent(tmp_path: Path) -> tuple[int, ProcessManager]:
         runs_dir=tmp_path / "runs",
         command_policies={"test.python": CommandPolicy("test", sys.executable)},
     )
-    app = AgentApplication("test", MASTER_SECRET, manager)
+    _FakeActionPublisher.calls = []
+    app = AgentApplication("test", MASTER_SECRET, manager, action_publisher=_FakeActionPublisher())
     server = create_server("127.0.0.1", 0, app)
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -140,6 +158,66 @@ def test_invalid_command_ref_returns_422_without_starting(running_agent: tuple[i
     assert body["error"]["code"] == "COMMAND_NOT_ALLOWED"
     assert manager.probe("run-1") == []
     assert MASTER_SECRET.decode() not in json.dumps(body)
+
+
+def test_signed_readiness_probe_returns_process_and_exact_probe_results(
+    running_agent: tuple[int, ProcessManager],
+) -> None:
+    port, manager = running_agent
+    marker = manager.workspace / "ready.flag"
+    marker.write_text("ready", encoding="utf-8")
+    payload = {
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+        "probes": [{"type": "file", "name": "ready.flag", "required": True}],
+    }
+
+    status, body = _request(port, "POST", "/v1/runs/run-1/probe", sequence=1, payload=payload)
+
+    assert status == 200
+    assert body["data"]["processes"] == []
+    assert body["data"]["probes"][0]["status"] == "READY"
+    assert body["data"]["probes"][0]["ready"] is True
+
+    client = AgentClient("127.0.0.1", port, MASTER_SECRET, retry_attempts=0)
+    result = client.probe_readiness("run-2", payload)
+    assert result["probes"][0]["status"] == "READY"
+
+
+def test_readiness_probe_rejects_missing_ros_message_type(
+    running_agent: tuple[int, ProcessManager],
+) -> None:
+    port, _ = running_agent
+    payload = {
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+        "probes": [{"type": "ros1_topic", "name": "/clock"}],
+    }
+
+    status, body = _request(port, "POST", "/v1/runs/run-1/probe", sequence=1, payload=payload)
+
+    assert status == 422
+    assert body["error"]["code"] == "INVALID_REQUEST"
+
+
+def test_signed_fixed_command_route_accepts_only_an_action_and_runtime(
+    running_agent: tuple[int, ProcessManager],
+) -> None:
+    port, _ = running_agent
+    payload = {
+        "action": "ros1.mission.start",
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+    }
+
+    status, body = _request(port, "POST", "/v1/runs/run-1/command", sequence=1, payload=payload)
+
+    assert status == 200
+    assert body["data"]["published"] is True
+    assert body["data"]["run_id"] == "run-1"
+    assert _FakeActionPublisher.calls == [(payload["action"], payload["runtime"])]
+
+    payload["action"] = "ros1.arbitrary"
+    status, body = _request(port, "POST", "/v1/runs/run-1/command", sequence=2, payload=payload)
+    assert status == 422
+    assert body["error"]["code"] == "ACTION_NOT_ALLOWED"
 
 
 class _RetryHandler(BaseHTTPRequestHandler):

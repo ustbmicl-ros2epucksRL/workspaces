@@ -9,6 +9,7 @@
     "scenario_id",
     "module",
     "simulator",
+    "runtime",
     "display_profile",
     "parameters",
     "steps",
@@ -22,6 +23,7 @@
     "scenario_id": {"type": "string", "pattern": "^[a-z][a-z0-9.-]*$"},
     "module": {"enum": ["swarm", "control", "exploration", "rescue"]},
     "simulator": {"enum": ["gazebo", "webots"]},
+    "runtime": {"$ref": "#/$defs/runtime"},
     "display_profile": {"type": "string", "minLength": 1},
     "parameters": {
       "type": "object",
@@ -43,6 +45,18 @@
     "minimum_free_bytes": {"const": 2147483648}
   },
   "$defs": {
+    "runtime": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ros1_master_uri", "ros2_domain_id"],
+      "properties": {
+        "ros1_master_uri": {
+          "type": "string",
+          "pattern": "^http://(127\\.0\\.0\\.1|localhost|\\[::1\\]):[0-9]{1,5}/?$"
+        },
+        "ros2_domain_id": {"type": "integer", "minimum": 0, "maximum": 232}
+      }
+    },
     "parameter": {
       "oneOf": [
         {
@@ -122,8 +136,25 @@
       "properties": {
         "type": {"enum": ["ros1_topic", "ros2_topic", "tcp", "http", "file"]},
         "name": {"type": "string", "minLength": 1},
-        "required": {"type": "boolean", "default": true}
-      }
+        "message_type": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean", "default": true},
+        "max_age_seconds": {"type": "number", "exclusiveMinimum": 0, "maximum": 30, "default": 1.0},
+        "qos_profile": {
+          "enum": ["unknown", "system_default", "sensor_data", "services_default", "parameters", "parameter_events", "action_status_default"],
+          "default": "system_default"
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"enum": ["ros1_topic", "ros2_topic"]}}},
+          "then": {"required": ["message_type"]},
+          "else": {"not": {"required": ["message_type"]}}
+        },
+        {
+          "if": {"properties": {"type": {"const": "ros2_topic"}}},
+          "else": {"properties": {"qos_profile": {"const": "system_default"}}}
+        }
+      ]
     },
     "readiness": {
       "type": "object",

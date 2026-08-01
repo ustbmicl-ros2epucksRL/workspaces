@@ -23,17 +23,10 @@ def create_app() -> Any:
     """Create the FastAPI application without binding a socket or starting Uvicorn."""
 
     try:
-        from fastapi import FastAPI
+        from .api import create_api_app
     except ImportError:
         return _MissingFastAPI()
-
-    application = FastAPI(title="MASAR Simulation Platform", version="0.1.0")
-
-    @application.get("/healthz", tags=["system"])
-    async def healthz() -> dict[str, str]:
-        return {"status": "ok"}
-
-    return application
+    return create_api_app()
 
 
 app = create_app()

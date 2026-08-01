@@ -36,6 +36,7 @@ where = ["backend"]
 pythonpath = ["backend"]
 testpaths = ["tests"]
 addopts = "-ra"
+asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
 line-length = 120

@@ -1,0 +1,24 @@
+schema_version: 1
+resolved_at: "2026-08-01T00:00:00+08:00"
+images:
+  ros1_web_base:
+    reference: ros:noetic-ros-base-focal
+    digest: sha256:72b8bc59035dc0a5b8e07aae28c16caa84192971d72d207c72ed734fb1d5e97d
+    architecture_digest: sha256:4f01fa743be43da0e14ddf2ac29b5118d9c0eb4057c9761c13303b8a52fa9c4f
+  ros2_web_base:
+    reference: ros:humble-ros-base-jammy
+    digest: sha256:afb40d6be65331c20a114d4e229a7ef099fed1b17bf6370daee193514b32aa16
+    architecture_digest: sha256:5c793b92e0b12d6babb438cb20eed7766495fde6419a21e3d2e918464f09dc17
+  caddy:
+    reference: caddy:2.10.2-alpine
+    digest: sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+    architecture_digest: sha256:d8c17a862962def15cde69863a3a463f25a2664942eafd7bdbf050e9c3116b83
+packages:
+  ros1_web:
+    ros-noetic-rosbridge-suite: 0.11.17-1focal.20250520.023254
+    ros-noetic-tf2-web-republisher: 0.3.2-3focal.20250520.002639
+    ros-noetic-web-video-server: 0.2.2-1focal.20250520.000250
+  ros2_web:
+    ros-humble-rosbridge-suite: 2.0.7-1jammy.20260605.153341
+    ros-humble-tf2-web-republisher: 1.0.0-1jammy.20260605.164113
+    ros-humble-web-video-server: 3.1.0-1jammy.20260605.161345

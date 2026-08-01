@@ -1,9 +1,6 @@
 # Runtime data and archives
-runs/*.db
-runs/*.db-*
-runs/*/events.jsonl
-runs/*/archive.tar*
-runs/*/artifacts/
+runs/**
+!runs/.gitkeep
 
 # Python caches and local tooling
 __pycache__/

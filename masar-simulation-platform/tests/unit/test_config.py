@@ -24,6 +24,8 @@ def _clear_platform_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "WEBOTS_STREAM_PORT",
         "DATA_DIR",
         "SECRET_PATH",
+        "SCENARIO_DIR",
+        "VISUAL_STACK_READY",
         "EVENT_RETENTION_DAYS",
         "EVENT_RETENTION_COUNT",
     ):
@@ -58,6 +60,8 @@ def test_default_loopback_ports_and_paths(monkeypatch: pytest.MonkeyPatch) -> No
     project_root = Path(__file__).resolve().parents[2]
     assert Path(settings.data_dir).resolve() == project_root / "runs"
     assert settings.secret_path == Path("/run/masar-platform/agent.secret")
+    assert settings.scenario_dir == project_root / "scenarios"
+    assert settings.visual_stack_ready is False
     assert settings.event_retention_days == 30
     assert settings.event_retention_count == 10_000
 
@@ -78,6 +82,8 @@ def test_environment_values_override_ports_and_paths(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("MASAR_PLATFORM_WEBOTS_STREAM_PORT", "19141")
     monkeypatch.setenv("MASAR_PLATFORM_DATA_DIR", str(tmp_path / "runs"))
     monkeypatch.setenv("MASAR_PLATFORM_SECRET_PATH", str(tmp_path / "agent.secret"))
+    monkeypatch.setenv("MASAR_PLATFORM_SCENARIO_DIR", str(tmp_path / "scenarios"))
+    monkeypatch.setenv("MASAR_PLATFORM_VISUAL_STACK_READY", "true")
     monkeypatch.setenv("MASAR_PLATFORM_EVENT_RETENTION_DAYS", "7")
     monkeypatch.setenv("MASAR_PLATFORM_EVENT_RETENTION_COUNT", "123")
 
@@ -97,6 +103,8 @@ def test_environment_values_override_ports_and_paths(monkeypatch: pytest.MonkeyP
     assert settings.webots_stream_port == 19141
     assert settings.data_dir == tmp_path / "runs"
     assert settings.secret_path == tmp_path / "agent.secret"
+    assert settings.scenario_dir == tmp_path / "scenarios"
+    assert settings.visual_stack_ready is True
     assert settings.event_retention_days == 7
     assert settings.event_retention_count == 123
 
@@ -117,11 +125,20 @@ def test_invalid_positive_values_are_rejected(monkeypatch: pytest.MonkeyPatch) -
         get_settings()
 
 
+def test_invalid_boolean_is_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
+    _clear_platform_env(monkeypatch)
+    monkeypatch.setenv("MASAR_PLATFORM_VISUAL_STACK_READY", "sometimes")
+
+    with pytest.raises(ValueError, match="visual_stack_ready"):
+        get_settings()
+
+
 @pytest.mark.parametrize(
     ("variable", "field"),
     (
         ("MASAR_PLATFORM_DATA_DIR", "data_dir"),
         ("MASAR_PLATFORM_SECRET_PATH", "secret_path"),
+        ("MASAR_PLATFORM_SCENARIO_DIR", "scenario_dir"),
     ),
 )
 def test_empty_paths_are_rejected(

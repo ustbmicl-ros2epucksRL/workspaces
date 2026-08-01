@@ -349,6 +349,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
   echo "[response-demo][dry-run] TURTLEBOT3_MODEL=$MODEL"
   echo "[response-demo][dry-run] ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>}"
   echo "[response-demo][dry-run] GAZEBO_MASTER_URI=${GAZEBO_MASTER_URI:-<caller-default>}"
+  echo "[response-demo][dry-run] platform_mode=${MASAR_PLATFORM_MODE:-0}"
   if [[ "$CLEANUP_ONLY" == "1" ]]; then
     echo "[response-demo][dry-run] cleanup-only"
     echo "[response-demo][dry-run] would target: rosmaster --core -p ${RESPONSE_DEMO_ROS_PORT}"
@@ -392,6 +393,13 @@ fi
 printf '[response-demo] command='
 printf '%q ' "${COMMAND[@]}"
 printf '\n'
+
+case "${MASAR_PLATFORM_MODE:-0}" in
+  1|true|TRUE|yes|YES|on|ON)
+    echo "[response-demo] platform mode: Runtime Agent owns the process group"
+    exec "${COMMAND[@]}"
+    ;;
+esac
 
 ROSLAUNCH_PID=""
 setsid "${COMMAND[@]}" &

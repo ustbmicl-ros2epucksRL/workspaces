@@ -129,6 +129,13 @@ configure_master_mode() {
   esac
 }
 
+platform_mode_enabled() {
+  case "${PLATFORM_MODE,,}" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 start_process_group() {
   local label="$1"
   local cmd="$2"
@@ -139,7 +146,12 @@ start_process_group() {
     return
   fi
 
-  setsid bash -lc "
+  local launcher=()
+  if ! platform_mode_enabled; then
+    launcher=(setsid)
+  fi
+
+  "${launcher[@]}" bash -lc "
     set -e
     WORKSPACE_SETUP=$(printf "%q" "$WORKSPACE_SETUP")
     LEGACY_WORKSPACE_SETUP=$(printf "%q" "$LEGACY_WORKSPACE_SETUP")
@@ -310,7 +322,11 @@ ensure_roscore() {
   fi
 
   echo "[tepper-response][start] launching roscore..."
-  setsid roscore -p "$(ros_master_port)" &
+  local launcher=()
+  if ! platform_mode_enabled; then
+    launcher=(setsid)
+  fi
+  "${launcher[@]}" roscore -p "$(ros_master_port)" &
   local pid=$!
   PIDS+=("$pid")
   wait_for_roscore
@@ -325,6 +341,10 @@ cleanup() {
 
   echo
   echo "[tepper-response][cleanup] stopping launched processes..."
+  if platform_mode_enabled; then
+    echo "  -> platform mode: Runtime Agent owns and signals the complete process group"
+    return
+  fi
   if ((${#PIDS[@]} == 0)); then
     echo "  -> no launched process groups"
     return
@@ -360,6 +380,7 @@ LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
 GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
 
 DRY_RUN=0
+PLATFORM_MODE="${MASAR_PLATFORM_MODE:-0}"
 GZ_GUI="${ROBOSAR_GZ_GUI:-true}"
 RVIZ="${ROBOSAR_RVIZ:-true}"
 GUI="${ROBOSAR_GUI:-true}"
@@ -435,7 +456,7 @@ TRAFFIC_CMD="rosrun robosar_controller robosar_traffic_controller_node"
 echo "[tepper-response] workspace=$WORKSPACE_DIR"
 echo "[tepper-response] TURTLEBOT3_MODEL=$MODEL"
 echo "[tepper-response] gz_gui=$GZ_GUI rviz=$RVIZ gui=$GUI"
-echo "[tepper-response] master_mode=$MASTER_MODE ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>} GAZEBO_MASTER_URI=${GAZEBO_MASTER_URI:-<caller-default>}"
+echo "[tepper-response] master_mode=$MASTER_MODE platform_mode=$PLATFORM_MODE ROS_MASTER_URI=${ROS_MASTER_URI:-<caller-default>} GAZEBO_MASTER_URI=${GAZEBO_MASTER_URI:-<caller-default>}"
 
 if [[ "$DRY_RUN" == "0" ]]; then
   source_ros_env

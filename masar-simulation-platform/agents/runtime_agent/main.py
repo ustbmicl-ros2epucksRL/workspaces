@@ -16,6 +16,7 @@ from urllib.parse import parse_qs, urlsplit
 import uuid
 
 if __package__:
+    from .actions import ActionNotAllowed, ActionPublishError, ActionPublisher
     from .processes import (
         CommandNotAllowed,
         GracePeriods,
@@ -32,6 +33,7 @@ if __package__:
         error_response,
         success_response,
     )
+    from .probes import ProbeRequestError, ProbeRunner
 else:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from processes import (  # type: ignore[no-redef]
@@ -50,17 +52,28 @@ else:
         error_response,
         success_response,
     )
+    from probes import ProbeRequestError, ProbeRunner  # type: ignore[no-redef]
+    from actions import ActionNotAllowed, ActionPublishError, ActionPublisher  # type: ignore[no-redef]
 
 
-_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs)$")
+_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs|command)$")
 _MAX_BODY_BYTES = 1024 * 1024
 
 
 class AgentApplication:
-    def __init__(self, agent_kind: str, master_secret: bytes, processes: ProcessManager) -> None:
+    def __init__(
+        self,
+        agent_kind: str,
+        master_secret: bytes,
+        processes: ProcessManager,
+        probe_runner: Optional[ProbeRunner] = None,
+        action_publisher: Optional[ActionPublisher] = None,
+    ) -> None:
         self.agent_kind = agent_kind
         self.authenticator = RequestAuthenticator(master_secret)
         self.processes = processes
+        self.probe_runner = probe_runner or ProbeRunner(agent_kind, processes.workspace)
+        self.action_publisher = action_publisher or ActionPublisher(agent_kind)
 
     def handle(
         self,
@@ -123,6 +136,24 @@ class AgentApplication:
                     {"run_id": run_id, "processes": [record.as_dict() for record in records]},
                     request_id=request_id,
                 )
+            if operation == "probe" and method == "POST":
+                payload = _json_object(body)
+                probes = payload.get("probes")
+                if not isinstance(probes, list):
+                    raise ProbeRequestError("probes must be a non-empty array")
+                runtime = payload.get("runtime")
+                if not isinstance(runtime, dict):
+                    raise ProbeRequestError("runtime must be an object")
+                results = self.probe_runner.run_many(probes, runtime)
+                records = self.processes.probe(run_id)
+                return 200, success_response(
+                    {
+                        "run_id": run_id,
+                        "processes": [record.as_dict() for record in records],
+                        "probes": results,
+                    },
+                    request_id=request_id,
+                )
             if operation == "logs" and method == "GET":
                 query = parse_qs(parsed.query, keep_blank_values=True)
                 process_id = _single_query(query, "process_id")
@@ -133,6 +164,14 @@ class AgentApplication:
                 data = {"run_id": run_id, "process_id": process_id, "stream": stream}
                 data.update(chunk.as_dict())
                 return 200, success_response(data, request_id=request_id)
+            if operation == "command" and method == "POST":
+                payload = _json_object(body)
+                result = self.action_publisher.publish(
+                    _required_string(payload, "action"),
+                    payload.get("runtime", {}),
+                )
+                result["run_id"] = run_id
+                return 200, success_response(result, request_id=request_id)
             return 405, error_response(
                 "METHOD_NOT_ALLOWED", "method is not allowed for this route", request_id=request_id
             )
@@ -140,6 +179,10 @@ class AgentApplication:
             return 401, error_response(exc.code, str(exc), request_id=request_id)
         except CommandNotAllowed as exc:
             return 422, error_response("COMMAND_NOT_ALLOWED", str(exc), request_id=request_id)
+        except ActionNotAllowed as exc:
+            return 422, error_response("ACTION_NOT_ALLOWED", str(exc), request_id=request_id)
+        except ActionPublishError:
+            return 500, error_response("ACTION_PUBLISH_FAILED", "fixed ROS action publish failed", request_id=request_id)
         except ProcessConflict as exc:
             return 409, error_response("PROCESS_CONFLICT", str(exc), request_id=request_id)
         except ProcessNotFound as exc:

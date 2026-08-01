@@ -31,6 +31,8 @@ def test_manifests_have_required_runtime_contract() -> None:
     catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
     for manifest in catalog:
         assert manifest.minimum_free_bytes == 2_147_483_648
+        assert manifest.runtime.ros1_master_uri == "http://127.0.0.1:11311"
+        assert 0 <= manifest.runtime.ros2_domain_id <= 232
         assert manifest.display_profile
         assert manifest.data_profile
         assert manifest.artifact_profile
@@ -45,30 +47,70 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
     catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
     expected = {
         "swarm.webots.ros2swarm": [
-            (180, (("tcp", "127.0.0.1:18141"), ("ros2_topic", "/clock"), ("ros2_topic", "/robot_0/odom")))
+            (
+                180,
+                (
+                    ("tcp", "127.0.0.1:18141", None),
+                    ("ros2_topic", "/clock", "rosgraph_msgs/msg/Clock"),
+                    ("ros2_topic", "/robot_0/odom", "nav_msgs/msg/Odometry"),
+                ),
+            )
         ],
         "control.gazebo.response-deform": [
-            (120, (("ros1_topic", "/clock"), ("ros1_topic", "/tb_0/odom"), ("ros1_topic", "/response_group/status")))
+            (
+                120,
+                (
+                    ("ros1_topic", "/clock", "rosgraph_msgs/Clock"),
+                    ("ros1_topic", "/tb_0/odom", "nav_msgs/Odometry"),
+                    ("ros1_topic", "/response_group/status", "robosar_messages/ResponseGroupStatus"),
+                ),
+            )
         ],
         "control.gazebo.response-controller": [
             (
                 120,
                 (
-                    ("ros1_topic", "/clock"),
-                    ("ros1_topic", "/tb_0/odom"),
-                    ("ros1_topic", "/response_group/behavior_mode"),
+                    ("ros1_topic", "/clock", "rosgraph_msgs/Clock"),
+                    ("ros1_topic", "/tb_0/odom", "nav_msgs/Odometry"),
+                    ("ros1_topic", "/response_group/behavior_mode", "std_msgs/String"),
                 ),
             )
         ],
         "exploration.gazebo.tepper": [
-            (180, (("ros1_topic", "/clock"), ("ros1_topic", "/sim_map"), ("ros1_topic", "/percent_completed")))
+            (
+                180,
+                (
+                    ("ros1_topic", "/clock", "rosgraph_msgs/Clock"),
+                    ("ros1_topic", "/sim_map", "nav_msgs/OccupancyGrid"),
+                    ("ros1_topic", "/percent_completed", "std_msgs/Float32"),
+                ),
+            )
         ],
         "exploration.webots.robosar": [
-            (180, (("ros2_topic", "/clock"), ("ros2_topic", "/robot_0/odom"))),
-            (180, (("ros1_topic", "/sim_map"), ("ros1_topic", "/percent_completed"))),
+            (
+                180,
+                (
+                    ("ros2_topic", "/clock", "rosgraph_msgs/msg/Clock"),
+                    ("ros2_topic", "/robot_0/odom", "nav_msgs/msg/Odometry"),
+                ),
+            ),
+            (
+                180,
+                (
+                    ("ros1_topic", "/sim_map", "nav_msgs/OccupancyGrid"),
+                    ("ros1_topic", "/percent_completed", "std_msgs/Float32"),
+                ),
+            ),
         ],
         "rescue.gazebo.tepper-response": [
-            (180, (("ros1_topic", "/clock"), ("ros1_topic", "/sim_map"), ("ros1_topic", "/response_group/status")))
+            (
+                180,
+                (
+                    ("ros1_topic", "/clock", "rosgraph_msgs/Clock"),
+                    ("ros1_topic", "/sim_map", "nav_msgs/OccupancyGrid"),
+                    ("ros1_topic", "/response_group/status", "robosar_messages/ResponseGroupStatus"),
+                ),
+            )
         ],
     }
 
@@ -76,7 +118,7 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
         manifest.scenario_id: [
             (
                 step.start_timeout_seconds,
-                tuple((probe.type, probe.name) for probe in step.readiness.all),
+                tuple((probe.type, probe.name, probe.message_type) for probe in step.readiness.all),
             )
             for step in manifest.steps
         ]

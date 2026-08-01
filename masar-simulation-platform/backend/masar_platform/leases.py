@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
+import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -59,6 +61,9 @@ class LeaseStore:
         owner_id: str,
         *,
         at: datetime | None = None,
+        request: Mapping[str, object] | None = None,
+        resolved_manifest: Mapping[str, object] | None = None,
+        step_ids: Sequence[str] = (),
     ) -> Lease:
         """Atomically create a PREFLIGHT run and acquire the sole active lease."""
 
@@ -67,6 +72,13 @@ class LeaseStore:
         _require_identifier("scenario_id", scenario_id)
         _require_identifier("owner_id", owner_id)
         expires_at = acquired_at + timedelta(seconds=LEASE_EXPIRY_SECONDS)
+        request_json = _json_object(request or {}, "request")
+        resolved_manifest_json = _json_object(resolved_manifest or {}, "resolved_manifest")
+        normalized_step_ids = tuple(step_ids)
+        if len(normalized_step_ids) != len(set(normalized_step_ids)) or any(
+            not isinstance(step_id, str) or not step_id for step_id in normalized_step_ids
+        ):
+            raise ValueError("step_ids must contain unique non-empty strings")
         active_values = tuple(state.value for state in ACTIVE_STATES)
         placeholders = ", ".join("?" for _ in active_values)
 
@@ -84,10 +96,25 @@ class LeaseStore:
             timestamp = datetime_to_text(acquired_at)
             connection.execute(
                 """
-                INSERT INTO runs (run_id, scenario_id, state, reason_code, created_at, updated_at, ended_at)
-                VALUES (?, ?, ?, NULL, ?, ?, NULL)
+                INSERT INTO runs (
+                    run_id, scenario_id, state, reason_code, created_at, updated_at, ended_at,
+                    request_json, resolved_manifest_json
+                )
+                VALUES (?, ?, ?, NULL, ?, ?, NULL, ?, ?)
                 """,
-                (run_id, scenario_id, RunState.PREFLIGHT.value, timestamp, timestamp),
+                (
+                    run_id,
+                    scenario_id,
+                    RunState.PREFLIGHT.value,
+                    timestamp,
+                    timestamp,
+                    request_json,
+                    resolved_manifest_json,
+                ),
+            )
+            connection.executemany(
+                "INSERT INTO run_steps (run_id, step_id, state) VALUES (?, ?, 'PENDING')",
+                ((run_id, step_id) for step_id in normalized_step_ids),
             )
             cursor = connection.execute(
                 """
@@ -167,6 +194,30 @@ class LeaseStore:
                 raise LeaseOwnershipError(f"lease for {run_id} belongs to another owner")
             connection.execute("DELETE FROM leases WHERE run_id = ?", (run_id,))
 
+    def adopt(self, run_id: str, owner_id: str, *, at: datetime | None = None) -> Lease:
+        """Transfer an existing lease after external Agent ownership was proven."""
+
+        adopted_at = utc_datetime(at or datetime.now(timezone.utc), field="at")
+        _require_identifier("owner_id", owner_id)
+        with self.database.transaction(immediate=True) as connection:
+            row = connection.execute("SELECT * FROM leases WHERE run_id = ?", (run_id,)).fetchone()
+            if row is None:
+                raise LeaseNotFound(run_id)
+            lease = _lease_from_row(row)
+            expires_at = adopted_at + timedelta(seconds=LEASE_EXPIRY_SECONDS)
+            connection.execute(
+                "UPDATE leases SET owner_id = ?, heartbeat_at = ?, expires_at = ? WHERE run_id = ?",
+                (owner_id, datetime_to_text(adopted_at), datetime_to_text(expires_at), run_id),
+            )
+        return Lease(
+            lease_id=lease.lease_id,
+            run_id=run_id,
+            owner_id=owner_id,
+            acquired_at=lease.acquired_at,
+            heartbeat_at=adopted_at,
+            expires_at=expires_at,
+        )
+
 
 def _lease_from_row(row: sqlite3.Row) -> Lease:
     return Lease(
@@ -182,6 +233,17 @@ def _lease_from_row(row: sqlite3.Row) -> Lease:
 def _require_identifier(name: str, value: str) -> None:
     if not isinstance(value, str) or not value:
         raise ValueError(f"{name} must be a non-empty string")
+
+
+def _json_object(value: Mapping[str, object], name: str) -> str:
+    try:
+        encoded = json.dumps(dict(value), separators=(",", ":"), sort_keys=True)
+        decoded = json.loads(encoded)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{name} must be a JSON object") from exc
+    if not isinstance(decoded, dict):
+        raise ValueError(f"{name} must be a JSON object")
+    return encoded
 
 
 __all__ = [

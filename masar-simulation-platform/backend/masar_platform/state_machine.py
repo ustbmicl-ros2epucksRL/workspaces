@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
+import json
 import sqlite3
+from typing import Any
 
 from .db import Database, datetime_from_text, datetime_to_text, utc_datetime
 from .events import EventStore
@@ -70,6 +72,8 @@ class RunRecord:
     created_at: datetime
     updated_at: datetime
     ended_at: datetime | None
+    request: dict[str, Any]
+    resolved_manifest: dict[str, Any]
 
 
 class RunStateMachine:
@@ -83,6 +87,36 @@ class RunStateMachine:
         if row is None:
             raise RunNotFound(run_id)
         return _run_from_row(row)
+
+    def current(self) -> RunRecord | None:
+        active = tuple(state.value for state in ACTIVE_STATES)
+        placeholders = ",".join("?" for _ in active)
+        with self.database.connect() as connection:
+            row = connection.execute(
+                f"SELECT * FROM runs WHERE state IN ({placeholders}) ORDER BY created_at DESC LIMIT 1",  # noqa: S608
+                active,
+            ).fetchone()
+        return _run_from_row(row) if row is not None else None
+
+    def list_active(self) -> tuple[RunRecord, ...]:
+        active = tuple(state.value for state in ACTIVE_STATES)
+        placeholders = ",".join("?" for _ in active)
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                f"SELECT * FROM runs WHERE state IN ({placeholders}) ORDER BY created_at",  # noqa: S608
+                active,
+            ).fetchall()
+        return tuple(_run_from_row(row) for row in rows)
+
+    def list(self, *, limit: int = 100) -> tuple[RunRecord, ...]:
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 1000:
+            raise ValueError("limit must be between 1 and 1000")
+        with self.database.connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM runs ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return tuple(_run_from_row(row) for row in rows)
 
     def transition(
         self,
@@ -159,6 +193,8 @@ def _run_from_row(row: sqlite3.Row) -> RunRecord:
         created_at=datetime_from_text(row["created_at"]),
         updated_at=datetime_from_text(row["updated_at"]),
         ended_at=datetime_from_text(row["ended_at"]) if row["ended_at"] is not None else None,
+        request=json.loads(row["request_json"]),
+        resolved_manifest=json.loads(row["resolved_manifest_json"]),
     )
 
 

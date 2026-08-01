@@ -252,6 +252,24 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
   git commit -m "feat(platform): add signed runtime agents"
   ```
 
+## 6.5. Task 3.5: Integration Contracts
+
+**Files:**
+- Create: `agents/runtime_agent/probes.py`, `tests/unit/test_agent_probes.py`
+- Create: `deploy/compose.yaml`, `deploy/api/Dockerfile`, `.dockerignore`
+- Modify: scenario schema/manifests, command environment, Runtime Agent, ROS1 launch scripts
+- Create: `tests/unit/test_deploy_contract.py`, `tests/unit/test_platform_script_contract.py`
+
+- [x] **Step 1: Freeze per-scenario ROS graph identity.** Require `runtime.ros1_master_uri` and `runtime.ros2_domain_id`; inject them into every platform invocation and readiness request. Domain `42` belongs to ROS2swarm; the RoboSAR Webots bridge uses domain `0`.
+
+- [x] **Step 2: Make readiness exact and executable.** Require `message_type` for every ROS probe, allow an explicit ROS2 QoS profile, and implement signed bounded Agent probes for loopback TCP/HTTP, workspace files, ROS1 topics and ROS2 topics. Topic readiness requires exact type and a newly observed message.
+
+- [x] **Step 3: Restore real process-group ownership.** Set `MASAR_PLATFORM_MODE=1` for every Agent child. In that mode existing ROS1 scripts do not create nested sessions, launch the original Qt GUI, or execute native global cleanup; native direct-run behavior remains unchanged.
+
+- [x] **Step 4: Freeze localhost proxy bypass in every runtime layer.** Merge `127.0.0.1,localhost,::1` into Runtime Agent and child `NO_PROXY/no_proxy`. Create the API Compose service with the same environment anchor; every future Compose service is required by test to inherit both variables.
+
+- [x] **Step 5: Run host and real-container acceptance.** The full suite returns `103 passed`; Ruff, compileall, Compose config/build/health and diff checks pass. Signed live ROS1 and ROS2 domain-42 topic probes return `READY`; all platform-managed ROS1 script dry-runs pass and temporary resources are removed.
+
 ## 7. Task 4: Orchestrator and REST/WebSocket API
 
 **Files:**
@@ -259,22 +277,22 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `tests/unit/test_orchestrator.py`
 - Create: `tests/contract/test_api.py`, `tests/contract/test_event_ws.py`
 
-- [ ] **Step 1: Write API contract tests.** Cover `GET /api/v1/capabilities`, `GET /scenarios`, `POST /scenarios/{id}/validate`, `POST /runs`, `GET /runs/current`, stop, mission command endpoints, artifacts, 409 active-run, 422 invalid parameters, 503 Agent unavailable, and the exact error body from `SPEC.md:19.5`.
+- [x] **Step 1: Write API contract tests.** Cover `GET /api/v1/capabilities`, `GET /scenarios`, `POST /scenarios/{id}/validate`, `POST /runs`, `GET /runs/current`, stop, mission command endpoints, artifacts, 409 active-run, 422 invalid parameters, 503 Agent unavailable, and the exact error body from `SPEC.md:19.5`.
 
-- [ ] **Step 2: Write orchestrator tests with fake Agents.** Assert PREFLIGHT checks in order, dependency order for Webots ROS2 then ROS1, required readiness timeout, reverse stop order, normal/failed exit reasons, and recovery to `FAILED/NEEDS_INSPECTION` when lease ownership cannot be proven.
+- [x] **Step 2: Write orchestrator tests with fake Agents.** Assert PREFLIGHT checks in order, dependency order for Webots ROS2 then ROS1, required readiness timeout, reverse stop order, normal/failed exit reasons, and recovery to `FAILED/NEEDS_INSPECTION` when lease ownership cannot be proven.
 
-- [ ] **Step 3: Run tests to verify failure.**
+- [x] **Step 3: Run tests to verify failure.**
 
   Run: `python3 -m pytest tests/unit/test_orchestrator.py tests/contract/test_api.py tests/contract/test_event_ws.py -q`  
   Expected: FAIL because routes and orchestrator are absent.
 
-- [ ] **Step 4: Implement preflight and run creation.** Validate catalog schema, parameter allow-list, container health, ports, secret permissions, disk free space (`minimum_free_bytes`), Agent health, and display prerequisites. Acquire the SQLite lease before any Agent start call. Return HTTP 202 with `run_id` only after the run row and resolved manifest are durable.
+- [x] **Step 4: Implement preflight and run creation.** Validate catalog schema, parameter allow-list, container health, ports, secret permissions, disk free space (`minimum_free_bytes`), Agent health, and display prerequisites. Acquire the SQLite lease before any Agent start call. Return HTTP 202 with `run_id` only after the run row and resolved manifest are durable.
 
-- [ ] **Step 5: Implement startup, commands and stop.** Start steps by manifest dependency, poll exact topic/type readiness, publish mission commands only through fixed adapter methods, and stop by run-owned PGID. START/STOP/HOME are separate API routes; DEFORM mission HOME is rejected with `COMMAND_NOT_SUPPORTED`, while `/response_group/return_home` remains available.
+- [x] **Step 5: Implement startup, commands and stop.** Start steps by manifest dependency, poll exact topic/type readiness, publish mission commands only through fixed adapter methods, and stop by run-owned PGID. START/STOP/HOME are separate API routes; DEFORM mission HOME is rejected with `COMMAND_NOT_SUPPORTED`, while `/response_group/return_home` remains available.
 
-- [ ] **Step 6: Implement event WebSocket and cursor recovery.** Send status/event/log envelopes, ping every 15 s, close idle clients, and let the client replay missing events through REST before subscribing live.
+- [x] **Step 6: Implement event WebSocket and cursor recovery.** Send status/event/log envelopes, ping every 15 s, close idle clients, and let the client replay missing events through REST before subscribing live.
 
-- [ ] **Step 7: Run contract tests and commit.**
+- [x] **Step 7: Run contract tests.** The narrow suite returns `19 passed`; the full suite returns `125 passed`; host and Compose API smoke checks plus real ROS1/ROS2 fixed-command publication pass. Commit remains a user-controlled action.
 
   Run: `python3 -m pytest tests/unit/test_orchestrator.py tests/contract/test_api.py tests/contract/test_event_ws.py -q`  
   Expected: PASS.
@@ -292,20 +310,20 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `deploy/compose.yaml`, `deploy/caddy/Caddyfile`
 - Create: `tests/integration/test_sidecar_configs.py`
 
-- [ ] **Step 1: Write configuration tests.** Parse Compose and Caddy files; assert exact loopback port table, ROS1 Noetic package names, ROS2 Humble package names, WebSocket upgrade headers, noVNC/Webots routes, and absence of `18088`.
+- [x] **Step 1: Write configuration tests.** Parse Compose and Caddy files; assert exact loopback port table, ROS1 Noetic package names, ROS2 Humble package names, WebSocket upgrade headers, noVNC/Webots routes, and absence of `18088`.
 
-- [ ] **Step 2: Run configuration tests before implementation.**
+- [x] **Step 2: Run configuration tests before implementation.**
 
   Run: `python3 -m pytest tests/integration/test_sidecar_configs.py -q`  
   Expected: FAIL because deployment files do not exist.
 
-- [ ] **Step 3: Build sidecar images.** Install the apt packages verified in the containers: `ros-noetic-rosbridge-suite`, `ros-noetic-tf2-web-republisher`, `ros-noetic-web-video-server` for ROS1; corresponding `ros-humble-*` packages for ROS2. Pin base image digests in the generated lock record. Do not `apt-get install` into `masar_ros1_srv-g` or `masar_ros2_bridge-w`.
+- [x] **Step 3: Build sidecar images.** Install the apt packages verified in the containers: `ros-noetic-rosbridge-suite`, `ros-noetic-tf2-web-republisher`, `ros-noetic-web-video-server` for ROS1; corresponding `ros-humble-*` packages for ROS2. Pin base image digests in the generated lock record. Do not `apt-get install` into `masar_ros1_srv-g` or `masar_ros2_bridge-w`.
 
-- [ ] **Step 4: Add supervisor commands and health checks.** Launch rosbridge, TF republisher and video server with the ports in `SPEC.md:19.2`. Health checks query the process supervisor and a local TCP socket; readiness remains the Platform API's ROS topic/type probe.
+- [x] **Step 4: Add supervisor commands and health checks.** Launch rosbridge, TF republisher and video server with the ports in `SPEC.md:19.2`. Health checks query the process supervisor and a local TCP socket; readiness remains the Platform API's ROS topic/type probe.
 
-- [ ] **Step 5: Add Caddy routes.** Preserve `/api/`, `/ws/`, `/ros1/`, `/ros2/`, `/video/ros1/`, `/video/ros2/`, `/display/gazebo/`, `/display/rviz/`, and `/webots/` WebSocket upgrades. Reject requests to Agent ports and any path containing `..`.
+- [x] **Step 5: Add Caddy routes.** Preserve `/api/`, `/ws/`, `/ros1/`, `/ros2/`, `/video/ros1/`, `/video/ros2/`, `/display/gazebo/`, `/display/rviz/`, and `/webots/` WebSocket upgrades. Reject requests to Agent ports and any path containing `..`.
 
-- [ ] **Step 6: Build and smoke test sidecars.**
+- [x] **Step 6: Build and smoke test sidecars.**
 
   ```bash
   docker compose -f deploy/compose.yaml config
@@ -566,11 +584,12 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 Task 0 scaffold
   └─> Task 1 catalog/profiles/commands
        ├─> Task 2 state/lease/events
-       │    └─> Task 4 orchestrator/API
+       │    └─> Task 3.5 integration contracts
+       │         └─> Task 4 orchestrator/API
        │         ├─> Task 10 artifacts
        │         └─> Task 11 scenario integration
        └─> Task 3 runtime Agent
-            └─> Task 4 orchestrator/API
+            └─> Task 3.5 integration contracts
 
 Task 5 sidecars/proxy ─┬─> Task 6 Webots stream
                        ├─> Task 7 Gazebo/RViz displays

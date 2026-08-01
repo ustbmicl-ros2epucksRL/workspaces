@@ -16,6 +16,7 @@ from typing import Mapping
 _LOOPBACK = "127.0.0.1"
 _PLATFORM_ROOT = Path(__file__).resolve().parents[2]
 _DEFAULT_SECRET_PATH = Path("/run/masar-platform/agent.secret")
+_DEFAULT_SCENARIO_DIR = _PLATFORM_ROOT / "scenarios"
 
 
 def _default_data_dir() -> Path:
@@ -46,6 +47,17 @@ def _positive_int(name: str, value: str | int, *, port: bool = False) -> int:
         suffix = " between 1 and 65535" if port else " greater than zero"
         raise ValueError(f"{name} must be{suffix}")
     return parsed
+
+
+def _boolean(name: str, value: str | bool) -> bool:
+    if isinstance(value, bool):
+        return value
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean")
 
 
 def _host(name: str, value: str) -> str:
@@ -83,6 +95,8 @@ class Settings:
     webots_stream_port: int = 18_141
     data_dir: Path = field(default_factory=lambda: _DEFAULT_DATA_DIR)
     secret_path: Path = _DEFAULT_SECRET_PATH
+    scenario_dir: Path = _DEFAULT_SCENARIO_DIR
+    visual_stack_ready: bool = False
     event_retention_days: int = 30
     event_retention_count: int = 10_000
 
@@ -120,6 +134,8 @@ class Settings:
             object.__setattr__(self, field_name, _host(field_name, getattr(self, field_name)))
         object.__setattr__(self, "data_dir", _path("data_dir", self.data_dir))
         object.__setattr__(self, "secret_path", _path("secret_path", self.secret_path))
+        object.__setattr__(self, "scenario_dir", _path("scenario_dir", self.scenario_dir))
+        object.__setattr__(self, "visual_stack_ready", _boolean("visual_stack_ready", self.visual_stack_ready))
 
     @classmethod
     def from_env(cls, environ: Mapping[str, str] | None = None) -> "Settings":
@@ -150,6 +166,8 @@ class Settings:
             ),
             data_dir=_path("data_dir", _env(values, "DATA_DIR", str(_DEFAULT_DATA_DIR))),
             secret_path=_path("secret_path", _env(values, "SECRET_PATH", str(_DEFAULT_SECRET_PATH))),
+            scenario_dir=_path("scenario_dir", _env(values, "SCENARIO_DIR", str(_DEFAULT_SCENARIO_DIR))),
+            visual_stack_ready=_boolean("visual_stack_ready", _env(values, "VISUAL_STACK_READY", "false")),
             event_retention_days=_positive_int(
                 "event_retention_days", _env(values, "EVENT_RETENTION_DAYS", "30")
             ),

@@ -104,39 +104,45 @@ schema_version: 1
 scenario_id: exploration.webots.robosar
 module: exploration
 simulator: webots
+runtime:
+  ros1_master_uri: http://127.0.0.1:11311
+  ros2_domain_id: 0
 display_profile: exploration
-parameters:
-  robot_count:
-    type: integer
-    minimum: 1
-    maximum: 20
-    default: 5
+parameters: {}
 steps:
   - id: ros2_webots_bridge
     agent: ros2
-    command_ref: ros2.start_robosar_webots
+    command_ref: ros2.exploration_webots
     depends_on: []
     readiness:
       all:
         - type: ros2_topic
           name: /clock
+          message_type: rosgraph_msgs/msg/Clock
         - type: ros2_topic
           name: /robot_0/odom
+          message_type: nav_msgs/msg/Odometry
+          qos_profile: sensor_data
     start_timeout_seconds: 180
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
   - id: ros1_robosar
     agent: ros1
-    command_ref: ros1.launch_robosar_w
+    command_ref: ros1.exploration_webots
     depends_on: [ros2_webots_bridge]
     readiness:
       all:
         - type: ros1_topic
           name: /sim_map
+          message_type: nav_msgs/OccupancyGrid
         - type: ros1_topic
           name: /percent_completed
+          message_type: std_msgs/Float32
     start_timeout_seconds: 180
+    grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [ros1_robosar, ros2_webots_bridge]
 data_profile: exploration_webots
-artifact_profile: ros1_ros2_search
+artifact_profile: exploration_default
+minimum_free_bytes: 2147483648
 ```
 
 `command_ref` 映射到平台源码中的静态命令模板。YAML 不包含原始 shell。
@@ -542,6 +548,8 @@ masar-simulation-platform/
 
 控制平面作为 host systemd 服务运行，sidecar 使用 Docker Compose；浏览器不能接触 Docker socket。两个既有业务容器只运行 Agent 和业务进程，不修改镜像层。
 
+`deploy/compose.yaml` 可以提供带 `dev-api` profile 的 API 镜像用于构建和健康检查，但生产控制面仍以 host systemd 服务为准。Compose 中的每个服务，以及 host API 和两个 Runtime Agent，都必须设置 `NO_PROXY` 与 `no_proxy` 为至少 `127.0.0.1,localhost,::1`，避免服务器的 SSH 反向代理截获本机健康检查和 WebSocket。
+
 ### 19.2 端口和 URL
 
 全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口：
@@ -562,6 +570,8 @@ masar-simulation-platform/
 
 Agent 只接受含 `X-Platform-Run`、`X-Platform-Signature` 和单调 `X-Platform-Sequence` 的请求。API 与 Agent 共享每次运行生成的 32 字节 HMAC secret，secret 只存内存和 root-only runtime 文件。
 
+场景 manifest 的 `runtime.ros1_master_uri` 与 `runtime.ros2_domain_id` 是进程、ROS Web sidecar 和 readiness 的共同图身份。`swarm.webots.ros2swarm` 固定使用 ROS2 domain `42`；RoboSAR Webots 桥和其余场景使用 domain `0`。Runtime Agent 启动的所有子进程同时设置 `MASAR_PLATFORM_MODE=1`，使既有 ROS1 脚本不再创建脱离 Agent 的子会话、不启动原 Qt GUI，也不执行原生模式下的全局清理。
+
 ### 19.3 command refs
 
 command ref 是源码中的静态数组，不接受用户 shell 字符串。参数通过 argv 列表传入：
@@ -574,7 +584,7 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 | `ros1.exploration_gazebo` | `./launch_robosar_g.sh --no-rviz --no-vglrun` | 10/5/5 s |
 | `ros2.exploration_webots` | `./start_robosar_webots.sh --no-vglrun`，并设置 `webots_stream=true webots_port=18141` | 10/5/5 s |
 | `ros1.exploration_webots` | `./launch_robosar_w.sh --no-rviz --no-vglrun` | 10/5/5 s |
-| `ros1.tepper_response` | `./run_tepper_response_demo.sh --no-rviz --no-vglrun` | 10/5/5 s |
+| `ros1.tepper_response` | `./run_tepper_response_demo.sh --no-rviz --no-vglrun --no-gui --shared-master` | 10/5/5 s |
 
 三个时间分别表示 SIGINT 后等待、SIGTERM 后等待和最后 SIGKILL 前等待。RViz 由平台在独立显示 `:102` 启动；原脚本中的 RViz 参数因此显式关闭。
 
@@ -589,7 +599,7 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 | `exploration.webots.robosar` | ROS2 `/clock` + `/robot_0/odom`，ROS1 `/sim_map` + `/percent_completed` | 180 s | `exploration_webots` |
 | `rescue.gazebo.tepper-response` | `/clock`、`/sim_map`、`/response_group/status` | 180 s | `rescue` |
 
-每个 readiness 检查进程存活、端口可达、ROS graph 中的精确类型和最近一条消息。健康采样周期为 250 ms。消息 age 阈值为 `max(1.0 s, 3 / observed_hz)`；没有稳定频率时使用 1.0 s。超过阈值为 `STALE`，rosbridge 断开为 `DISCONNECTED`，类型错误为 `TYPE_MISMATCH`。
+每个 ROS readiness 在 manifest 中显式声明 `message_type`、`max_age_seconds`，ROS2 还可声明 `qos_profile`。控制面通过签名 `POST /v1/runs/{run_id}/probe` 将这些冻结字段发送给对应 Agent；Agent 使用无 shell、有限时长的 CLI 订阅检查 ROS graph 精确类型和一条新消息。健康采样周期为 250 ms；未在 `max_age_seconds` 内观察到新消息为 `STALE`，类型错误为 `TYPE_MISMATCH`。TCP/HTTP 探针只允许 loopback，文件探针只能位于 Agent workspace 内。
 
 profile 固定定义：`swarm_sensor` 只含 scan/odom/cmd_vel/camera/battery/safety 和可选 `/global_info`；`response_demo` 含 Burger odom、cmd_vel、`ResponseGroupStatus`、behavior mode 和 task result；`exploration` 含 `/sim_map`、frontier、allocation、progress、agent status、emergency objects；`exploration_webots` 以 ROS1 业务话题为权威，ROS2 raw robot topic 只作为可选传感器源；`rescue` 是 exploration 与 response_demo 的并集。
 

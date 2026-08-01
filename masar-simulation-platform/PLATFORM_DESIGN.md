@@ -238,9 +238,11 @@ flowchart LR
 
 禁止使用模糊 `pkill`、按进程名全局清理、复用旧 `agent.py` 或清理非本次运行创建的进程。
 
+平台启动的现有 ROS1 脚本统一接收 `MASAR_PLATFORM_MODE=1`。该模式禁用脚本内部的二次 `setsid`、原 Qt GUI 和原生全局清理，使完整子树保持在 Runtime Agent 持有的 PGID 中；直接在容器内运行脚本时默认行为不变。所有 host/Compose/Agent 进程同时设置 `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`。
+
 ### 6.3 ROS Web sidecar
 
-ROS1 和 ROS2 分别使用与发行版匹配的 sidecar 镜像。sidecar 使用 host network 加入相应 ROS 图，但不修改两个业务容器镜像。
+ROS1 和 ROS2 分别使用与发行版匹配、按 digest 锁定基础镜像的 sidecar。sidecar 使用 host network 加入相应 ROS 图，但不修改两个业务容器镜像；ROS2 sidecar 还使用 host IPC，与现有 ROS2 业务容器的 Fast DDS 共享传输边界。`ROS_DOMAIN_ID` 与 `ROS_LOCALHOST_ONLY` 由场景运行配置显式传入。
 
 每个 sidecar 可按场景启用：
 
@@ -248,7 +250,7 @@ ROS1 和 ROS2 分别使用与发行版匹配的 sidecar 镜像。sidecar 使用 
 - `tf2_web_republisher`：按需下采样 TF。
 - `web_video_server`：相机图像到浏览器友好格式。
 
-sidecar 只绑定 loopback，最终由反向代理提供同源路径。
+sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源路径。Noetic 版本没有区分发布与订阅 glob 的参数，因此镜像构建时移除 advertise、publish 和 service-call capability，只保留订阅/分片能力；Humble 使用空 `topics_pub_glob` 和按场景限制的 `topics_sub_glob`。Caddy 与两个 sidecar 均有健康检查，且所有 Compose 服务固定设置 `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`。
 
 ### 6.4 图形界面
 
@@ -462,4 +464,3 @@ Host masar-platform
 - 对现有工程的每一项修改都有默认关闭和回归验证。
 - 旧项目、旧 Agent 和 `18088` 不在依赖图中。
 - 单活动运行、停止所有权、归档结构和后续回放边界已明确。
-

@@ -15,14 +15,20 @@ if TYPE_CHECKING:
 
 
 _SHELL_FRAGMENT = re.compile(r"(?:\$\(|`|[|;&<>\n\r])")
-_ENVIRONMENT_NAME = re.compile(r"^[A-Z][A-Z0-9_]*$")
+_ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+_LOCAL_NO_PROXY = "127.0.0.1,localhost,::1"
+_PLATFORM_ENVIRONMENT = (
+    ("MASAR_PLATFORM_MODE", "1"),
+    ("NO_PROXY", _LOCAL_NO_PROXY),
+    ("no_proxy", _LOCAL_NO_PROXY),
+)
 
 
 def _validate_environment(environment: tuple[tuple[str, str], ...]) -> None:
     names: set[str] = set()
     for name, value in environment:
         if not _ENVIRONMENT_NAME.fullmatch(name) or name in names:
-            raise ValueError("fixed environment names must be unique uppercase identifiers")
+            raise ValueError("fixed environment names must be unique portable identifiers")
         if not value or not value.isprintable() or _SHELL_FRAGMENT.search(value):
             raise ValueError(f"fixed environment value for {name} contains shell or control characters")
         names.add(name)
@@ -128,7 +134,7 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros1.tepper_response": CommandRef(
             agent="ros1",
             executable="./run_tepper_response_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun"),
+            fixed_args=("--no-rviz", "--no-vglrun", "--no-gui", "--shared-master"),
         ),
     }
 )
@@ -191,15 +197,29 @@ def render_command(
     return argv
 
 
-def command_environment(command_ref: str) -> Mapping[str, str]:
-    """Return immutable, validated environment overrides for a command ref."""
+def command_environment(
+    command_ref: str,
+    *,
+    manifest: "ScenarioManifest | None" = None,
+) -> Mapping[str, str]:
+    """Return immutable platform and ROS graph environment overrides."""
 
     try:
-        environment = COMMAND_REFS[command_ref].fixed_environment
+        definition = COMMAND_REFS[command_ref]
     except KeyError as exc:
         raise CommandRenderError(f"unknown command_ref: {command_ref}") from exc
-    _validate_environment(environment)
-    return MappingProxyType(dict(environment))
+    environment = dict(_PLATFORM_ENVIRONMENT)
+    environment.update(dict(definition.fixed_environment))
+    if manifest is not None:
+        if not any(step.command_ref == command_ref for step in manifest.steps):
+            raise CommandRenderError(f"command_ref {command_ref} is not declared by {manifest.scenario_id}")
+        environment["ROS_MASTER_URI"] = manifest.runtime.ros1_master_uri
+        environment["ROS_DOMAIN_ID"] = str(manifest.runtime.ros2_domain_id)
+        if command_ref == "ros2.exploration_webots":
+            environment["ROS1_MASTER_IP"] = "127.0.0.1"
+    normalized = tuple(environment.items())
+    _validate_environment(normalized)
+    return MappingProxyType(dict(normalized))
 
 
 def render_invocation(
@@ -212,7 +232,7 @@ def render_invocation(
 
     return CommandInvocation(
         argv=tuple(render_command(command_ref, parameters, manifest=manifest)),
-        environment=command_environment(command_ref),
+        environment=command_environment(command_ref, manifest=manifest),
     )
 
 

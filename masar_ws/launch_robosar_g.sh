@@ -39,6 +39,7 @@ usage() {
   ROBOSAR_VGLRUN_DEVICE  vglrun 使用的 DRM 设备或 X display；默认 /dev/dri/card0。
   ROBOSAR_GZ_GUI         Gazebo GUI 默认开关；默认 true。
   ROBOSAR_RVIZ           RViz 默认开关；默认 true。
+  MASAR_PLATFORM_MODE    设为 1 时禁用原 Qt GUI、二次 setsid 和全局进程清理。
   SLAM_NODE_TYPE         SLAM 节点类型；默认 sync_slam_toolbox_node。
 EOF
 }
@@ -61,6 +62,13 @@ has_roslaunch_arg() {
 
 quote_args() {
   printf "%q " "$@"
+}
+
+platform_mode_enabled() {
+  case "${PLATFORM_MODE,,}" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 vglrun_target_is_available() {
@@ -101,7 +109,12 @@ start_process_group() {
     return
   fi
 
-  setsid bash -lc "
+  local launcher=()
+  if ! platform_mode_enabled; then
+    launcher=(setsid)
+  fi
+
+  "${launcher[@]}" bash -lc "
     set -e
     WORKSPACE_SETUP=$(printf "%q" "$WORKSPACE_SETUP")
     LEGACY_WORKSPACE_SETUP=$(printf "%q" "$LEGACY_WORKSPACE_SETUP")
@@ -145,7 +158,11 @@ start_roscore() {
   fi
 
   echo "[robosar-g][start] launching roscore..."
-  setsid roscore &
+  local launcher=()
+  if ! platform_mode_enabled; then
+    launcher=(setsid)
+  fi
+  "${launcher[@]}" roscore &
   local pid=$!
   PIDS+=("$pid")
   wait_for_roscore
@@ -174,6 +191,11 @@ cleanup() {
   local pid
   echo
   echo "[robosar-g][cleanup] stopping all launched processes..."
+
+  if platform_mode_enabled; then
+    echo "  -> platform mode: Runtime Agent owns and signals the complete process group"
+    return
+  fi
 
   for pid in "${PIDS[@]}"; do
     echo "  -> SIGINT to PGID $pid"
@@ -222,6 +244,7 @@ LEGACY_WORKSPACE_SETUP="$HOME/catkin_ws2/devel/setup.bash"
 GUI_SCRIPT="$WORKSPACE_DIR/src/robosar/robosar_gui/src/robosar_gui.py"
 
 DRY_RUN=0
+PLATFORM_MODE="${MASAR_PLATFORM_MODE:-0}"
 GZ_GUI="${ROBOSAR_GZ_GUI:-true}"
 RVIZ="${ROBOSAR_RVIZ:-true}"
 USE_VGLRUN="${ROBOSAR_USE_VGLRUN:-auto}"
@@ -230,6 +253,10 @@ SLAM_NODE_TYPE="${SLAM_NODE_TYPE:-sync_slam_toolbox_node}"
 ENABLE_APRILTAG_SIM="${ENABLE_APRILTAG_SIM:-0}"
 SIM_ARGS=()
 PIDS=()
+
+if platform_mode_enabled; then
+  RVIZ=false
+fi
 
 while (($#)); do
   case "$1" in
@@ -314,7 +341,7 @@ fi
 GAZEBO_CMD="GAZEBO_MODEL_DATABASE_URI='' ${VGLRUN_CMD}roslaunch robosar_sim_bringup robosar_sim_tepper.launch $(quote_args "${SIM_ARGS[@]}")"
 
 echo "[robosar-g] workspace=$WORKSPACE_DIR"
-echo "[robosar-g] gz_gui=$GZ_GUI rviz=$RVIZ slam_node_type=$SLAM_NODE_TYPE"
+echo "[robosar-g] gz_gui=$GZ_GUI rviz=$RVIZ slam_node_type=$SLAM_NODE_TYPE platform_mode=$PLATFORM_MODE"
 if [[ "${#WRAPPER[@]}" -gt 0 ]]; then
   echo "[robosar-g] using vglrun device=$VGLRUN_DEVICE"
 else
@@ -350,7 +377,11 @@ start_process_group "task_generator" "roslaunch robosar_task_generator task_gene
 start_process_group "mission_executive" "roslaunch robosar_navigation mission_executive.launch" 1
 start_process_group "traffic_controller" "rosrun robosar_controller robosar_traffic_controller_node" 1
 start_process_group "mission_commander" "rosrun robosar_task_allocator mission_commander.py -s=true -t='high'" 1
-start_process_group "gui" "python3 $(printf "%q" "$GUI_SCRIPT")" 1
+if platform_mode_enabled; then
+  echo "[robosar-g] platform mode: original Qt GUI disabled"
+else
+  start_process_group "gui" "python3 $(printf "%q" "$GUI_SCRIPT")" 1
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   exit 0

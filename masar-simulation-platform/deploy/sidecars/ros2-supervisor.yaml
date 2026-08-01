@@ -1,0 +1,18 @@
+schema_version: 1
+distribution: humble
+ports:
+  rosbridge: 127.0.0.1:18112
+  video: 127.0.0.1:18122
+browser_policy:
+  topics_pub_glob: "[]"
+  services_glob: "[]"
+  params_glob: "[]"
+programs:
+  rosbridge:
+    command: /usr/local/bin/run-ros2-sidecar rosbridge
+    required_socket: 127.0.0.1:18112
+  tf2_web_republisher:
+    command: /usr/local/bin/run-ros2-sidecar tf2_web_republisher
+  web_video_server:
+    command: /usr/local/bin/run-ros2-sidecar web_video_server
+    required_socket: 127.0.0.1:18122

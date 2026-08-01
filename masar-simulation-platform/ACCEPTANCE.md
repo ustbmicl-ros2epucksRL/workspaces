@@ -10,8 +10,9 @@ review all pass. The next task must not start before that point.
 | 1. Scenario Schema, Profiles and Static Commands | PASS | `25 passed`; full unit suite `32 passed`; schema, compile, Ruff, container dry-runs passed | APPROVED | APPROVED after fixes | `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, `f2be4c6` |
 | 2. SQLite State, Lease and Events | PASS | `35 passed`; full unit suite `67 passed`; schema, compile, Ruff passed | APPROVED after fixes | APPROVED after fixes | `bc1e0b4`, `bcade1a`, `d553693` |
 | 3. Runtime Agent and Process Ownership | PASS | `23 passed`; full suite `90 passed`; Ruff, compileall, diff check and both container py_compile/--help checks passed | APPROVED | APPROVED after Python 3.8 fix | `16b56e6`, `043fc10`, `a9df88a` |
-| 4. Orchestrator and REST/WebSocket API | PENDING | - | - | - | - |
-| 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PENDING | - | - | - | - |
+| 3.5. Integration Contracts | PASS | full suite `103 passed`; Ruff, compileall, Compose build/health, signed ROS1/ROS2 topic probes and platform-mode dry-runs passed | APPROVED | APPROVED | pending commit |
+| 4. Orchestrator and REST/WebSocket API | PASS | `19 passed`; full suite `125 passed`; Ruff, compileall, API/Compose smoke and live ROS1/ROS2 command publication passed | APPROVED | APPROVED | pending commit |
+| 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | pending commit |
 | 6. Webots Stream Compatibility | PENDING | - | - | - | - |
 | 7. Gazebo/RViz/noVNC Displays | PENDING | - | - | - | - |
 | 8. React Workbench | PENDING | - | - | - | - |
@@ -72,3 +73,42 @@ Date: 2026-08-01
 - Compatibility regression: Ruff had emitted Python 3.10-only parenthesized multi-context `with` syntax. The process launch code now uses nested `with` blocks, and a source guard prevents reintroduction; this was verified with the real ROS1 Python 3.8 compiler.
 - Scope: no files in `ROS2swarm_w`, `masar_ws`, `multi-agent-neat`, or abandoned `masar-unified-platform` were modified; no package installation or image rebuild was required.
 - Integrated commits: `16b56e6`, `043fc10`, and `a9df88a`.
+
+## Task 3.5: Integration Contracts
+
+Date: 2026-08-01
+
+- Scenario acceptance: every manifest now declares the loopback ROS1 master and ROS2 domain; swarm uses domain `42`, while RoboSAR Webots and ROS1 scenarios use domain `0`. Every ROS readiness probe declares the exact ROS1/ROS2 message type, maximum silence window and optional ROS2 QoS profile.
+- Probe acceptance: signed `POST /v1/runs/{run_id}/probe` performs bounded, shell-free TCP, HTTP, workspace-file, ROS1 topic and ROS2 topic checks. ROS topic checks verify graph presence, exact type and a newly observed message, returning stable `READY`, `NOT_FOUND`, `TYPE_MISMATCH`, `STALE`, `UNREACHABLE` or `HTTP_ERROR` statuses.
+- Ownership acceptance: Runtime Agent children always receive `MASAR_PLATFORM_MODE=1`; ROS1 platform scripts do not create nested sessions, do not start the original Qt GUI, and bypass native global `pgrep`/`pkill` cleanup. Native script defaults remain unchanged outside platform mode.
+- Proxy and deployment acceptance: Runtime Agents, child processes and every Compose service inherit `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`. `docker compose config`, API image build, container health request and in-container environment assertions passed; the temporary Compose container was removed.
+- Container acceptance: a temporary ROS1 Noetic publisher and a ROS2 Humble domain-42 publisher both returned `READY` through signed Runtime Agent probes with exact observed types. Gazebo exploration, Webots exploration, Tepper response and response DEFORM dry-runs confirmed platform mode and Qt suppression. Temporary publishers, masters, Agents, secrets, ports and directories were removed.
+- Automated acceptance: `python3 -m pytest tests -q` returned `103 passed`; `compileall`, Ruff `0.9.2`, Compose validation and `git diff --check` passed. ShellCheck is not installed on the host; all modified shell scripts passed `bash -n` and container dry-runs.
+- Filesystem note: three root-owned ROS1 scripts in the shared mount were reassigned to host UID/GID `1006:1006` through the existing ROS1 container so scoped patches could be applied; executable mode `0755` was preserved.
+
+## Task 4: Orchestrator and REST/WebSocket API
+
+Date: 2026-08-01
+
+- API acceptance: capabilities expose exactly three user workspaces (`group_behavior`, `exploration`, `rescue`) and six scenarios. Exploration and rescue profiles always include simulation, RViz, map and sensors; swarm/control do not expose RViz. Validation is static and returns resolved parameters, runtime identity and shell-free invocation data.
+- Run acceptance: creation persists request and resolved scenario before asynchronous startup; the SQLite partial unique index and lease enforce one active run. Webots starts ROS2 before ROS1, required readiness gates each dependency, timeouts and startup exits roll back in manifest `stop_order`, and user stop is idempotent at the public state boundary.
+- Recovery acceptance: a fully proven RUNNING Agent tree is adopted by a new API owner and monitored; missing or incomplete ownership becomes `FAILED/NEEDS_INSPECTION` without speculative process cleanup.
+- Command acceptance: browser routes map only to six fixed Agent actions. Exploration START/STOP/HOME, ROS2swarm start/stop and response return-home use typed fixed topics; DEFORM exploration HOME is rejected separately from response return-home. No request accepts topic, type, value or shell text.
+- Event and artifact acceptance: REST cursor replay and WebSocket envelopes share the same durable sequence. Every created run registers downloadable `request.json` and `resolved-scenario.json`; path containment and checksums are enforced.
+- Safety gate: production `build_orchestrator()` requires `MASAR_PLATFORM_VISUAL_STACK_READY=true` before any business Run can start. Until Tasks 5-7 pass, the platform API can expose health/catalog/capabilities but cannot accidentally launch a headless run that the user cannot observe.
+- Automated acceptance: the Task 4 narrow suite returned `19 passed`; full suite returned `125 passed`; Ruff, compileall and `git diff --check` passed. The host API and rebuilt `dev-api` Compose image served health, three-workspace capabilities and the six-scenario catalog.
+- Physical command smoke: signed ROS1 `ros1.mission.start` produced `robosar_messages/mission_command {data: 1}` on `/system_mission_command`; signed ROS2 domain-42 `ros2.swarm.start` produced `communication_interfaces/msg/Int8Message {data: 1}` on `/swarm_command`. Temporary Agents, ROS master, subscribers, ports and secrets were removed.
+- Runtime directory note: the empty `runs/` directory was reassigned to host UID/GID `1006:1006` so the production host API can create SQLite; runtime contents are ignored and `.gitkeep` preserves only the directory boundary.
+
+## Task 5: ROS1/ROS2 Web Sidecars and Reverse Proxy
+
+Date: 2026-08-01
+
+- TDD evidence: the new deployment configuration suite initially returned four expected failures and one pass because the sidecar images, supervisor definitions, lock record and Caddy routes did not yet exist.
+- Image acceptance: dedicated Noetic and Humble web images build from digest-pinned ROS base images and contain pinned `rosbridge-suite`, `tf2-web-republisher` and `web-video-server` package versions. No package was installed into or image rebuilt for `masar_ros1_srv-g` or `masar_ros2_bridge-w`.
+- ROS graph acceptance: the Noetic sidecar removes advertise, publish and service-call capabilities and explicitly binds Twisted to loopback. The Humble sidecar uses separate empty publish globs, subscription allowlists, the selected `ROS_DOMAIN_ID`, host networking and host IPC so Fast DDS matches the existing ROS2 business container.
+- Live protocol acceptance: real `std_msgs/String` messages traversed both `ws://127.0.0.1:18090/ros1/` and `/ros2/`. Browser advertise/publish attempts did not create either test topic in the ROS1 or ROS2 graph.
+- Proxy acceptance: Caddy validates with HTTP/1.1 and HTTP/2 only, preserves every reserved API/ROS/video/noVNC/Webots path, forwards WebSocket upgrade headers, rejects encoded traversal, and exposes no Agent route. `ss -lntp` showed the gateway, both rosbridges and both video servers only on `127.0.0.1`.
+- Environment acceptance: every Compose service receives exact `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`; sidecars use host networking without Docker-published ports; the only browser entry remains loopback port `18090`.
+- Automated acceptance: `python -m pytest tests/integration/test_sidecar_configs.py tests/unit/test_deploy_contract.py -q` returned `7 passed`; the full suite returned `130 passed`; Ruff, Compose validation and Caddy validation passed.
+- Cleanup acceptance: the temporary API process, ROS1 master and project Compose containers were stopped after the live smoke. Existing business containers were left running and their original direct-run behavior remains unchanged.

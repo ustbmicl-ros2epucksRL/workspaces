@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -eo pipefail
+
+source /opt/ros/humble/setup.bash
+set -u
+
+case "${1:-}" in
+  rosbridge)
+    exec ros2 launch rosbridge_server rosbridge_websocket_launch.xml \
+      address:=127.0.0.1 \
+      port:=18112 \
+      topics_glob:="'[]'" \
+      topics_pub_glob:="'[]'" \
+      topics_sub_glob:="${MASAR_ROS2_TOPICS_GLOB:-'[*]'}" \
+      services_glob:="'[]'" \
+      params_glob:="'[]'"
+    ;;
+  tf2_web_republisher)
+    exec ros2 run tf2_web_republisher tf2_web_republisher_node
+    ;;
+  web_video_server)
+    exec ros2 run web_video_server web_video_server --ros-args \
+      -p address:=127.0.0.1 \
+      -p port:=18122
+    ;;
+  *)
+    echo "unknown ROS2 sidecar program: ${1:-<missing>}" >&2
+    exit 64
+    ;;
+esac
