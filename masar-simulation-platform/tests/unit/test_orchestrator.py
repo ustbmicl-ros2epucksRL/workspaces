@@ -26,11 +26,13 @@ def test_webots_starts_ros2_then_ros1_and_stops_in_manifest_reverse_order(tmp_pa
     assert [item for item in trace if item.startswith("start:")] == [
         "start:ros2:ros2_webots_bridge",
         "start:ros1:ros1_robosar",
+        "start:ros1:display_rviz",
     ]
     completed = orchestrator.stop_run(run.run_id)
     assert completed.state is RunState.COMPLETED
     assert completed.reason_code is ReasonCode.USER_STOP
     assert [item for item in trace if item.startswith("stop:")] == [
+        "stop:ros1:display_rviz",
         "stop:ros1:ros1_robosar",
         "stop:ros2:ros2_webots_bridge",
     ]

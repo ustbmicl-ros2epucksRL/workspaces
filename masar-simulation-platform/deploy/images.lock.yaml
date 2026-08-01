@@ -13,6 +13,17 @@ images:
     reference: caddy:2.10.2-alpine
     digest: sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
     architecture_digest: sha256:d8c17a862962def15cde69863a3a463f25a2664942eafd7bdbf050e9c3116b83
+  display_base:
+    reference: ubuntu:22.04
+    digest: sha256:0e0a0fc6d18feda9db1590da249ac93e8d5abfea8f4c3c0c849ce512b5ef8982
+  novnc:
+    version: v1.7.0
+    commit: 63107bd06d9e1f6136ff21aeda8cd62cbf0d433e
+    source_sha256: 06dac239be3973ed79a00e357a68aab996e6ed2fd496ee2cc6e6a34020344ac9
+  websockify:
+    version: v0.13.0
+    commit: e81894751365afc19fe64fc9d0e5c6fc52655c36
+    source_sha256: 4c7a9d88e9de1e9274f8f0f4ebae8d7dd2ffc61ceb6eac63e3e6e3ef0f711d0d
 packages:
   ros1_web:
     ros-noetic-rosbridge-suite: 0.11.17-1focal.20250520.023254

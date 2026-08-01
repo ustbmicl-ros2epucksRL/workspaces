@@ -1,0 +1,8 @@
+#!/usr/bin/env sh
+set -eu
+
+export XDG_RUNTIME_DIR=/tmp/masar-xdg-gazebo
+export HOME=/tmp/masar-home-gazebo
+mkdir -p "$XDG_RUNTIME_DIR" "$HOME"
+chmod 700 "$XDG_RUNTIME_DIR"
+exec openbox --sm-disable

@@ -17,6 +17,7 @@ from .agents import AgentClient, AgentHTTPError, AgentUnavailable, SecretFileErr
 from .artifacts import ArtifactNotFound, ArtifactStore
 from .catalog import CatalogError, ScenarioCatalog
 from .commands import render_invocation
+from .displays import check_display_prerequisites, display_plan
 from .config import Settings, get_settings
 from .db import Database, datetime_to_text
 from .events import EventStore
@@ -119,11 +120,11 @@ def build_orchestrator(settings: Settings | None = None) -> Orchestrator:
     preflight = PreflightChecker(
         runtime_settings.data_dir,
         agents,
-        display_check=lambda _manifest: (
+        display_check=lambda manifest: check_display_prerequisites(
+            manifest,
             runtime_settings.visual_stack_ready,
-            "visual gateways are ready"
-            if runtime_settings.visual_stack_ready
-            else "visual gateways are not accepted yet; complete Tasks 5-7 before starting a run",
+            gazebo_port=runtime_settings.ros1_novnc_port,
+            rviz_port=runtime_settings.ros2_novnc_port,
         ),
     )
     return Orchestrator(catalog, states, leases, events, artifacts, agents, preflight)
@@ -233,6 +234,7 @@ def create_api_app(
             "scenario_id": scenario_id,
             "parameters": resolved,
             "runtime": manifest.runtime.model_dump(mode="json"),
+            "display_plan": display_plan(manifest).as_dict(),
             "steps": [
                 {
                     "step_id": step.id,
@@ -428,6 +430,7 @@ def _scenario_detail(manifest) -> dict[str, Any]:
             "parameters": {name: definition.model_dump(mode="json") for name, definition in manifest.parameters.items()},
             "data_profile": manifest.data_profile,
             "artifact_profile": manifest.artifact_profile,
+            "display_plan": display_plan(manifest).as_dict(),
         }
     )
     return detail

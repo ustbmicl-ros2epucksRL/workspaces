@@ -17,7 +17,7 @@ services:
       MASAR_PLATFORM_API_PORT: "18100"
       MASAR_PLATFORM_DATA_DIR: /var/lib/masar-platform/runs
       MASAR_PLATFORM_SCENARIO_DIR: /opt/masar-platform/scenarios
-      MASAR_PLATFORM_VISUAL_STACK_READY: "false"
+      MASAR_PLATFORM_VISUAL_STACK_READY: "true"
     volumes:
       - platform-runs:/var/lib/masar-platform/runs
     healthcheck:
@@ -88,6 +88,29 @@ services:
       timeout: 3s
       retries: 3
       start_period: 2s
+    restart: unless-stopped
+
+  display:
+    build:
+      context: ..
+      dockerfile: deploy/novnc/Dockerfile
+    network_mode: host
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    environment:
+      <<: *platform-environment
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    tmpfs:
+      - /run/masar-platform-displays
+      - /tmp
+    healthcheck:
+      test: [CMD, /usr/bin/python3, /usr/local/bin/display_manager.py, health]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 8s
     restart: unless-stopped
 
   caddy:

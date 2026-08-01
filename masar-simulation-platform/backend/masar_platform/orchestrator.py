@@ -20,6 +20,7 @@ from .artifacts import ArtifactStore
 from .catalog import CatalogError, ScenarioCatalog
 from .commands import CommandInvocation, render_invocation
 from .contracts import ScenarioManifest, ScenarioStep
+from .displays import display_plan
 from .events import EventStore
 from .leases import HEARTBEAT_INTERVAL_SECONDS, LeaseConflict, LeaseError, LeaseNotFound, LeaseStore
 from .state_machine import ReasonCode, RunNotFound, RunRecord, RunState, RunStateMachine
@@ -257,6 +258,7 @@ class Orchestrator:
         self._stop_events: dict[str, ThreadEvent] = {}
         self._locks: dict[str, Lock] = {}
         self._registry_lock = Lock()
+        self._display_failures: set[tuple[str, str]] = set()
 
     def create_run(
         self,
@@ -292,6 +294,7 @@ class Orchestrator:
                 for step in manifest.steps
             ],
             "preflight": [check.as_dict() for check in checks],
+            "display_plan": display_plan(manifest).as_dict(),
         }
         run_id = "run-" + uuid.uuid4().hex
         try:
@@ -356,6 +359,7 @@ class Orchestrator:
                     self._wait_ready(run_id, context.manifest, step)
                     self._update_step(run_id, step.id, "READY")
                     self._append_event(run_id, "STEP_READY", {"step_id": step.id, "agent": step.agent})
+                self._start_optional_displays(run_id, context.manifest)
             except ReadinessTimeout:
                 self._rollback_started(run_id, context, started)
                 return self._fail(run_id, ReasonCode.READINESS_TIMEOUT)
@@ -379,7 +383,8 @@ class Orchestrator:
             self._stop_events.setdefault(run_id, ThreadEvent()).set()
             self.states.transition(run_id, RunState.STOPPING, reason_code=ReasonCode.USER_STOP)
             context = self._context(current)
-            errors = self._stop_steps(run_id, context)
+            errors = self._stop_optional_displays(run_id, context.manifest)
+            errors.extend(self._stop_steps(run_id, context))
             if errors:
                 return self._fail(run_id, ReasonCode.NEEDS_INSPECTION)
             completed = self.states.transition(run_id, RunState.COMPLETED, reason_code=ReasonCode.USER_STOP)
@@ -419,9 +424,13 @@ class Orchestrator:
         run = self.states.get(run_id)
         context = self._context(run)
         step = next((item for item in context.manifest.steps if item.id == process_id), None)
-        if step is None:
+        agent_kind = step.agent if step is not None else None
+        rviz = display_plan(context.manifest).rviz
+        if agent_kind is None and rviz is not None and process_id == rviz.process_id:
+            agent_kind = rviz.agent
+        if agent_kind is None:
             raise RunNotFound(process_id)
-        return self.agents[step.agent].logs(
+        return self.agents[agent_kind].logs(
             run_id,
             process_id,
             stream=stream,
@@ -490,15 +499,29 @@ class Orchestrator:
                 context = self._context(run)
                 for agent_kind in tuple(dict.fromkeys(step.agent for step in context.manifest.steps)):
                     response = self.agents[agent_kind].probe(run_id)
-                    for record in response.get("processes", []):
-                        if record.get("status") != "RUNNING":
-                            raise UnexpectedProcessExit(str(record.get("process_id")))
+                    records = {
+                        record.get("process_id"): record
+                        for record in response.get("processes", [])
+                        if isinstance(record.get("process_id"), str)
+                    }
+                    for step in context.manifest.steps:
+                        if step.agent != agent_kind:
+                            continue
+                        record = records.get(step.id)
+                        if record is None or record.get("status") != "RUNNING":
+                            raise UnexpectedProcessExit(step.id)
+                    rviz = display_plan(context.manifest).rviz
+                    if rviz is not None and rviz.agent == agent_kind:
+                        record = records.get(rviz.process_id)
+                        if record is None or record.get("status") != "RUNNING":
+                            self._record_display_error(run_id, rviz.process_id, record)
             except UnexpectedProcessExit:
                 lock = self._lock_for(run_id)
                 with lock:
                     current = self.states.get(run_id)
                     if current.state is RunState.RUNNING:
                         context = self._context(current)
+                        self._stop_optional_displays(run_id, context.manifest)
                         self._stop_steps(run_id, context)
                         self._fail(run_id, ReasonCode.UNEXPECTED_PROCESS_EXIT)
                 return
@@ -548,6 +571,78 @@ class Orchestrator:
                 self._stop_step(run_id, step)
             except (AgentUnavailable, AgentHTTPError, OSError):
                 self._update_step(run_id, step.id, "STOP_FAILED", detail="rollback stop failed", ended=True)
+
+    def _start_optional_displays(self, run_id: str, manifest: ScenarioManifest) -> None:
+        rviz = display_plan(manifest).rviz
+        if rviz is None:
+            return
+        try:
+            self.agents[rviz.agent].start(
+                run_id,
+                {
+                    "process_id": rviz.process_id,
+                    "command_ref": rviz.command_ref,
+                    "argv": list(rviz.argv),
+                    "environment": dict(rviz.environment),
+                },
+            )
+        except (AgentUnavailable, AgentHTTPError, OSError) as exc:
+            self._record_display_error(
+                run_id,
+                rviz.process_id,
+                {"status": "START_FAILED", "error": type(exc).__name__},
+            )
+            return
+        self._append_event(
+            run_id,
+            "DISPLAY_STARTED",
+            {"panel": "rviz", "process_id": rviz.process_id, "display": rviz.display},
+        )
+
+    def _stop_optional_displays(self, run_id: str, manifest: ScenarioManifest) -> list[str]:
+        rviz = display_plan(manifest).rviz
+        if rviz is None:
+            return []
+        try:
+            response = self.agents[rviz.agent].probe(run_id)
+            record = next(
+                (item for item in response.get("processes", []) if item.get("process_id") == rviz.process_id),
+                None,
+            )
+            if record is None or record.get("status") != "RUNNING":
+                return []
+            self.agents[rviz.agent].stop(
+                run_id,
+                {
+                    "process_id": rviz.process_id,
+                    "grace_seconds": {"sigint": 10, "sigterm": 5, "sigkill": 5},
+                },
+            )
+            self._append_event(run_id, "DISPLAY_STOPPED", {"panel": "rviz", "process_id": rviz.process_id})
+            return []
+        except (AgentUnavailable, AgentHTTPError, OSError) as exc:
+            return [f"{rviz.process_id}:{type(exc).__name__}"]
+
+    def _record_display_error(
+        self,
+        run_id: str,
+        process_id: str,
+        record: Mapping[str, Any] | None,
+    ) -> None:
+        key = (run_id, process_id)
+        if key in self._display_failures:
+            return
+        self._display_failures.add(key)
+        self._append_event(
+            run_id,
+            "DISPLAY_ERROR",
+            {
+                "panel": "rviz",
+                "process_id": process_id,
+                "status": None if record is None else record.get("status"),
+            },
+            severity="warning",
+        )
 
     def _stop_steps(self, run_id: str, context: RunContext) -> list[str]:
         errors: list[str] = []

@@ -215,6 +215,8 @@ def command_environment(
             raise CommandRenderError(f"command_ref {command_ref} is not declared by {manifest.scenario_id}")
         environment["ROS_MASTER_URI"] = manifest.runtime.ros1_master_uri
         environment["ROS_DOMAIN_ID"] = str(manifest.runtime.ros2_domain_id)
+        if manifest.simulator == "gazebo":
+            environment["DISPLAY"] = ":101"
         if command_ref == "ros2.exploration_webots":
             environment["ROS1_MASTER_IP"] = "127.0.0.1"
     normalized = tuple(environment.items())

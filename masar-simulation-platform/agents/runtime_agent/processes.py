@@ -112,6 +112,7 @@ DEFAULT_COMMAND_POLICIES: Mapping[str, CommandPolicy] = {
     "ros2.exploration_webots": CommandPolicy("ros2", "./start_robosar_webots.sh"),
     "ros1.exploration_webots": CommandPolicy("ros1", "./launch_robosar_w.sh"),
     "ros1.tepper_response": CommandPolicy("ros1", "./run_tepper_response_demo.sh"),
+    "display.ros1.rviz": CommandPolicy("ros1", "rviz"),
 }
 
 
