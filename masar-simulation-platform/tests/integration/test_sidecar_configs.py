@@ -34,6 +34,7 @@ def test_compose_defines_loopback_only_web_stack() -> None:
     assert services["ros2-web"]["environment"]["ROS_LOCALHOST_ONLY"] == "${MASAR_ROS2_LOCALHOST_ONLY:-0}"
     assert services["ros2-web"]["ipc"] == "host"
     assert services["caddy"]["image"].startswith("caddy:2.10.2-alpine@sha256:")
+    assert "../frontend/dist:/srv/frontend:ro" in services["caddy"]["volumes"]
     assert services["webots-guard"]["cap_add"] == ["NET_ADMIN"]
     assert services["webots-guard"]["security_opt"] == ["no-new-privileges:true"]
     assert services["webots-guard"]["read_only"] is True
@@ -111,6 +112,9 @@ def test_caddy_is_single_origin_and_preserves_websocket_upgrades() -> None:
     assert "path_regexp traversal" in caddy
     assert "default_bind 127.0.0.1" in caddy
     assert "protocols h1 h2" in caddy
+    assert "root * /srv/frontend" in caddy
+    assert "try_files {path} /index.html" in caddy
+    assert "file_server" in caddy
     assert "18088" not in caddy
     assert "18101" not in caddy
     assert "18102" not in caddy

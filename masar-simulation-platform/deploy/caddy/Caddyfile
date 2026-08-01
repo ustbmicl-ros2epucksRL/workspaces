@@ -76,6 +76,8 @@ http://127.0.0.1:18090 {
 	}
 
 	handle {
-		respond "MASAR frontend has not been built yet" 503
+		root * /srv/frontend
+		try_files {path} /index.html
+		file_server
 	}
 }
