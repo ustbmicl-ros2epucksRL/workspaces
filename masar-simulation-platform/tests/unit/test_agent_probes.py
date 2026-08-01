@@ -117,3 +117,37 @@ def test_probe_request_requires_message_type_and_matching_agent(tmp_path: Path) 
             [{"type": "ros2_topic", "name": "/clock", "message_type": "rosgraph_msgs/msg/Clock"}],
             RUNTIME,
         )
+
+
+@pytest.mark.parametrize(
+    ("agent", "expected_commands"),
+    (
+        ("ros1", [("rosnode", "list"), ("rostopic", "list", "-v")]),
+        ("ros2", [("ros2", "node", "list"), ("ros2", "topic", "list", "-t")]),
+    ),
+)
+def test_graph_snapshot_is_bounded_shell_free_and_runtime_scoped(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    agent: str,
+    expected_commands: list[tuple[str, ...]],
+) -> None:
+    calls: list[tuple[tuple[str, ...], dict[str, str]]] = []
+
+    def fake_run(argv, **kwargs):
+        calls.append((tuple(argv), kwargs["env"]))
+        output = "/node_a\n" if any("node" in part for part in argv) else "/topic_a [std_msgs/msg/String]\n"
+        return subprocess.CompletedProcess(argv, 0, stdout=output, stderr="")
+
+    monkeypatch.setattr(probes.subprocess, "run", fake_run)
+
+    snapshot = ProbeRunner(agent, tmp_path).graph_snapshot(RUNTIME)
+
+    assert [call[0] for call in calls] == expected_commands
+    assert all(call[1]["ROS_DOMAIN_ID"] == "42" for call in calls)
+    assert snapshot["agent"] == agent
+    assert snapshot["available"] is True
+    assert snapshot["nodes_available"] is True
+    assert snapshot["topics_available"] is True
+    assert snapshot["nodes"] == ["/node_a"]
+    assert snapshot["topics"]

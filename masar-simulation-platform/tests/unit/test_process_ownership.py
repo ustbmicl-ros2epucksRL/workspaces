@@ -13,8 +13,10 @@ import pytest
 from agents.runtime_agent.processes import (
     CommandNotAllowed,
     CommandPolicy,
+    DEFAULT_COMMAND_POLICIES,
     GracePeriods,
     ProcessManager,
+    RECORDER_REGEXES,
 )
 
 
@@ -66,6 +68,85 @@ def test_unknown_command_ref_and_mismatched_executable_are_rejected(tmp_path: Pa
         manager.start("run-1", "step-1", "test.python", ["/bin/sh", "-c", "sleep 30"])
 
     assert manager.probe("run-1") == []
+
+
+@pytest.mark.parametrize(
+    ("agent", "command_ref", "argv", "expected_output"),
+    (
+        (
+            "ros1",
+            "record.ros1.exploration",
+            [
+                "rosbag",
+                "record",
+                "--regex",
+                "--output-name",
+                "@run/bags/ros1/recording",
+                RECORDER_REGEXES["record.ros1.exploration"],
+            ],
+            "bags/ros1/recording",
+        ),
+        (
+            "ros2",
+            "record.ros2.swarm_sensor",
+            [
+                "ros2",
+                "bag",
+                "record",
+                "--regex",
+                RECORDER_REGEXES["record.ros2.swarm_sensor"],
+                "--output",
+                "@run/bags/ros2",
+            ],
+            "bags/ros2",
+        ),
+    ),
+)
+def test_recorder_commands_are_static_and_materialize_only_inside_the_run(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    agent: str,
+    command_ref: str,
+    argv: list[str],
+    expected_output: str,
+) -> None:
+    captured: list[list[str]] = []
+
+    class Child:
+        pid = os.getpid()
+
+        def poll(self):
+            return None
+
+    def fake_popen(actual, **_kwargs):
+        captured.append(list(actual))
+        return Child()
+
+    monkeypatch.setattr(subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(os, "getpgid", lambda _pid: os.getpid())
+    manager = ProcessManager(
+        agent_kind=agent,
+        workspace=tmp_path,
+        runs_dir=tmp_path / "runs" / f"agent-{agent}",
+        command_policies=DEFAULT_COMMAND_POLICIES,
+    )
+
+    manager.start("run-1", "recorder", command_ref, argv)
+
+    assert captured
+    assert str(tmp_path / "runs" / "run-1" / expected_output) in captured[0]
+    assert "@run" not in " ".join(captured[0])
+
+    unsafe = list(argv)
+    unsafe[-1] = "--all"
+    with pytest.raises(CommandNotAllowed):
+        manager.start("run-2", "recorder", command_ref, unsafe)
+
+    arbitrary = list(argv)
+    regex_index = 5 if agent == "ros1" else 4
+    arbitrary[regex_index] = "^(?:/.*)$"
+    with pytest.raises(CommandNotAllowed):
+        manager.start("run-3", "recorder", command_ref, arbitrary)
 
 
 def test_stop_escalates_only_the_owned_process_group(tmp_path: Path) -> None:

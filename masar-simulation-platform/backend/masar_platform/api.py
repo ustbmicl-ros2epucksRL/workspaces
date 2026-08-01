@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 import asyncio
+import os
 from typing import Any, Literal
+from urllib.parse import quote
 import uuid
 
 from fastapi import FastAPI, Query, Request, WebSocket, WebSocketDisconnect
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.concurrency import run_in_threadpool
 
 from .agents import AgentClient, AgentHTTPError, AgentUnavailable, SecretFileError, load_master_secret
 from .artifacts import ArtifactNotFound, ArtifactStore
@@ -94,6 +97,10 @@ class _UnavailableRuntimeAgent:
         self._raise()
         return {}
 
+    def graph_snapshot(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        self._raise()
+        return {}
+
 
 def build_orchestrator(settings: Settings | None = None) -> Orchestrator:
     runtime_settings = settings or get_settings()
@@ -141,6 +148,7 @@ def create_api_app(
         application.state.orchestrator = supplied_orchestrator or build_orchestrator(settings)
         if supplied_orchestrator is None:
             application.state.orchestrator.recover_active_runs()
+            application.state.orchestrator.finalize_incomplete_runs()
         yield
 
     application = FastAPI(
@@ -300,9 +308,31 @@ def create_api_app(
         return {"artifacts": [artifact.as_dict() for artifact in _orchestrator(request).artifacts.list(run_id)]}
 
     @application.get(f"{API_PREFIX}/runs/{{run_id}}/artifacts/{{artifact_id}}/download")
-    async def download_artifact(request: Request, run_id: str, artifact_id: str) -> FileResponse:
-        artifact = _orchestrator(request).artifacts.get(run_id, artifact_id)
-        return FileResponse(artifact.path, filename=artifact.path.name, media_type="application/octet-stream")
+    async def download_artifact(request: Request, run_id: str, artifact_id: str) -> StreamingResponse:
+        range_header = request.headers.get("range")
+        if range_header is not None and "," in range_header:
+            raise StarletteHTTPException(status_code=400, detail="multiple byte ranges are not supported")
+        opened = await run_in_threadpool(_orchestrator(request).artifacts.open, run_id, artifact_id)
+        try:
+            start, end, status_code = _byte_range(range_header, opened.artifact.size_bytes)
+        except ValueError as exc:
+            os.close(opened.file_descriptor)
+            raise StarletteHTTPException(status_code=416, detail="requested byte range is invalid") from exc
+        content_length = end - start + 1 if end >= start else 0
+        headers = {
+            "Accept-Ranges": "bytes",
+            "Content-Length": str(content_length),
+            "Content-Disposition": "attachment; filename*=UTF-8''" + quote(opened.artifact.path.name),
+            "X-Artifact-Checksum": opened.artifact.checksum,
+        }
+        if status_code == 206:
+            headers["Content-Range"] = f"bytes {start}-{end}/{opened.artifact.size_bytes}"
+        return StreamingResponse(
+            _stream_descriptor(opened.file_descriptor, start, content_length),
+            status_code=status_code,
+            headers=headers,
+            media_type="application/octet-stream",
+        )
 
     @application.post(f"{API_PREFIX}/runs/{{run_id}}/mission-commands/start")
     async def mission_start(request: Request, run_id: str) -> dict[str, Any]:
@@ -447,6 +477,44 @@ def _run_dict(run: RunRecord) -> dict[str, Any]:
         "ended_at": datetime_to_text(run.ended_at) if run.ended_at is not None else None,
         "parameters": run.resolved_manifest.get("parameters", {}),
     }
+
+
+def _byte_range(value: str | None, size: int) -> tuple[int, int, int]:
+    if value is None:
+        return 0, size - 1, 200
+    if not value.startswith("bytes="):
+        raise ValueError("range unit is invalid")
+    boundary = value[6:]
+    if "-" not in boundary:
+        raise ValueError("range boundary is invalid")
+    start_text, end_text = boundary.split("-", 1)
+    if not start_text:
+        suffix = int(end_text)
+        if suffix <= 0 or size == 0:
+            raise ValueError("suffix range is invalid")
+        start = max(0, size - suffix)
+        end = size - 1
+    else:
+        start = int(start_text)
+        end = size - 1 if not end_text else int(end_text)
+        if start < 0 or start >= size or end < start:
+            raise ValueError("range is outside the artifact")
+        end = min(end, size - 1)
+    return start, end, 206
+
+
+def _stream_descriptor(file_descriptor: int, start: int, length: int):
+    try:
+        os.lseek(file_descriptor, start, os.SEEK_SET)
+        remaining = length
+        while remaining:
+            chunk = os.read(file_descriptor, min(1024 * 1024, remaining))
+            if not chunk:
+                break
+            remaining -= len(chunk)
+            yield chunk
+    finally:
+        os.close(file_descriptor)
 
 
 __all__ = ["API_PREFIX", "build_orchestrator", "create_api_app"]

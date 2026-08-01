@@ -197,7 +197,8 @@ class EventStore:
         path = self.archive_path(run_id)
         with _ARCHIVE_WRITE_LOCK:
             path.parent.mkdir(parents=True, exist_ok=True)
-            last_sequence = _last_archived_sequence(path)
+            temporary = path.with_name(path.name + ".partial")
+            last_sequence = 0
             with self.database.connect() as connection:
                 rows = connection.execute(
                     """
@@ -207,12 +208,29 @@ class EventStore:
                     """,
                     (run_id, last_sequence),
                 ).fetchall()
-            with path.open("a", encoding="utf-8") as stream:
+            with temporary.open("w", encoding="utf-8") as stream:
+                if path.exists():
+                    with path.open("r", encoding="utf-8") as existing:
+                        for line in existing:
+                            if not line.strip():
+                                continue
+                            sequence = int(json.loads(line)["sequence"])
+                            if sequence <= last_sequence:
+                                continue
+                            stream.write(line if line.endswith("\n") else line + "\n")
+                            last_sequence = sequence
+                if last_sequence:
+                    with self.database.connect() as connection:
+                        rows = connection.execute(
+                            "SELECT * FROM events WHERE run_id = ? AND sequence > ? ORDER BY sequence",
+                            (run_id, last_sequence),
+                        ).fetchall()
                 for row in rows:
                     stream.write(json.dumps(_event_from_row(row).as_dict(), separators=(",", ":"), sort_keys=True))
                     stream.write("\n")
                 stream.flush()
                 os.fsync(stream.fileno())
+            os.replace(temporary, path)
         return path
 
     def list(self, run_id: str, *, after_sequence: int = 0) -> list[Event]:

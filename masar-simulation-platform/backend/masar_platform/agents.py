@@ -104,6 +104,9 @@ class AgentClient:
     def command(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._request("POST", f"/v1/runs/{run_id}/command", run_id, payload, retry=False)
 
+    def graph_snapshot(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
+        return self._request("POST", f"/v1/runs/{run_id}/graph", run_id, payload, retry=True)
+
     def logs(
         self,
         run_id: str,

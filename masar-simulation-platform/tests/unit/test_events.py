@@ -187,10 +187,13 @@ def test_prepare_archive_repairs_a_committed_mirror_gap(tmp_path: Path) -> None:
     archive = events.archive_path("run-1")
     first_line = archive.read_text(encoding="utf-8").splitlines()[0]
     archive.write_text(first_line + "\n", encoding="utf-8")
+    previous_inode = archive.stat().st_ino
 
     events.prepare_archive("run-1")
 
     assert [json.loads(line)["sequence"] for line in archive.read_text(encoding="utf-8").splitlines()] == [1, 2]
+    assert archive.stat().st_ino != previous_inode
+    assert not archive.with_name("events.jsonl.partial").exists()
 
 
 def test_live_retention_uses_age_or_count_without_touching_archive(tmp_path: Path) -> None:

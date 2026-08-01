@@ -56,7 +56,7 @@ else:
     from actions import ActionNotAllowed, ActionPublishError, ActionPublisher  # type: ignore[no-redef]
 
 
-_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs|command)$")
+_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs|command|graph)$")
 _MAX_BODY_BYTES = 1024 * 1024
 
 
@@ -170,6 +170,13 @@ class AgentApplication:
                     _required_string(payload, "action"),
                     payload.get("runtime", {}),
                 )
+                result["run_id"] = run_id
+                return 200, success_response(result, request_id=request_id)
+            if operation == "graph" and method == "POST":
+                payload = _json_object(body)
+                if set(payload) != {"runtime"} or not isinstance(payload["runtime"], dict):
+                    raise ProbeRequestError("graph snapshot requires exactly one runtime object")
+                result = self.probe_runner.graph_snapshot(payload["runtime"])
                 result["run_id"] = run_id
                 return 200, success_response(result, request_id=request_id)
             return 405, error_response(

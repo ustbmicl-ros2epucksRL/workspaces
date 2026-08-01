@@ -220,6 +220,37 @@ def test_signed_fixed_command_route_accepts_only_an_action_and_runtime(
     assert body["error"]["code"] == "ACTION_NOT_ALLOWED"
 
 
+def test_signed_graph_snapshot_route_and_host_client(tmp_path: Path) -> None:
+    class GraphRunner:
+        def graph_snapshot(self, runtime: dict[str, Any]) -> dict[str, Any]:
+            assert runtime["ros2_domain_id"] == 42
+            return {
+                "agent": "ros2",
+                "available": True,
+                "nodes": ["/node_a"],
+                "topics": [{"name": "/topic_a", "message_type": "std_msgs/msg/String"}],
+            }
+
+    manager = ProcessManager("ros2", tmp_path, tmp_path / "runs")
+    app = AgentApplication("ros2", MASTER_SECRET, manager, probe_runner=GraphRunner())  # type: ignore[arg-type]
+    server = create_server("127.0.0.1", 0, app)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    client = AgentClient("127.0.0.1", server.server_port, MASTER_SECRET, retry_attempts=0)
+    try:
+        snapshot = client.graph_snapshot(
+            "run-graph",
+            {"runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 42}},
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+    assert snapshot["agent"] == "ros2"
+    assert snapshot["topics"][0]["name"] == "/topic_a"
+
+
 class _RetryHandler(BaseHTTPRequestHandler):
     counts = {"start": 0, "probe": 0}
     sequences: list[int] = []

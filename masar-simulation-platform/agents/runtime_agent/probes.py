@@ -47,6 +47,29 @@ class ProbeRunner:
             raise ProbeRequestError("probes must be a non-empty array")
         return [self.run(payload, normalized_runtime) for payload in probe_payloads]
 
+    def graph_snapshot(self, runtime: Mapping[str, Any]) -> Dict[str, Any]:
+        environment = _runtime_environment(runtime)
+        if self.agent_kind == "ros1":
+            node_command = ["rosnode", "list"]
+            topic_command = ["rostopic", "list", "-v"]
+        elif self.agent_kind == "ros2":
+            node_command = ["ros2", "node", "list"]
+            topic_command = ["ros2", "topic", "list", "-t"]
+        else:
+            raise ProbeRequestError("graph snapshots require a ROS1 or ROS2 Agent")
+        nodes_output = _graph_command(node_command, environment)
+        topics_output = _graph_command(topic_command, environment)
+        nodes_available = nodes_output is not None
+        topics_available = topics_output is not None
+        return {
+            "agent": self.agent_kind,
+            "available": nodes_available and topics_available,
+            "nodes_available": nodes_available,
+            "topics_available": topics_available,
+            "nodes": _nonempty_lines(nodes_output),
+            "topics": _topic_snapshot(self.agent_kind, topics_output),
+        }
+
     def run(self, payload: Mapping[str, Any], runtime_environment: Mapping[str, str]) -> Dict[str, Any]:
         probe = _normalize_probe(payload)
         if probe["type"] == "ros1_topic" and self.agent_kind != "ros1":
@@ -309,6 +332,54 @@ def _message_observed(argv: List[str], environment: Mapping[str, str], timeout: 
     except (OSError, subprocess.TimeoutExpired):
         return False
     return completed.returncode == 0
+
+
+def _graph_command(argv: List[str], environment: Mapping[str, str]) -> Optional[str]:
+    process_environment = os.environ.copy()
+    process_environment.update(environment)
+    try:
+        completed = subprocess.run(
+            argv,
+            env=process_environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=5.0,
+            check=False,
+            universal_newlines=True,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if completed.returncode != 0:
+        return None
+    return completed.stdout[: 1024 * 1024]
+
+
+def _nonempty_lines(output: Optional[str]) -> List[str]:
+    return [line.strip() for line in (output or "").splitlines() if line.strip()]
+
+
+def _topic_snapshot(agent_kind: str, output: Optional[str]) -> List[Dict[str, Optional[str]]]:
+    topics: List[Dict[str, Optional[str]]] = []
+    seen = set()
+    for line in _nonempty_lines(output):
+        if agent_kind == "ros2" and " [" in line and line.endswith("]"):
+            name, message_type = line[:-1].split(" [", 1)
+        elif agent_kind == "ros1":
+            match = re.match(r"^\s*\*\s+(\S+)\s+\[([^]]+)\]", line)
+            if match is not None:
+                name, message_type = match.groups()
+            elif line.startswith("/"):
+                name, message_type = line, None
+            else:
+                continue
+        else:
+            name, message_type = line, None
+        key = (name, message_type)
+        if key not in seen:
+            seen.add(key)
+            topics.append({"name": name, "message_type": message_type})
+    return topics
 
 
 __all__ = ["ProbeRequestError", "ProbeRunner", "runtime_environment"]

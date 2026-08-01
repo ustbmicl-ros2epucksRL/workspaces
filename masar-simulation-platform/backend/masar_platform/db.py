@@ -82,6 +82,9 @@ CREATE TABLE IF NOT EXISTS runs (
     resolved_manifest_json TEXT NOT NULL DEFAULT '{}' CHECK (
         json_valid(resolved_manifest_json) AND json_type(resolved_manifest_json) = 'object'
     ),
+    archive_conditions_json TEXT NOT NULL DEFAULT '[]' CHECK (
+        json_valid(archive_conditions_json) AND json_type(archive_conditions_json) = 'array'
+    ),
     next_event_sequence INTEGER NOT NULL DEFAULT 1 CHECK (next_event_sequence > 0)
 );
 
@@ -120,13 +123,15 @@ CREATE TABLE IF NOT EXISTS events (
 );
 
 CREATE TABLE IF NOT EXISTS artifacts (
-    artifact_id TEXT PRIMARY KEY,
+    artifact_key INTEGER PRIMARY KEY AUTOINCREMENT,
+    artifact_id TEXT NOT NULL,
     run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
     kind TEXT NOT NULL,
     path TEXT NOT NULL,
     size_bytes INTEGER,
     checksum TEXT,
-    created_at TEXT NOT NULL
+    created_at TEXT NOT NULL,
+    UNIQUE (run_id, path)
 );
 
 CREATE INDEX IF NOT EXISTS idx_runs_run_id ON runs(run_id);
@@ -135,6 +140,7 @@ CREATE INDEX IF NOT EXISTS idx_leases_run_id ON leases(run_id);
 CREATE INDEX IF NOT EXISTS idx_events_run_id ON events(run_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_events_run_sequence ON events(run_id, sequence);
 CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
+CREATE INDEX IF NOT EXISTS idx_artifacts_run_content ON artifacts(run_id, artifact_id);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_runs_single_active
     ON runs ((1))
     WHERE state IN ('PREFLIGHT', 'STARTING', 'RUNNING', 'STOPPING');
@@ -155,6 +161,98 @@ def _migrate_runs_contract(connection: sqlite3.Connection) -> None:
             "ALTER TABLE runs ADD COLUMN resolved_manifest_json TEXT NOT NULL DEFAULT '{}' "
             "CHECK (json_valid(resolved_manifest_json) AND json_type(resolved_manifest_json) = 'object')"
         )
+    if "archive_conditions_json" not in columns:
+        connection.execute(
+            "ALTER TABLE runs ADD COLUMN archive_conditions_json TEXT NOT NULL DEFAULT '[]' "
+            "CHECK (json_valid(archive_conditions_json) AND json_type(archive_conditions_json) = 'array')"
+        )
+
+    _migrate_artifacts_contract(connection)
+
+
+def _migrate_artifacts_contract(connection: sqlite3.Connection) -> None:
+    tables = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('artifacts', 'artifacts_legacy')"
+        )
+    }
+    artifact_columns = {row[1] for row in connection.execute("PRAGMA table_info(artifacts)")}
+    legacy_exists = "artifacts_legacy" in tables
+    legacy_schema = bool(artifact_columns) and "artifact_key" not in artifact_columns
+    if not legacy_exists and not legacy_schema:
+        return
+    if legacy_exists and legacy_schema:
+        raise sqlite3.IntegrityError("both artifacts and artifacts_legacy use the legacy schema")
+
+    connection.execute("BEGIN IMMEDIATE")
+    try:
+        if legacy_schema:
+            connection.execute("DROP INDEX IF EXISTS idx_artifacts_run_id")
+            connection.execute("DROP INDEX IF EXISTS idx_artifacts_run_content")
+            connection.execute("ALTER TABLE artifacts RENAME TO artifacts_legacy")
+            _create_artifacts_table(connection)
+        duplicates = connection.execute(
+            """
+            SELECT run_id, path FROM artifacts_legacy
+            GROUP BY run_id, path HAVING COUNT(*) > 1 LIMIT 1
+            """
+        ).fetchone()
+        if duplicates is not None:
+            raise sqlite3.IntegrityError("legacy artifacts contain duplicate run paths")
+        connection.execute(
+            """
+            INSERT INTO artifacts (artifact_id, run_id, kind, path, size_bytes, checksum, created_at)
+            SELECT artifact_id, run_id, kind, path, size_bytes, checksum, created_at
+            FROM artifacts_legacy WHERE true
+            ON CONFLICT(run_id, path) DO UPDATE SET
+                artifact_id = excluded.artifact_id,
+                kind = excluded.kind,
+                size_bytes = excluded.size_bytes,
+                checksum = excluded.checksum,
+                created_at = excluded.created_at
+            """
+        )
+        missing = connection.execute(
+            """
+            SELECT COUNT(*) FROM artifacts_legacy AS legacy
+            LEFT JOIN artifacts AS current
+              ON current.run_id = legacy.run_id AND current.path = legacy.path
+            WHERE current.artifact_key IS NULL
+            """
+        ).fetchone()[0]
+        if missing:
+            raise sqlite3.IntegrityError("legacy artifact migration lost rows")
+        foreign_key_errors = connection.execute("PRAGMA foreign_key_check(artifacts)").fetchall()
+        if foreign_key_errors:
+            raise sqlite3.IntegrityError("legacy artifacts violate run foreign keys")
+        connection.execute("DROP TABLE artifacts_legacy")
+        connection.execute("CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id)")
+        connection.execute(
+            "CREATE INDEX IF NOT EXISTS idx_artifacts_run_content ON artifacts(run_id, artifact_id)"
+        )
+        connection.commit()
+    except BaseException:
+        connection.rollback()
+        raise
+
+
+def _create_artifacts_table(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE TABLE artifacts (
+            artifact_key INTEGER PRIMARY KEY AUTOINCREMENT,
+            artifact_id TEXT NOT NULL,
+            run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
+            kind TEXT NOT NULL,
+            path TEXT NOT NULL,
+            size_bytes INTEGER,
+            checksum TEXT,
+            created_at TEXT NOT NULL,
+            UNIQUE (run_id, path)
+        )
+        """
+    )
 
 
 __all__ = [

@@ -100,6 +100,18 @@ class FakeAgent:
         self.trace.append(f"command:{self.kind}:{payload['action']}")
         return {"run_id": run_id, "action": payload["action"], "published": True}
 
+    def graph_snapshot(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
+        self.trace.append(f"graph:{self.kind}")
+        return {
+            "run_id": run_id,
+            "agent": self.kind,
+            "nodes": [],
+            "topics": [],
+            "available": True,
+            "nodes_available": True,
+            "topics_available": True,
+        }
+
 
 class FakePreflight:
     def __init__(self, trace: list[str]) -> None:

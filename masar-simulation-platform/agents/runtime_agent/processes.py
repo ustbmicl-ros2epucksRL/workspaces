@@ -104,6 +104,17 @@ class LogChunk:
         return {"data": self.data, "cursor": self.cursor, "eof": self.eof}
 
 
+def _recorder_regex(patterns: Sequence[str]) -> str:
+    expressions = []
+    for pattern in patterns:
+        escaped = re.escape(pattern)
+        escaped = escaped.replace(re.escape("<robot>"), r"[^/]+")
+        escaped = escaped.replace(re.escape("<agent>"), r"[^/]+")
+        escaped = escaped.replace(re.escape("tb_i"), r"tb_[0-9]+")
+        expressions.append(escaped)
+    return "^(?:" + "|".join(expressions) + ")$"
+
+
 DEFAULT_COMMAND_POLICIES: Mapping[str, CommandPolicy] = {
     "ros2.swarm": CommandPolicy("ros2", "ros2"),
     "ros1.response_deform": CommandPolicy("ros1", "./run_response_deform_demo.sh"),
@@ -113,6 +124,44 @@ DEFAULT_COMMAND_POLICIES: Mapping[str, CommandPolicy] = {
     "ros1.exploration_webots": CommandPolicy("ros1", "./launch_robosar_w.sh"),
     "ros1.tepper_response": CommandPolicy("ros1", "./run_tepper_response_demo.sh"),
     "display.ros1.rviz": CommandPolicy("ros1", "rviz"),
+    "record.ros1.exploration": CommandPolicy("ros1", "rosbag"),
+    "record.ros1.exploration_webots": CommandPolicy("ros1", "rosbag"),
+    "record.ros1.rescue": CommandPolicy("ros1", "rosbag"),
+    "record.ros2.swarm_sensor": CommandPolicy("ros2", "ros2"),
+    "record.ros2.exploration_webots": CommandPolicy("ros2", "ros2"),
+}
+
+_EXPLORATION_TOPIC_PATTERNS = (
+    "/sim_map",
+    "/frontier_filter/filtered_frontiers",
+    "/task_allocation_image",
+    "/percent_completed",
+    "/robosar_agent_bringup_node/all_agent_status",
+    "/robosar_sim/emergency_objects",
+    "/robosar_sim/emergency_events",
+)
+_RESPONSE_TOPIC_PATTERNS = (
+    "/tb_i/odom",
+    "/tb_i/cmd_vel",
+    "/response_group/status",
+    "/response_group/behavior_mode",
+    "/response_group/task_result",
+)
+_SWARM_TOPIC_PATTERNS = (
+    "/<robot>/scan",
+    "/<robot>/odom",
+    "/<robot>/cmd_vel",
+    "/<robot>/camera",
+    "/<robot>/battery",
+    "/<robot>/safety",
+    "/global_info",
+)
+RECORDER_REGEXES = {
+    "record.ros1.exploration": _recorder_regex(_EXPLORATION_TOPIC_PATTERNS),
+    "record.ros1.exploration_webots": _recorder_regex(_EXPLORATION_TOPIC_PATTERNS),
+    "record.ros1.rescue": _recorder_regex(_EXPLORATION_TOPIC_PATTERNS + _RESPONSE_TOPIC_PATTERNS),
+    "record.ros2.swarm_sensor": _recorder_regex(_SWARM_TOPIC_PATTERNS),
+    "record.ros2.exploration_webots": _recorder_regex(_SWARM_TOPIC_PATTERNS[:-1]),
 }
 
 
@@ -142,6 +191,7 @@ class ProcessManager:
         _validate_identifier("run_id", run_id)
         _validate_identifier("process_id", process_id)
         normalized_argv = _validate_command(self.agent_kind, command_ref, argv, self.command_policies)
+        normalized_argv = _materialize_run_paths(normalized_argv, run_id, self.runs_dir.parent)
         normalized_environment = _validate_environment(environment or {})
         if not self.workspace.is_dir():
             raise ProcessManagerError("configured workspace does not exist")
@@ -158,6 +208,9 @@ class ProcessManager:
             process_dir.mkdir(parents=True, exist_ok=True)
             stdout_path = process_dir / "stdout.log"
             stderr_path = process_dir / "stderr.log"
+            if command_ref.startswith("record."):
+                output_index = 4 if command_ref.startswith("record.ros1.") else 6
+                Path(normalized_argv[output_index]).parent.mkdir(parents=True, exist_ok=True)
             child_environment = os.environ.copy()
             child_environment.update(normalized_environment)
             child_environment["MASAR_PLATFORM_MODE"] = "1"
@@ -372,7 +425,38 @@ def _validate_command(
         raise CommandNotAllowed("argv contains an invalid value")
     if normalized[0] != policy.executable:
         raise CommandNotAllowed("argv executable does not match command_ref")
+    expected_regex = RECORDER_REGEXES.get(command_ref)
+    if command_ref.startswith("record.ros1."):
+        if (
+            len(normalized) != 6
+            or normalized[:4] != ("rosbag", "record", "--regex", "--output-name")
+            or normalized[4] != "@run/bags/ros1/recording"
+            or normalized[5] != expected_regex
+        ):
+            raise CommandNotAllowed("ROS1 recorder command does not match the static profile")
+    if command_ref.startswith("record.ros2."):
+        if (
+            len(normalized) != 7
+            or normalized[:4] != ("ros2", "bag", "record", "--regex")
+            or normalized[5:] != ("--output", "@run/bags/ros2")
+            or normalized[4] != expected_regex
+        ):
+            raise CommandNotAllowed("ROS2 recorder command does not match the static profile")
     return normalized
+
+
+def _materialize_run_paths(argv: Tuple[str, ...], run_id: str, runs_root: Path) -> Tuple[str, ...]:
+    materialized = []
+    prefix = "@run/"
+    for value in argv:
+        if not value.startswith(prefix):
+            materialized.append(value)
+            continue
+        relative = Path(value[len(prefix) :])
+        if relative.is_absolute() or ".." in relative.parts:
+            raise CommandNotAllowed("recorder output path is invalid")
+        materialized.append(str(runs_root / run_id / relative))
+    return tuple(materialized)
 
 
 def _validate_environment(environment: Mapping[str, str]) -> Dict[str, str]:
@@ -430,4 +514,5 @@ __all__ = [
     "ProcessNotFound",
     "ProcessOwnershipError",
     "ProcessRecord",
+    "RECORDER_REGEXES",
 ]
