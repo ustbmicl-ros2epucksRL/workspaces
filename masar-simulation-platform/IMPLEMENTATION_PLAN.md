@@ -386,20 +386,20 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Create: `backend/masar_platform/displays.py`
 - Create: `tests/integration/test_displays.py`
 
-- [ ] **Step 1: Write display lifecycle tests.** Assert allocation of `:101` for Gazebo and `:102` for RViz, separate PID/PGID records, bounded shutdown, and no reuse of a display owned by an unrelated process.
+- [x] **Step 1: Write display lifecycle tests.** Assert allocation of `:101` for Gazebo and `:102` for RViz, separate PID/PGID records, bounded shutdown, and no reuse of a display owned by an unrelated process.
 
-- [ ] **Step 2: Run tests and verify failure.**
+- [x] **Step 2: Run tests and verify failure.**
 
   Run: `python3 -m pytest tests/integration/test_displays.py -q`  
   Expected: FAIL because the display manager does not exist.
 
-- [ ] **Step 3: Implement display manager.** Start Xvfb and openbox in the GUI sidecar; expose each display through an x11vnc/websockify/noVNC process. Record all PIDs under the current `run_id`. Preserve the existing `run_vnc_gpu.sh` environment path for direct native runs; platform displays are only used by platform-owned processes.
+- [x] **Step 3: Implement display manager.** Start Xvfb and openbox in the GUI sidecar; expose each display through an x11vnc/websockify/noVNC process. Record all PIDs under the current `run_id`. Preserve the existing `run_vnc_gpu.sh` environment path for direct native runs; platform displays are only used by platform-owned processes.
 
-- [ ] **Step 4: Implement platform GUI wrappers.** Start Gazebo-bearing scripts with `--no-rviz`, set `DISPLAY=:101`, and start the repository's RViz config separately on `DISPLAY=:102`. Record the exact RViz command and config file in the resolved manifest.
+- [x] **Step 4: Implement platform GUI wrappers.** Start Gazebo-bearing scripts with `--no-rviz`, set `DISPLAY=:101`, and start the repository's RViz config separately on `DISPLAY=:102`. Record the exact RViz command and config file in the resolved manifest.
 
-- [ ] **Step 5: Test both panels through Caddy.** Assert independent noVNC WebSocket connections, non-empty canvas screenshots, and mouse focus isolation. A noVNC panel failure must set a panel error and not stop the ROS run unless its display is a required readiness step.
+- [x] **Step 5: Test both panels through Caddy.** Assert independent noVNC WebSocket connections, non-empty canvas screenshots, and mouse focus isolation. A noVNC panel failure must set a panel error and not stop the ROS run unless its display is a required readiness step.
 
-- [ ] **Step 6: Run tests and commit.**
+- [x] **Step 6: Run tests and commit.** Integrated implementation commit: `8b202f8`.
 
   Run: `python3 -m pytest tests/integration/test_displays.py -q`  
   Expected: PASS.
@@ -408,6 +408,8 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
   git add masar-simulation-platform/deploy/display masar-simulation-platform/deploy/novnc masar-simulation-platform/backend/masar_platform/displays.py masar-simulation-platform/tests/integration/test_displays.py
   git commit -m "feat(platform): add independent Gazebo and RViz displays"
   ```
+
+  Accepted on 2026-08-01: the narrow suite returned `10 passed`, the full platform suite returned `144 passed`, the existing ROS2 Webots suite returned `15 passed`, and all seven native container dry-runs returned exit code 0 with `platform_mode=0`. The rebuilt display sidecar and Caddy remained healthy; real Gazebo and RViz canvases were non-empty and simultaneously connected through the two same-origin noVNC routes, with independent iframe focus.
 
 ## 11. Task 8: React Workbench and Responsive Layout
 

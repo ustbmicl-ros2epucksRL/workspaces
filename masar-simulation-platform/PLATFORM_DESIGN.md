@@ -259,6 +259,8 @@ sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源�
 - RViz：平台在另一虚拟显示中单独启动现有 RViz 配置，通过第二个 noVNC 面板显示。
 - 原 Qt GUI：原命令保持默认启动。平台场景可以使用默认关闭的参数跳过 Qt，以避免两个控制面同时误操作；不选择平台模式时行为不变。
 
+显示 sidecar 固定分配 Gazebo `:101` 与 RViz `:102`，每套 Xvfb/openbox/x11vnc/websockify 都有独立的 PID/PGID 和即时持久化的 `/proc` 启动标识。x11vnc 同时显式绑定 `127.0.0.1` 与 `::1`，websockify 只绑定 IPv4 loopback；Caddy 是浏览器唯一入口。依赖锁定为 noVNC `v1.7.0` 和 websockify `v0.13.0` 的 commit tarball + SHA-256。RViz 是探索/救援运行的可选观测进程：面板故障产生 `DISPLAY_ERROR`，不会终止仍健康的 ROS 任务；群行为与控制策略验证不启动 RViz。
+
 Webots path-prefix 反向代理和鼠标交互已通过真实 Chromium 验证：`/webots/` 可完成 WebSocket upgrade，W3D 画布非空，拖拽与滚轮分别改变相机姿态和位置。验收页使用 Cyberbotics R2025a viewer；生产前端将在 React 任务中锁定并本地化对应资产，断线重连也在该任务形成组件级测试。
 
 ## 7. Robot Web Tools 采用分析

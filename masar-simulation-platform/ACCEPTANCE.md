@@ -14,7 +14,7 @@ review all pass. The next task must not start before that point.
 | 4. Orchestrator and REST/WebSocket API | PASS | `19 passed`; full suite `125 passed`; Ruff, compileall, API/Compose smoke and live ROS1/ROS2 command publication passed | APPROVED | APPROVED | `8936d8a` |
 | 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | `8936d8a` |
 | 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | `65ab31c` |
-| 7. Gazebo/RViz/noVNC Displays | PENDING | - | - | - | - |
+| 7. Gazebo/RViz/noVNC Displays | PASS | `10 passed`; full suite `144 passed`; live dual-canvas/HTTP/listener checks passed | APPROVED | APPROVED after ownership fixes | `8b202f8` |
 | 8. React Workbench | PENDING | - | - | - | - |
 | 9. Robot Web Tools Adapters | PENDING | - | - | - | - |
 | 10. Artifact Recording and Download | PENDING | - | - | - | - |
@@ -126,3 +126,17 @@ Date: 2026-08-01
 - Dependency boundary: the acceptance-only HTML loads the exact R2025a viewer from Cyberbotics. The production React task must vendor or lock those assets and may not depend on an unpinned runtime CDN.
 - Automated acceptance: the platform suite returned `134 passed`; Ruff `0.9.2`, `compileall`, Compose validation, Caddy/guard health, Bash syntax, Python compilation and `git diff --check` passed.
 - Cleanup acceptance: all temporary Webots/ROS launch process groups and the rejected bind library were removed. Caddy and the Webots firewall guard remain as healthy platform services; both original business containers remain running.
+
+## Task 7: Gazebo/RViz/noVNC Displays
+
+Date: 2026-08-01
+
+- Display isolation: Gazebo uses X display `:101`, VNC `19131` and noVNC `18131`; RViz uses X display `:102`, VNC `19132` and noVNC `18132`. Caddy exposes only `/display/gazebo/` and `/display/rviz/` from the existing loopback gateway.
+- Lifecycle ownership: Xvfb, openbox, x11vnc and websockify run in separate owned process groups. Every component PID, PGID and `/proc` start tick is atomically persisted as soon as it starts; shutdown is bounded and refuses a reused or otherwise unverifiable PID.
+- Network acceptance: the rebuilt sidecar remained healthy; both Caddy pages returned HTTP 200. `ss` showed no temporary ROS/Gazebo ports and showed no wildcard display listener: noVNC was IPv4 loopback-only and VNC was restricted to `127.0.0.1` and `::1`.
+- Browser acceptance: real Gazebo and RViz applications connected simultaneously through the committed dual-panel fixture. Both `1280x720` canvases contained non-empty rendered pixels; focusing either iframe did not focus the other. A simulated panel exit changed only that panel to `ERROR`.
+- Scenario acceptance: group-behavior and response-controller profiles omit RViz. Exploration and rescue profiles start the repository's exact `multi_robot.rviz` command as an optional Agent-owned process on `:102`; an RViz start/exit error emits `DISPLAY_ERROR` without failing the ROS run.
+- Native compatibility: all five ROS1 scripts and both ROS2 scripts passed their original container dry-run entry points with platform-only environment removed. Output reported `platform_mode=0`, preserving Qt, RViz, VGL and native defaults outside platform mode.
+- Automated acceptance: the Task 7 suite returned `10 passed`; the platform suite returned `144 passed`; the existing ROS2 Webots suite returned `15 passed`. Ruff `0.9.2`, `compileall`, Compose validation, Docker image rebuild, `git diff --check` and the two Caddy HTTP probes passed.
+- Dependency lock: the display image uses digest-pinned Ubuntu 22.04, noVNC `v1.7.0` and websockify `v0.13.0` from commit-addressed tarballs with verified SHA-256 values.
+- Integrated implementation commit: `8b202f8`.

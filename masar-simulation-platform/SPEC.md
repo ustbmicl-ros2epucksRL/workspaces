@@ -554,6 +554,8 @@ masar-simulation-platform/
 
 除下述 Webots 原生实现例外，全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口。Webots R2025a 固定使用 `QHostAddress::Any` 且没有 bind-host 参数，因此 `webots-guard` 在 host network 对 `18141` 安装 IPv4/IPv6 INPUT 规则并拒绝所有非 loopback 流量；其有效访问边界仍是 `127.0.0.1:18141`。
 
+Gazebo/RViz 显示 sidecar 必须把 noVNC 绑定到 IPv4 loopback，把底层 VNC 显式绑定到 `127.0.0.1` 与 `::1`，不得依赖 x11vnc 的隐式 IPv6 默认值。每个显示组件启动后必须立即原子记录 `run_id`、PID、PGID 和 `/proc` start ticks；停止前必须重新证明所有权，PID 被复用时拒绝发送信号。
+
 | 服务 | 地址 | Caddy 路径 |
 |---|---:|---|
 | Caddy/Web | `127.0.0.1:18090` | `/` |
