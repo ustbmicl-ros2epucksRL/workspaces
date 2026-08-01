@@ -371,7 +371,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
 - [x] **Step 5: Verify the Webots path.** Start a stream-only world on port 18141, request `/webots/` through Caddy, assert WebSocket upgrade, non-empty canvas pixels in Chromium, and drag/zoom changes the camera state. If path-prefix handling fails, configure Caddy path stripping and repeat; do not expose a second public port. Webots R2025a has no bind-host option, so the accepted deployment adds an exact IPv4/IPv6 firewall guard that rejects non-loopback ingress without altering the native process.
 
-- [ ] **Step 6: Commit the compatibility change separately from new platform code.**
+- [x] **Step 6: Commit the compatibility change separately from new platform code.** Integrated implementation commit: `65ab31c`.
 
   ```bash
   git add /home/zjc/workspace/ROS2swarm_w/start_robosar_webots.sh /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py masar-simulation-platform/backend/masar_platform/webots.py masar-simulation-platform/tests/integration/test_webots_proxy.py

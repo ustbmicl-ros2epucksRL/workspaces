@@ -13,7 +13,7 @@ review all pass. The next task must not start before that point.
 | 3.5. Integration Contracts | PASS | full suite `103 passed`; Ruff, compileall, Compose build/health, signed ROS1/ROS2 topic probes and platform-mode dry-runs passed | APPROVED | APPROVED | `8936d8a` |
 | 4. Orchestrator and REST/WebSocket API | PASS | `19 passed`; full suite `125 passed`; Ruff, compileall, API/Compose smoke and live ROS1/ROS2 command publication passed | APPROVED | APPROVED | `8936d8a` |
 | 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | `8936d8a` |
-| 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | pending commit |
+| 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | `65ab31c` |
 | 7. Gazebo/RViz/noVNC Displays | PENDING | - | - | - | - |
 | 8. React Workbench | PENDING | - | - | - | - |
 | 9. Robot Web Tools Adapters | PENDING | - | - | - | - |
