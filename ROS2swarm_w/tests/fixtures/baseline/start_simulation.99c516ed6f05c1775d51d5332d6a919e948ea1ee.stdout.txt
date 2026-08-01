@@ -1,0 +1,5 @@
+[start_simulation][dry-run] workdir: /home/zjc/workspace/ROS2swarm_w
+[start_simulation][dry-run] vnc-gpu: DISPLAY=:99 XAUTHORITY=/tmp/masar-platform-baseline.xauth VGLRUN_DEVICE=/dev/dri/card2
+[start_simulation][dry-run] build: colcon build --symlink-install --allow-overriding communication_interfaces launch_webots ros2swarm 
+[start_simulation][dry-run] source: source ./install/setup.bash
+[start_simulation][dry-run] launch: env ROS_DOMAIN_ID=42 ros2 launch launch_webots create_enviroment.launch.py webots_world:=command_world.wbt pattern:=roundflocking_pattern number_robots:=5 total_robots:=10 log_level:=info webots_mode:=realtime webots_gui:=true robot:=burger sensor_type:=lidar x_min:=-1.0 x_max:=1.0 y_min:=-1.0 y_max:=1.0 min_distance:=0.2 z_height:=0.0 driving_swarm:=False logging:=False num_obstacles:=0 transport_object_shape:=cube 

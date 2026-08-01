@@ -4,6 +4,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+BASELINE_COMMIT = "99c516ed6f05c1775d51d5332d6a919e948ea1ee"
+BASELINE_WORKSPACE_ROOT = "/home/zjc/workspace"
 
 
 def _run_script(script_name: str, *args: str, env: dict | None = None) -> subprocess.CompletedProcess:
@@ -32,6 +34,82 @@ def _run_script(script_name: str, *args: str, env: dict | None = None) -> subpro
 def _write_executable(path: Path, content: str) -> None:
     path.write_text(content)
     path.chmod(0o755)
+
+
+def _baseline(script_name: str) -> str:
+    path = (
+        REPO_ROOT
+        / "tests"
+        / "fixtures"
+        / "baseline"
+        / f"{Path(script_name).stem}.{BASELINE_COMMIT}.stdout.txt"
+    )
+    return path.read_text(encoding="utf-8").replace(
+        BASELINE_WORKSPACE_ROOT,
+        str(REPO_ROOT.parent),
+    )
+
+
+def test_default_webots_dry_runs_match_pre_change_baseline():
+    baseline_env = {
+        "ROS2SWARM_VNC_DISPLAY": ":99",
+        "ROS2SWARM_XAUTHORITY": "/tmp/masar-platform-baseline.xauth",
+    }
+
+    for script_name in ("start_simulation.sh", "start_robosar_webots.sh"):
+        result = _run_script(script_name, "--dry-run", "--no-vglrun", env=baseline_env)
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert result.stderr == ""
+        assert result.stdout == _baseline(script_name)
+
+
+def test_robosar_platform_stream_environment_is_forwarded_explicitly():
+    result = _run_script(
+        "start_robosar_webots.sh",
+        "--dry-run",
+        "--no-vglrun",
+        env={"WEBOTS_STREAM": "true", "WEBOTS_PORT": "18141"},
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "webots_stream:=true" in output
+    assert "webots_port:=18141" in output
+
+
+def test_both_webots_launch_paths_forward_default_off_stream_arguments():
+    start_source = (REPO_ROOT / "src/launch_webots/launch/start_webots.launch.py").read_text()
+    swarm_source = (REPO_ROOT / "src/launch_webots/launch/create_enviroment.launch.py").read_text()
+    robosar_source = (REPO_ROOT / "src/launch_webots/launch/robosar_webots_sim.launch.py").read_text()
+
+    assert "'webots_stream',\n        default_value='false'" in start_source
+    assert "'webots_port',\n        default_value='1234'" in start_source
+    assert "stream=webots_stream" in start_source
+    assert "port=webots_port" in start_source
+
+    for source in (swarm_source, robosar_source):
+        assert "'webots_stream':" in source
+        assert "'webots_port':" in source
+
+
+def test_robosar_stream_environment_rejects_partial_or_invalid_values():
+    partial = _run_script(
+        "start_robosar_webots.sh",
+        "--dry-run",
+        "--no-vglrun",
+        env={"WEBOTS_STREAM": "true"},
+    )
+    invalid = _run_script(
+        "start_robosar_webots.sh",
+        "--dry-run",
+        "--no-vglrun",
+        env={"WEBOTS_STREAM": "true", "WEBOTS_PORT": "70000"},
+    )
+
+    assert partial.returncode == 2
+    assert "WEBOTS_STREAM and WEBOTS_PORT must be set together" in partial.stderr
+    assert invalid.returncode == 2
+    assert "WEBOTS_PORT must be between 1 and 65535" in invalid.stderr
 
 
 def test_run_vnc_gpu_source_exports_vnc_display_and_virtualgl_defaults(tmp_path: Path):
@@ -67,8 +145,8 @@ def test_run_vnc_gpu_source_exports_vnc_display_and_virtualgl_defaults(tmp_path:
     assert f"XAUTHORITY={xauth_file}" in output
     assert "ROS2SWARM_USE_VGLRUN=true" in output
     assert "ROBOSAR_USE_VGLRUN=true" in output
-    assert "ROS2SWARM_VGLRUN_DEVICE=/dev/dri/card0" in output
-    assert "ROBOSAR_VGLRUN_DEVICE=/dev/dri/card0" in output
+    assert "ROS2SWARM_VGLRUN_DEVICE=/dev/dri/card2" in output
+    assert "ROBOSAR_VGLRUN_DEVICE=/dev/dri/card2" in output
     assert "QT_X11_NO_MITSHM=1" in output
 
 
@@ -88,7 +166,7 @@ def test_start_simulation_dry_run_auto_sources_vnc_gpu_helper(tmp_path: Path):
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
     assert f"[start_simulation][dry-run] vnc-gpu: DISPLAY=:8 XAUTHORITY={xauth_file}" in output
-    assert "vglrun -d /dev/dri/card0 ros2 launch launch_webots create_enviroment.launch.py" in output
+    assert "vglrun -d /dev/dri/card2 ros2 launch launch_webots create_enviroment.launch.py" in output
 
 
 def test_start_robosar_webots_dry_run_auto_sources_vnc_gpu_helper(tmp_path: Path):
@@ -107,7 +185,7 @@ def test_start_robosar_webots_dry_run_auto_sources_vnc_gpu_helper(tmp_path: Path
     output = result.stdout + result.stderr
     assert result.returncode == 0, output
     assert f"[start_robosar_webots][dry-run] vnc-gpu: DISPLAY=:9 XAUTHORITY={xauth_file}" in output
-    assert "vglrun -d /dev/dri/card0 ros2 launch launch_webots robosar_webots_sim.launch.py" in output
+    assert "vglrun -d /dev/dri/card2 ros2 launch launch_webots robosar_webots_sim.launch.py" in output
 
 
 def test_start_simulation_dry_run_wraps_launch_with_vglrun():
@@ -215,6 +293,13 @@ def test_start_robosar_webots_dry_run_can_disable_vglrun():
 def test_start_simulation_real_run_tolerates_unset_colcon_trace(tmp_path: Path):
     fake_bin = tmp_path / "bin"
     fake_bin.mkdir()
+    fake_workspace = tmp_path / "workspace"
+    fake_install = fake_workspace / "install"
+    fake_install.mkdir(parents=True)
+    (fake_install / "setup.bash").write_text(
+        "if [[ -n \"$COLCON_TRACE\" ]]; then :; fi\n",
+        encoding="utf-8",
+    )
 
     _write_executable(
         fake_bin / "colcon",
@@ -228,7 +313,10 @@ def test_start_simulation_real_run_tolerates_unset_colcon_trace(tmp_path: Path):
     result = _run_script(
         "start_simulation.sh",
         "--no-vglrun",
-        env={"PATH": f"{fake_bin}:{os.environ['PATH']}"},
+        env={
+            "PATH": f"{fake_bin}:{os.environ['PATH']}",
+            "WORKSPACE_DIR": str(fake_workspace),
+        },
     )
 
     output = result.stdout + result.stderr

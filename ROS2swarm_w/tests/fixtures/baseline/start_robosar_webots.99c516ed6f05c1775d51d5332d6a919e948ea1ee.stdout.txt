@@ -1,0 +1,23 @@
+============================================================
+  RoboSAR + Webots  (ROS2 side)
+============================================================
+  NUM_ROBOTS   = 5
+  ROBOT_TYPE   = e_puck
+  WEBOTS_WORLD = robosar_apartment_smallv1.wbt
+  STATIC_MAP   = /home/zjc/workspace/ROS2swarm_w/src/launch_webots/maps/robosar_apartment_smallv1.yaml
+  SIM_SCENE    = robosar_apartment_smallv1
+  SCENE_CONFIG = /home/zjc/workspace/masar_ws/src/robosar/robosar_sim_bringup/config/sim_scenes.json
+  PUBLISH_MAP  = false
+  ROS1_MASTER  = localhost
+  SPAWN_X      = [-0.8, -0.2]
+  SPAWN_Y      = [-8.0, -7.0]
+  MIN_DISTANCE = 0.2
+  SCENE_STATE  = /home/zjc/workspace/.robosar_scene_state.json
+============================================================
+[start_robosar_webots][dry-run] workdir: /home/zjc/workspace/ROS2swarm_w
+[start_robosar_webots][dry-run] vnc-gpu: DISPLAY=:99 XAUTHORITY=/tmp/masar-platform-baseline.xauth VGLRUN_DEVICE=/dev/dri/card2
+[start_robosar_webots][dry-run] build: colcon build --symlink-install --packages-select launch_webots 
+[start_robosar_webots][dry-run] source: source ./install/setup.bash
+[start_robosar_webots][dry-run] webots: ros2 launch launch_webots robosar_webots_sim.launch.py webots_world:=robosar_apartment_smallv1.wbt number_robots:=5 robot:=e_puck static_map:=/home/zjc/workspace/ROS2swarm_w/src/launch_webots/maps/robosar_apartment_smallv1.yaml sim_scene:=robosar_apartment_smallv1 scene_config:=/home/zjc/workspace/masar_ws/src/robosar/robosar_sim_bringup/config/sim_scenes.json publish_static_map:=false x_min:=-0.8 x_max:=-0.2 y_min:=-8.0 y_max:=-7.0 min_distance:=0.2 
+[start_robosar_webots][dry-run] env: export ROS_MASTER_URI=http://localhost:11311
+[start_robosar_webots][dry-run] bridge: ros2 run ros1_bridge dynamic_bridge --bridge-all-topics 

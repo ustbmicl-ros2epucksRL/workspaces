@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MASAR Webots stream acceptance</title>
+    <style>
+      html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: #08111d; }
+      webots-view { display: block; width: 100%; height: 100%; }
+      #status {
+        position: fixed; z-index: 1000; top: 12px; left: 12px; padding: 7px 10px;
+        border-radius: 6px; background: rgba(8, 17, 29, 0.88); color: #d9f99d;
+        font: 13px/1.2 system-ui, sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status" data-state="loading">loading Webots client</div>
+    <webots-view id="webots-view"></webots-view>
+    <script type="module" src="https://cyberbotics.com/wwi/R2025a/WebotsView.js"></script>
+    <script type="module">
+      const status = document.querySelector('#status');
+      await customElements.whenDefined('webots-view');
+      const view = document.querySelector('#webots-view');
+      view.onready = () => {
+        status.dataset.state = 'ready';
+        status.textContent = 'Webots stream ready';
+      };
+      view.ondisconnect = () => {
+        status.dataset.state = 'disconnected';
+        status.textContent = 'Webots stream disconnected';
+      };
+      view.connect(
+        'ws://127.0.0.1:18090/webots',
+        'w3d',
+        false,
+        false,
+        -1,
+        'https://cyberbotics.com/wwi/R2025a/images/loading/default_thumbnail.png',
+      );
+    </script>
+  </body>
+</html>

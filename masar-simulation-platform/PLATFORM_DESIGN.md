@@ -254,12 +254,12 @@ sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源�
 
 ### 6.4 图形界面
 
-- Webots：使用 `WebotsLauncher(stream=..., port=...)` 的原生 W3D streaming。当前安装签名已验证包含 `stream=False` 和 `port='1234'`。
+- Webots：使用 `WebotsLauncher(stream=..., port=...)` 的原生 W3D streaming。当前安装签名已验证包含 `stream=False` 和 `port='1234'`。[R2025a 源码](https://github.com/cyberbotics/webots/blob/R2025a/src/webots/gui/WbTcpServer.cpp)固定使用 `QTcpServer::listen(QHostAddress::Any, port)`，没有 bind-host 参数；平台因此不修改 Webots socket 行为，而由 `webots-guard` 在 host network 安装 IPv4/IPv6 INPUT 规则，只允许 loopback 访问 `18141`。
 - Gazebo：平台模式以现有脚本的 `--no-rviz` 启动主系统，并把 Gazebo GUI 放在独立虚拟显示中；noVNC 显示该桌面。
 - RViz：平台在另一虚拟显示中单独启动现有 RViz 配置，通过第二个 noVNC 面板显示。
 - 原 Qt GUI：原命令保持默认启动。平台场景可以使用默认关闭的参数跳过 Qt，以避免两个控制面同时误操作；不选择平台模式时行为不变。
 
-Webots path-prefix 反向代理、触控拖拽和断线重连需在第一阶段做真实浏览器技术验证，验证不通过时回退为同一 SSH 隧道中的独立 loopback 端口，而不是修改仿真逻辑。
+Webots path-prefix 反向代理和鼠标交互已通过真实 Chromium 验证：`/webots/` 可完成 WebSocket upgrade，W3D 画布非空，拖拽与滚轮分别改变相机姿态和位置。验收页使用 Cyberbotics R2025a viewer；生产前端将在 React 任务中锁定并本地化对应资产，断线重连也在该任务形成组件级测试。
 
 ## 7. Robot Web Tools 采用分析
 
@@ -368,7 +368,7 @@ data_sources:
 
 - 平台默认监听 `127.0.0.1:18090`。
 - 代理默认监听 `127.0.0.1:18101` 和 `127.0.0.1:18102`。
-- ROS Web、noVNC、Webots stream 等内部端口不绑定公网接口。
+- ROS Web 与 noVNC 内部端口不绑定公网接口。Webots R2025a 原生进程固定 wildcard listen，平台用健康检查覆盖的 IPv4/IPv6 INPUT 守卫拒绝所有非 loopback 的 `18141` 连接；只有 Caddy 能从 loopback 反代该流。
 - 浏览器只访问 `18090` 的同源 HTTP/WebSocket 路径。
 - API 校验 `Origin`、`run_id` 和一次性命令 token。
 - 不把 Docker socket、shell 或 rosbridge 原始发布能力暴露给浏览器。

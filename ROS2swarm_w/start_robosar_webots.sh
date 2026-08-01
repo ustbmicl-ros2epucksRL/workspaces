@@ -26,6 +26,8 @@ usage() {
   NUM_ROBOTS                机器人数量，默认 5。
   ROBOT_TYPE                机器人类型，默认 e_puck。
   WEBOTS_WORLD              世界模板名，默认 robosar_apartment_smallv1.wbt。
+  WEBOTS_STREAM             Webots 原生流媒体开关；必须与 WEBOTS_PORT 同时设置，默认不传入。
+  WEBOTS_PORT               Webots 原生流媒体端口；必须与 WEBOTS_STREAM 同时设置，默认不传入。
   STATIC_MAP                静态地图 yaml；默认按 WEBOTS_WORLD 自动推导。
   PUBLISH_STATIC_MAP        是否发布 /sim_map，默认 false。
   ROS1_MASTER_IP            ROS1 master 地址，默认 localhost。
@@ -103,6 +105,8 @@ SPAWN_Y_MAX="${SPAWN_Y_MAX:--7.0}"
 SPAWN_MIN_DISTANCE="${SPAWN_MIN_DISTANCE:-0.2}"
 USE_VGLRUN="${ROBOSAR_USE_VGLRUN:-auto}"
 VGLRUN_DEVICE="${ROBOSAR_VGLRUN_DEVICE:-/dev/dri/card0}"
+WEBOTS_STREAM="${WEBOTS_STREAM:-}"
+WEBOTS_PORT="${WEBOTS_PORT:-}"
 DRY_RUN=0
 WEBOTS_PID=""
 BRIDGE_PID=""
@@ -130,6 +134,34 @@ while (($#)); do
   esac
   shift
 done
+
+validate_webots_stream_options() {
+  if [[ -z "${WEBOTS_STREAM}" && -z "${WEBOTS_PORT}" ]]; then
+    return
+  fi
+  if [[ -z "${WEBOTS_STREAM}" || -z "${WEBOTS_PORT}" ]]; then
+    echo "[start_robosar_webots][error] WEBOTS_STREAM and WEBOTS_PORT must be set together" >&2
+    exit 2
+  fi
+
+  WEBOTS_STREAM="${WEBOTS_STREAM,,}"
+  case "${WEBOTS_STREAM}" in
+    true|false)
+      ;;
+    *)
+      echo "[start_robosar_webots][error] WEBOTS_STREAM must be true or false" >&2
+      exit 2
+      ;;
+  esac
+
+  if [[ ! "${WEBOTS_PORT}" =~ ^[0-9]+$ ]] ||
+     (( 10#${WEBOTS_PORT} < 1 || 10#${WEBOTS_PORT} > 65535 )); then
+    echo "[start_robosar_webots][error] WEBOTS_PORT must be between 1 and 65535" >&2
+    exit 2
+  fi
+}
+
+validate_webots_stream_options
 
 resolve_static_map_path() {
   local requested_map="$1"
@@ -237,6 +269,13 @@ webots_launch_cmd=(
   y_max:=${SPAWN_Y_MAX}
   min_distance:=${SPAWN_MIN_DISTANCE}
 )
+
+if [[ -n "${WEBOTS_STREAM}" ]]; then
+  webots_launch_cmd+=(
+    webots_stream:=${WEBOTS_STREAM}
+    webots_port:=${WEBOTS_PORT}
+  )
+fi
 
 if resolve_use_vglrun "$USE_VGLRUN"; then
   webots_launch_cmd=(vglrun -d "$VGLRUN_DEVICE" "${webots_launch_cmd[@]}")

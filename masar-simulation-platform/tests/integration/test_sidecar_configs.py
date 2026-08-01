@@ -21,8 +21,8 @@ def _manifest(name: str) -> dict:
 def test_compose_defines_loopback_only_web_stack() -> None:
     services = _compose()["services"]
 
-    assert {"api", "ros1-web", "ros2-web", "caddy"} <= services.keys()
-    for name in ("api", "ros1-web", "ros2-web", "caddy"):
+    assert {"api", "ros1-web", "ros2-web", "webots-guard", "caddy"} <= services.keys()
+    for name in ("api", "ros1-web", "ros2-web", "webots-guard", "caddy"):
         service = services[name]
         assert service["network_mode"] == "host", name
         assert service["environment"]["NO_PROXY"] == LOCAL_NO_PROXY, name
@@ -34,6 +34,11 @@ def test_compose_defines_loopback_only_web_stack() -> None:
     assert services["ros2-web"]["environment"]["ROS_LOCALHOST_ONLY"] == "${MASAR_ROS2_LOCALHOST_ONLY:-0}"
     assert services["ros2-web"]["ipc"] == "host"
     assert services["caddy"]["image"].startswith("caddy:2.10.2-alpine@sha256:")
+    assert services["webots-guard"]["cap_add"] == ["NET_ADMIN"]
+    assert services["webots-guard"]["security_opt"] == ["no-new-privileges:true"]
+    assert services["webots-guard"]["read_only"] is True
+    assert services["webots-guard"]["environment"]["MASAR_WEBOTS_STREAM_PORT"] == "18141"
+    assert services["caddy"]["depends_on"]["webots-guard"]["condition"] == "service_healthy"
 
 
 def test_sidecar_images_pin_ros_distro_and_packages() -> None:

@@ -1,0 +1,49 @@
+#VRML_SIM R2025a utf8
+
+WorldInfo {
+  basicTimeStep 32
+}
+Viewpoint {
+  orientation 0 0.6246950475544243 0.7808688094430305 2.233762563089534
+  position 3 -3 2.4
+}
+Background {
+  skyColor [
+    0.03 0.06 0.11
+  ]
+}
+DirectionalLight {
+  direction -0.4 0.5 -1
+  intensity 1.4
+}
+Solid {
+  translation 0 0 0.5
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.05 0.72 0.86
+        roughness 0.35
+        metalness 0.15
+      }
+      geometry Box {
+        size 1 1 1
+      }
+    }
+  ]
+  name "masar_stream_smoke_cube"
+}
+Solid {
+  translation 0 0 -0.06
+  children [
+    Shape {
+      appearance PBRAppearance {
+        baseColor 0.12 0.16 0.23
+        roughness 0.85
+      }
+      geometry Box {
+        size 5 5 0.1
+      }
+    }
+  ]
+  name "floor"
+}

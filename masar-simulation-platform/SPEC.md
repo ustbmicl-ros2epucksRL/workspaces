@@ -552,7 +552,7 @@ masar-simulation-platform/
 
 ### 19.2 端口和 URL
 
-全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口：
+除下述 Webots 原生实现例外，全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口。Webots R2025a 固定使用 `QHostAddress::Any` 且没有 bind-host 参数，因此 `webots-guard` 在 host network 对 `18141` 安装 IPv4/IPv6 INPUT 规则并拒绝所有非 loopback 流量；其有效访问边界仍是 `127.0.0.1:18141`。
 
 | 服务 | 地址 | Caddy 路径 |
 |---|---:|---|

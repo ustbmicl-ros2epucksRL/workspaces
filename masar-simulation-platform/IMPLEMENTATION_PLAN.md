@@ -350,14 +350,15 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
 - Modify: `/home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py`
 - Create: `backend/masar_platform/webots.py`, `tests/integration/test_webots_proxy.py`
+- Create: `deploy/webots-guard/Dockerfile`, `deploy/webots-guard/webots-port-guard`
 
-- [ ] **Step 1: Capture the pre-change command baseline.** Run `--dry-run` for `start_simulation.sh` and `start_robosar_webots.sh`; save stdout under `tests/fixtures/baseline/` with the current commit SHA and do not edit the fixture manually.
+- [x] **Step 1: Capture the pre-change command baseline.** Run `--dry-run` for `start_simulation.sh` and `start_robosar_webots.sh`; save stdout under `tests/fixtures/baseline/` with the current commit SHA and do not edit the fixture manually.
 
-- [ ] **Step 2: Write failing compatibility tests.** Assert the current default launch still has `stream=false` and the existing port, while `WEBOTS_STREAM=true WEBOTS_PORT=18141 ./start_robosar_webots.sh --dry-run --no-vglrun` forwards explicit `webots_stream:=true webots_port:=18141` launch arguments and both the swarm and RoboSAR launch paths pass `stream=True`, `port='18141'` to `WebotsLauncher`.
+- [x] **Step 2: Write failing compatibility tests.** Assert the current default launch still has `stream=false` and the existing port, while `WEBOTS_STREAM=true WEBOTS_PORT=18141 ./start_robosar_webots.sh --dry-run --no-vglrun` forwards explicit `webots_stream:=true webots_port:=18141` launch arguments and both the swarm and RoboSAR launch paths pass `stream=True`, `port='18141'` to `WebotsLauncher`.
 
-- [ ] **Step 3: Implement the smallest default-off argument change.** Make `start_robosar_webots.sh` consume the platform-only `WEBOTS_STREAM`/`WEBOTS_PORT` environment metadata, add declared launch arguments to both Webots launch paths, and forward them. Preserve the current defaults and all existing world, mode, GUI and supervisor behavior when those variables are absent.
+- [x] **Step 3: Implement the smallest default-off argument change.** Make `start_robosar_webots.sh` consume the platform-only `WEBOTS_STREAM`/`WEBOTS_PORT` environment metadata, add declared launch arguments to both Webots launch paths, and forward them. Preserve the current defaults and all existing world, mode, GUI and supervisor behavior when those variables are absent.
 
-- [ ] **Step 4: Run existing ROS2 tests and dry-run comparisons.**
+- [x] **Step 4: Run existing ROS2 tests and dry-run comparisons.**
 
   ```bash
   python3 -m pytest /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py -q
@@ -368,7 +369,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
   Expected: existing tests pass; default business argv remains unchanged except for explicit platform arguments.
 
-- [ ] **Step 5: Verify the Webots path.** Start a stream-only world on port 18141, request `/webots/` through Caddy, assert WebSocket upgrade, non-empty canvas pixels in Chromium, and drag/zoom changes the camera state. If path-prefix handling fails, configure Caddy path stripping and repeat; do not expose a second public port.
+- [x] **Step 5: Verify the Webots path.** Start a stream-only world on port 18141, request `/webots/` through Caddy, assert WebSocket upgrade, non-empty canvas pixels in Chromium, and drag/zoom changes the camera state. If path-prefix handling fails, configure Caddy path stripping and repeat; do not expose a second public port. Webots R2025a has no bind-host option, so the accepted deployment adds an exact IPv4/IPv6 firewall guard that rejects non-loopback ingress without altering the native process.
 
 - [ ] **Step 6: Commit the compatibility change separately from new platform code.**
 

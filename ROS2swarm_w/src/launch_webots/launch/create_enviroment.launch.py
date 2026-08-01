@@ -65,6 +65,8 @@ def generate_launch_description():
     transport_object_shape = 'cube'
     webots_mode = 'realtime'
     webots_gui = 'true'
+    webots_stream = 'false'
+    webots_port = '1234'
     navigation_target_layout = 'random'     #random or columns
 
     # 随机位置生成参数
@@ -107,6 +109,10 @@ def generate_launch_description():
             webots_mode = arg.split(":=")[1]
         elif arg.startswith("webots_gui:="):
             webots_gui = arg.split(":=")[1]
+        elif arg.startswith("webots_stream:="):
+            webots_stream = arg.split(":=")[1]
+        elif arg.startswith("webots_port:="):
+            webots_port = arg.split(":=")[1]
         elif arg.startswith("navigation_target_layout:="):
             navigation_target_layout = arg.split(":=")[1]
         elif arg.startswith("random_seed:="):
@@ -317,6 +323,20 @@ def generate_launch_description():
         )
     ])
     ld.add_action(log)
+    ld.add_action(
+        DeclareLaunchArgument(
+            'webots_stream',
+            default_value='false',
+            description='Enable the native Webots W3D stream',
+        )
+    )
+    ld.add_action(
+        DeclareLaunchArgument(
+            'webots_port',
+            default_value='1234',
+            description='Webots TCP/W3D stream port',
+        )
+    )
 
     if webots_flag:
         # 通过 start_webots.launch.py 启动 Webots（含 supervisor 和退出处理）
@@ -328,6 +348,8 @@ def generate_launch_description():
                 'world_path': generated_world_path,
                 'webots_mode': webots_mode,
                 'webots_gui': webots_gui,
+                'webots_stream': webots_stream,
+                'webots_port': webots_port,
             }.items(),
         )
         ld.add_action(webots_start)

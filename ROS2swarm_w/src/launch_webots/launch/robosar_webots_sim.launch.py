@@ -138,6 +138,8 @@ def _build_launch(context, *args, **kwargs):
     normalize_scan = _to_bool(
         LaunchConfiguration('normalize_scan').perform(context)
     )
+    webots_stream = LaunchConfiguration('webots_stream').perform(context)
+    webots_port = LaunchConfiguration('webots_port').perform(context)
     
     if number_robots < 1:
         raise ValueError('number_robots must be >= 1')
@@ -206,7 +208,11 @@ def _build_launch(context, *args, **kwargs):
             PythonLaunchDescriptionSource(
                 os.path.join(package_share, 'launch', 'start_webots.launch.py')
             ),
-            launch_arguments={'world_path': generated_path}.items(),
+            launch_arguments={
+                'world_path': generated_path,
+                'webots_stream': webots_stream,
+                'webots_port': webots_port,
+            }.items(),
         )
     )
 
@@ -302,5 +308,7 @@ def generate_launch_description():
         DeclareLaunchArgument('rviz', default_value='false'),
         DeclareLaunchArgument('apply_spawn_offset', default_value='true'),
         DeclareLaunchArgument('normalize_scan', default_value='true'),
+        DeclareLaunchArgument('webots_stream', default_value='false'),
+        DeclareLaunchArgument('webots_port', default_value='1234'),
         OpaqueFunction(function=_build_launch),
     ])

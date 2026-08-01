@@ -10,10 +10,10 @@ review all pass. The next task must not start before that point.
 | 1. Scenario Schema, Profiles and Static Commands | PASS | `25 passed`; full unit suite `32 passed`; schema, compile, Ruff, container dry-runs passed | APPROVED | APPROVED after fixes | `cc45188`, `ea83a16`, `84427db`, `4c79639`, `cb28cd4`, `f2be4c6` |
 | 2. SQLite State, Lease and Events | PASS | `35 passed`; full unit suite `67 passed`; schema, compile, Ruff passed | APPROVED after fixes | APPROVED after fixes | `bc1e0b4`, `bcade1a`, `d553693` |
 | 3. Runtime Agent and Process Ownership | PASS | `23 passed`; full suite `90 passed`; Ruff, compileall, diff check and both container py_compile/--help checks passed | APPROVED | APPROVED after Python 3.8 fix | `16b56e6`, `043fc10`, `a9df88a` |
-| 3.5. Integration Contracts | PASS | full suite `103 passed`; Ruff, compileall, Compose build/health, signed ROS1/ROS2 topic probes and platform-mode dry-runs passed | APPROVED | APPROVED | pending commit |
-| 4. Orchestrator and REST/WebSocket API | PASS | `19 passed`; full suite `125 passed`; Ruff, compileall, API/Compose smoke and live ROS1/ROS2 command publication passed | APPROVED | APPROVED | pending commit |
-| 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | pending commit |
-| 6. Webots Stream Compatibility | PENDING | - | - | - | - |
+| 3.5. Integration Contracts | PASS | full suite `103 passed`; Ruff, compileall, Compose build/health, signed ROS1/ROS2 topic probes and platform-mode dry-runs passed | APPROVED | APPROVED | `8936d8a` |
+| 4. Orchestrator and REST/WebSocket API | PASS | `19 passed`; full suite `125 passed`; Ruff, compileall, API/Compose smoke and live ROS1/ROS2 command publication passed | APPROVED | APPROVED | `8936d8a` |
+| 5. ROS1/ROS2 Web Sidecars and Reverse Proxy | PASS | `7 passed`; full suite `130 passed`; both sidecars/Caddy healthy; live ROS1+ROS2 subscribe and publish-denial smoke passed | APPROVED | APPROVED | `8936d8a` |
+| 6. Webots Stream Compatibility | PASS | ROS2 host/container `15 passed` each; platform full suite `134 passed`; real WebSocket, Chromium canvas/interaction and firewall isolation passed | APPROVED after native-bind correction | APPROVED | pending commit |
 | 7. Gazebo/RViz/noVNC Displays | PENDING | - | - | - | - |
 | 8. React Workbench | PENDING | - | - | - | - |
 | 9. Robot Web Tools Adapters | PENDING | - | - | - | - |
@@ -112,3 +112,17 @@ Date: 2026-08-01
 - Environment acceptance: every Compose service receives exact `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`; sidecars use host networking without Docker-published ports; the only browser entry remains loopback port `18090`.
 - Automated acceptance: `python -m pytest tests/integration/test_sidecar_configs.py tests/unit/test_deploy_contract.py -q` returned `7 passed`; the full suite returned `130 passed`; Ruff, Compose validation and Caddy validation passed.
 - Cleanup acceptance: the temporary API process, ROS1 master and project Compose containers were stopped after the live smoke. Existing business containers were left running and their original direct-run behavior remains unchanged.
+
+## Task 6: Webots Stream Compatibility
+
+Date: 2026-08-01
+
+- Compatibility baseline: `start_simulation.sh` and `start_robosar_webots.sh` dry-run stdout was captured automatically against pre-change commit `99c516ed6f05c1775d51d5332d6a919e948ea1ee`. With no stream environment, both commands still match the captured output byte-for-byte.
+- Default-off integration: `start_webots.launch.py` declares `webots_stream=false` and `webots_port=1234`; swarm and RoboSAR launch paths forward both values. Only platform invocations add `webots_stream:=true webots_port:=18141`, and `start_robosar_webots.sh` rejects partial, non-boolean or out-of-range input.
+- Existing-project regression: `ROS2swarm_w/tests/test_webots_start_scripts.py` returned `15 passed` on the host and `15 passed` in `masar_ros2_bridge-w`. The launch package rebuilt successfully in the Humble container and `ros2 launch ... --show-args` exposed both new arguments. Shell syntax and Python compilation passed.
+- Native server correction: Webots R2025a source fixes its TCP server to `QHostAddress::Any` and exposes no bind-host option. An attempted process-level bind rewrite was rejected because repeat launches could exit `139`; that implementation and its artifact were removed. The accepted design leaves Webots native behavior intact and runs a dedicated `NET_ADMIN` guard that installs exact IPv4 and IPv6 INPUT rules rejecting port `18141` from non-loopback interfaces.
+- Network acceptance: `webots-guard` and Caddy were healthy; both firewall rules were present. Direct loopback TCP worked, Caddy `/webots/` returned WebSocket `101`, and a connection from an independent Docker bridge namespace to `202.204.62.208:18141` was rejected. A stop/start lifecycle check proved the exact rules are removed on graceful stop and restored before health becomes ready. Caddy `127.0.0.1:18090` remains the only browser entry.
+- Browser acceptance: the R2025a Webots viewer reached `ready` with a `1280x720` canvas. The pre-interaction screenshot contained `1755` colors; drag changed viewpoint position/orientation, wheel changed position again, and the before/after SHA-256 values differed. Chromium reported no JavaScript/network errors; GPU readback performance warnings are non-functional diagnostics.
+- Dependency boundary: the acceptance-only HTML loads the exact R2025a viewer from Cyberbotics. The production React task must vendor or lock those assets and may not depend on an unpinned runtime CDN.
+- Automated acceptance: the platform suite returned `134 passed`; Ruff `0.9.2`, `compileall`, Compose validation, Caddy/guard health, Bash syntax, Python compilation and `git diff --check` passed.
+- Cleanup acceptance: all temporary Webots/ROS launch process groups and the rejected bind library were removed. Caddy and the Webots firewall guard remain as healthy platform services; both original business containers remain running.
