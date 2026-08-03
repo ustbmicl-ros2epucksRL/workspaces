@@ -721,14 +721,14 @@ steps are recorded in `docs/superpowers/plans/2026-08-04-workspace-path-and-ssh-
 
 ### 21.3 Documentation layout and stale-content removal
 
-- [ ] Keep project summary and quick start in the root `README.md`.
-- [ ] Move operations, specification, architecture, implementation plan and acceptance ledger
+- [x] Keep project summary and quick start in the root `README.md`.
+- [x] Move operations, specification, architecture, implementation plan and acceptance ledger
   to `docs/`; update every current link.
-- [ ] Remove duplicate 2026-08-03 Compose task documents and all active host-specific paths or
+- [x] Remove duplicate 2026-08-03 Compose task documents and all active host-specific paths or
   alternate SSH port instructions.
 
 ### 21.4 Complete regression and closure
 
-- [ ] Run the complete Python, frontend, Compose, shell, Ruff, compile and diff gates.
-- [ ] Verify all eight services, the gateway and current Run state without launching a new Run.
-- [ ] Record exact results in `docs/ACCEPTANCE.md` and recheck README/operations consistency.
+- [x] Run the complete Python, frontend, Compose, shell, Ruff, compile and diff gates.
+- [x] Verify all eight services, the gateway and current Run state without launching a new Run.
+- [x] Record exact results in `docs/ACCEPTANCE.md` and recheck README/operations consistency.

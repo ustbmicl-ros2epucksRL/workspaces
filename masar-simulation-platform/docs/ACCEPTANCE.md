@@ -392,7 +392,8 @@ the Compose-managed v2 runtimes and the production browser gateway.
   run-only listener remained.
 - After every Run, `/api/v1/runs/current` returned `null` and all eight Compose
   services remained healthy. No runtime container restart, Agent injection or
-  host-wide cleanup command occurred. Stage E4 may now begin.
+  host-wide cleanup command occurred. The fresh-overlay and documentation closure
+  evidence is recorded in E4 below.
 
 ## E4 Fresh Overlay and Documentation Closure
 
@@ -428,3 +429,31 @@ main workspace or unrelated containers.
   ordinary Chromium `41 passed, 8 live-only skipped`; TypeScript, Vite build,
   Ruff, compileall, Compose config, shell/Python syntax and `git diff --check`
   all passed. E4 and Compose-managed closure are complete.
+
+## Stage F Acceptance: Portable Workspace, Unified SSH Entry and Documentation Layout
+
+Date: 2026-08-04
+
+Status: `PASSED`. The deployment contract no longer depends on a host-specific checkout
+path, the browser and SSH entry use the same port, and project process documentation is
+organized under `docs/` with a root README quick start.
+
+- Workspace acceptance: `deploy/platform.sh` derives the parent of the current platform
+  checkout when no override is set, normalizes an explicit `MASAR_WORKSPACE_ROOT`, rejects
+  an invalid root before Docker is called, and preserves `/root/workspace` plus the three
+  canonical project paths inside both runtime containers. Focused startup/deployment tests
+  returned `21 passed`; a real read-only `make docker-doctor` passed.
+- SSH acceptance: start/status output now reports `http://127.0.0.1:18090` and
+  `LocalForward 18090 127.0.0.1:18090`. No second platform URL, SSH process, listener or
+  proxy port was added. Focused platform startup tests returned `13 passed` and a live
+  `make docker-status` showed the same mapping.
+- Documentation acceptance: `README.md` contains the project summary and quick start;
+  `docs/OPERATIONS.md`, `docs/SPEC.md`, `docs/PLATFORM_DESIGN.md`,
+  `docs/IMPLEMENTATION_PLAN.md` and this ledger are the current process documents.
+  The document contract returned `4 passed`; the active-reference scan found no
+  host-specific workspace path, alternate browser port or unrelated proxy port.
+- Full regression: platform Python returned `258 passed, 2 skipped`; frontend unit tests
+  returned `36 passed`; ordinary Chromium returned `41 passed, 8 skipped`; TypeScript,
+  Vite build, Ruff, compileall, Compose config, Bash syntax, npm audit and scoped diff
+  checks passed. Gateway health returned `ok`, all eight Compose services were healthy and
+  `/api/v1/runs/current` returned `{"run":null}`. No new simulation Run was started.

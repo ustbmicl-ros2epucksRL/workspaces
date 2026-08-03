@@ -320,24 +320,24 @@ git commit -m "docs: remove stale deployment and ssh instructions"
 - Consumes: passing Task 1-3 tests, the current Compose stack, and the existing browser gateway.
 - Produces: reproducible acceptance evidence and a clean working tree except for pre-existing user changes.
 
-- [ ] **Step 1: Run the complete static and application test suite.**
+- [x] **Step 1: Run the complete static and application test suite.**
 
 ```bash
-python3 -m pytest -q
+.venv/bin/python -m pytest -q
 npm --prefix frontend run test:unit
 npm --prefix frontend run typecheck
 npm --prefix frontend run build
-ruff check backend tests
-python3 -m compileall -q backend agents
+.venv/bin/ruff check backend tests
+.venv/bin/python -m compileall -q backend agents
 bash -n deploy/platform.sh deploy/agent-bootstrap.sh deploy/sidecars/run-ros1-sidecar deploy/sidecars/run-ros2-sidecar
 docker compose -f deploy/compose.yaml config --quiet
-git diff --check
+git diff --check -- .
 ```
 
 Expected: all existing tests and new path/document contracts pass; frontend and Python
 quality gates remain green.
 
-- [ ] **Step 2: Verify the live stack without changing Run state.**
+- [x] **Step 2: Verify the live stack without changing Run state.**
 
 ```bash
 make docker-doctor
@@ -349,14 +349,14 @@ curl --noproxy '*' -fsS http://127.0.0.1:18090/api/v1/runs/current
 Expected: doctor passes, all eight Compose services are healthy, gateway health is `ok`,
 and the current Run is `null` or is reported without being stopped by this gate.
 
-- [ ] **Step 3: Record the final acceptance evidence.**
+- [x] **Step 3: Record the final acceptance evidence.**
 
 Append a dated entry to `docs/ACCEPTANCE.md` containing the exact test counts, `docker compose
 config` result, resolved workspace-root behavior, gateway URL, and the one-to-one SSH snippet.
 Mark this plan's path and documentation stages `PASS`; do not claim a new simulation Run if
 none was executed.
 
-- [ ] **Step 4: Update the plan checkboxes and review the diff.**
+- [x] **Step 4: Update the plan checkboxes and review the diff.**
 
 ```bash
 git diff --stat
@@ -368,7 +368,7 @@ rg -n '/home/zjc/workspace|18089|7897' deploy README.md docs/OPERATIONS.md docs/
 Expected: only intentional files from Tasks 1-4 are changed by this work, no active stale
 references remain, and unrelated ROS project changes are untouched.
 
-- [ ] **Step 5: Commit the acceptance record.**
+- [x] **Step 5: Commit the acceptance record.**
 
 ```bash
 git add docs/ACCEPTANCE.md docs/IMPLEMENTATION_PLAN.md
