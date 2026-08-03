@@ -33,7 +33,7 @@
 - Consumes: optional `MASAR_WORKSPACE_ROOT`, the platform checkout path, and the three sibling directories.
 - Produces: exported absolute `MASAR_WORKSPACE_ROOT`, a stable `workspace_root` shell variable, and a doctor log line identifying the resolved root.
 
-- [ ] **Step 1: Add failing path-contract tests.**
+- [x] **Step 1: Add failing path-contract tests.**
 
 Extend the existing fake Docker harness with two tests:
 
@@ -66,18 +66,18 @@ Update the Compose contract assertion to retain the environment-driven mount and
 test that the runtime command still uses the container-internal platform path. Add a short
 `.env.example` assertion only if the file's wording changes in this task.
 
-- [ ] **Step 2: Run the narrow tests and confirm the new tests fail.**
+- [x] **Step 2: Run the narrow tests and confirm the new tests fail.**
 
 Run:
 
 ```bash
-python3 -m pytest tests/unit/test_platform_startup.py::test_doctor_normalizes_an_explicit_workspace_symlink tests/unit/test_platform_startup.py::test_invalid_workspace_root_fails_before_docker -q
+.venv/bin/python -m pytest tests/unit/test_platform_startup.py::test_doctor_normalizes_an_explicit_workspace_symlink tests/unit/test_platform_startup.py::test_invalid_workspace_root_fails_before_docker -q
 ```
 
 Expected: the symlink test cannot find a normalized-root log line and the invalid-root test
 does not fail before the fake Docker checks.
 
-- [ ] **Step 3: Implement root resolution and validation.**
+- [x] **Step 3: Implement root resolution and validation.**
 
 In `deploy/platform.sh`, add a `resolve_workspace_root` function before its first call:
 
@@ -102,19 +102,19 @@ at the start of `doctor_impl`, so every `init`, `start`, and `doctor` invocation
 resolved host path without embedding a particular user's path in source or docs. Update
 `.env.example` to say the override is only needed when the sibling workspace is elsewhere.
 
-- [ ] **Step 4: Run the narrow path and Compose tests.**
+- [x] **Step 4: Run the narrow path and Compose tests.**
 
 Run:
 
 ```bash
-python3 -m pytest tests/unit/test_platform_startup.py tests/unit/test_deploy_contract.py -q
+.venv/bin/python -m pytest tests/unit/test_platform_startup.py tests/unit/test_deploy_contract.py -q
 docker compose -f deploy/compose.yaml config --quiet
 bash -n deploy/platform.sh
 ```
 
 Expected: all selected tests pass, Compose returns zero, and Bash syntax is valid.
 
-- [ ] **Step 5: Commit the portable-path change.**
+- [x] **Step 5: Commit the portable-path change.**
 
 ```bash
 git add deploy/platform.sh tests/unit/test_platform_startup.py tests/unit/test_deploy_contract.py .env.example
