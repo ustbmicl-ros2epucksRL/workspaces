@@ -1,8 +1,8 @@
 # MASAR 统一仿真平台可执行 Spec
 
-状态：已批准，实施中  
-版本：0.3-approved  
-最后更新：2026-07-31  
+状态：已批准，Compose 托管 E1-E4 全部验收通过
+版本：0.5-compose-managed
+最后更新：2026-08-04
 对应设计：[PLATFORM_DESIGN.md](./PLATFORM_DESIGN.md)
 
 ## 1. Context
@@ -13,12 +13,12 @@
 
 ## 2. Verified Current State
 
-验证日期：2026-07-31。
+原始业务环境验证始于 2026-07-31；当前部署契约更新于 2026-08-03。
 
-1. `masar_ros1_srv-g` 与 `masar_ros2_bridge-w` 均运行中、使用 host network，并共同挂载 `/home/zjc/workspace:/root/workspace`。
-2. ROS1 容器是 Ubuntu 20.04 + Noetic；ROS2 容器是 Ubuntu 22.04 + Humble + Webots R2025a。
+1. 单一 Compose 项目管理 `ros1-runtime`、`ros2-runtime`、`ros1-web`、`ros2-web`、`api`、`display`、`webots-guard` 和 `caddy` 8 个常驻服务。
+2. ROS1 runtime 使用公开固定 digest `talent18/masar_ros1_srv-g:v2@sha256:3639f637...`；ROS2 runtime 使用 `talent18/masar_ros2_bridge-w:v2@sha256:5550e15e...`。二者均使用 host network、host IPC、GPU/X11 和 workspace bind mount。
 3. 隔离 ROS master 上的 ROS1/ROS2 `dynamic_bridge` 通信已验证可用。
-4. 两个容器当前都未安装 ROS Web Tools 网关包。
+4. ROS Web Tools 网关由独立 ROS1/ROS2 sidecar 提供，不安装进业务 runtime。
 5. `WebotsLauncher.__init__` 的当前安装签名为 `stream=False`、`port='1234'`，现有 `start_webots.launch.py:38-45` 尚未传入这两个参数。
 6. `start_simulation.sh:20-57` 已列出 Webots world、pattern、机器人数量、机器人类型、传感器类型和 logging 等配置，但当前 CLI 仅处理显示与 dry-run；平台不得通过修改脚本全局变量来保存一次性实验配置。
 7. `masar_ws/README.md:19-137` 记录了五类现有顶层运行入口和 Webots 双容器启动顺序。
@@ -75,7 +75,7 @@
 - `robot`: `e_puck`、`burger`。
 - `sensor_type`: `lidar`、`ir`，且必须通过所选机器人/行为兼容性校验。
 - `number_robots`: 正整数，MVP UI 限制为 1 到 20；更高数量只能修改场景清单后启用。
-- `webots_world`: 只能选择 `launch_webots/worlds` 中清单允许的 `.wbt`。
+- `webots_world`: 群行为验证固定为 `command_world.wbt`，由场景清单内部提供；前端不显示世界选择控件，API 也拒绝其他世界值。
 - 出生区域、最小距离、障碍物数量、Webots mode、logging 和 transport object shape 使用现有 launch 约束。
 
 平台 wrapper 必须构造与 `start_simulation.sh:209-230` 等价的 `ros2 launch launch_webots create_enviroment.launch.py ...` 命令，不编辑 `start_simulation.sh` 文件。
@@ -86,10 +86,9 @@ DEFORM demo 的 `response_goal_sequence_node.py:147-156` 接收 START/STOP，并
 
 `control.gazebo.response-controller` 的 `mode` 只允许：
 
-- `roundflocking`
 - `roundflocking-checkpoint`
 - `roundflocking-heuristic`
-- `transport`
+- `transport`（前端显示为 `transport-synchronized_slots`）
 - `transport-checkpoint`
 - `transport-heuristic`
 
@@ -106,7 +105,7 @@ module: exploration
 simulator: webots
 runtime:
   ros1_master_uri: http://127.0.0.1:11311
-  ros2_domain_id: 0
+  ros2_domain_id: 42
 display_profile: exploration
 parameters: {}
 steps:
@@ -248,21 +247,22 @@ GET /runs/{run_id}/data-sources
 GET /runs/{run_id}/robots
 ```
 
-每个数据源至少返回：
+`/data-sources` 返回场景 profile 允许的数据源模式，不伪装成当前 ROS 图快照。例如：
 
 ```json
 {
   "graph": "ros2",
-  "topic": "/robot_2/scan",
-  "type": "sensor_msgs/msg/LaserScan",
+  "topic_pattern": "/<robot>/scan",
+  "message_types": ["sensor_msgs/msg/LaserScan"],
   "capability": "laser",
-  "availability": "ONLINE",
-  "observed_hz": 9.9,
-  "last_message_age_ms": 42
+  "required": true,
+  "availability": "UNKNOWN"
 }
 ```
 
-`observed_hz` 与 `last_message_age_ms` 是数据链路健康信息，不写入算法评价结果。
+浏览器 `RosDataRuntime` 使用 rosapi 周期发现真实话题，将允许模式扩展为精确 topic，校验消息类型并负责订阅、首帧、`observed_hz`、`last_message_age_ms` 和陈旧状态。上述观测值是数据链路健康信息，不写入算法评价结果。
+
+`/robots` 根据该 Run 已解析的参数返回期望机器人清单，包括 `robot_id`、显示名称、模型、topic prefix 和 `expected=true`。该清单用于在 ROS 发现尚未完成时保持完整选择器与状态行，不代表机器人当前在线；实时状态仍由浏览器对真实 ROS 消息的观测决定。
 
 ### 8.5 事件格式
 
@@ -294,15 +294,17 @@ GET /runs/{run_id}/robots
 
 ### UI-002 同时显示
 
-探索组和完整搜救场景进入 `RUNNING` 后，首屏必须同时包含仿真、RViz、任务地图和传感器四个可见面板；不得要求用户切换互斥标签才能知道另一个面板是否正常。
+探索组和完整搜救场景进入 `RUNNING` 后，首屏必须同时包含仿真、RViz、任务分配与建图、传感器四个可见面板；不得要求用户切换互斥标签才能知道另一个面板是否正常。
 
 ### UI-003 群行为布局
 
-群行为与控制场景不显示 RViz。释放区域用于扩大仿真、位置/轨迹和传感器面板。
+群行为与控制场景不显示 RViz。桌面端采用上下布局：仿真面板在上方横跨中央工作区，位置/轨迹与传感器面板在下方等宽并排；移动端按仿真、位置/轨迹、传感器顺序纵向排列。多机器人轨迹必须位于一个统一世界坐标系：Webots 使用 `/global_info`，Gazebo 使用 `/gazebo/model_states`；禁止直接把各机器人的局部 `odom` 叠加为总体轨迹。
 
 ### UI-004 面板操作
 
 仿真、RViz、地图、传感器和日志面板均支持调整尺寸、最大化、恢复和弹出。动态标题或状态变化不得改变固定工具栏高度。
+
+桌面右侧状态栏不得用固定小高度裁剪内容。视口有剩余高度时，各状态面板按权重增长并填满右栏；视口高度不足时，面板保持内容所需的最小高度，由右栏整体纵向滚动。搜救对象列表在任务态势面板内独立滚动，滚动到底后最后一项仍必须位于面板边界内。
 
 ### UI-005 数据源选择
 
@@ -310,7 +312,7 @@ GET /runs/{run_id}/robots
 
 ### UI-006 缺失数据
 
-不存在话题时显示“未提供”；允许但尚未发布显示“等待数据”；超时显示 `STALE` 和最后消息时间；类型不匹配显示错误。以上状态不得显示伪造的实时数值。
+不存在话题时显示“未提供”；允许但尚未发布显示“等待数据”；超时显示 `STALE` 和最后消息时间；类型不匹配显示错误。以上状态不得显示伪造的实时数值。事件/快照数据在收到首条消息前显示 `—`，只有真实空快照才可显示计数 `0`。未创建 Run 以及 `COMPLETED`/`FAILED` 终态不得把场景默认机器人数量显示成实时机器人、轨迹图例或传感器选项。
 
 ### UI-007 群行为指标边界
 
@@ -318,7 +320,9 @@ GET /runs/{run_id}/robots
 
 ### UI-008 现有业务字段
 
-- `/percent_completed` 只出现在探索组和完整搜救。
+- `/percent_completed` 只出现在探索组和完整搜救的“任务分配与建图”面板；其 ROS 值是 `0..1` 比例，UI 显示时乘以 100。
+- `/task_allocation` 表示最近一次新分配批次，显示为“本轮分配”，不得解释为全部当前任务数。
+- 默认 HIGH 分配器不发布 `/tasks_completed` 消息，因此 exploration、exploration_webots 和 rescue profile 不公开“已完成任务”字段。
 - 任务队列和 `EmergencyTask.status` 只出现在完整搜救。
 - `ResponseGroupStatus` 中的规划状态、slot error、clearance 等只在响应组实际发布该消息的场景显示。
 
@@ -329,6 +333,16 @@ Webots、Gazebo 和 RViz 面板支持其原生鼠标拖动、旋转或缩放。�
 ### UI-010 断线恢复
 
 浏览器刷新或短暂断开后，使用 `run_id` 和事件 cursor 恢复当前运行，不重新提交启动请求。
+
+### UI-011 非占位数据面板
+
+每个可见面板必须至少消费一种 profile 允许的真实 ROS 消息、Run 事件或 Agent 进程日志。面板不得只显示固定“等待数据”或说明文字。话题可在浏览器连接后创建，因此运行期间必须周期性重新发现，并保留既有订阅。任务命令只在 Run 为 `RUNNING` 时可用。
+
+### UI-012 模块化数据内容
+
+- 群行为：由仿真器世界真值驱动的动态机器人二维轨迹/位姿、按 `e_puck` 或 `burger` 可用能力展示的传感器、机器人在线状态、真实话题健康、进程日志；`discussed_dispersion_pattern` 额外展示真实讨论事件/状态。Odometry 仍可作为所选机器人的传感器读数，但不决定总体轨迹。
+- 探索：“任务分配与建图”显示 Qt 任务分配图、地图覆盖率、候选前沿和本轮分配；“探索任务态势”只显示在线探索机器人以及火源/受害者/待推送障碍的真实快照计数、位置和探测机器人。传感器按机器人选择相机/Scan/IMU/Odometry，另有真实进程日志；删除静态任务地图和跨面板重复字段。
+- 完整搜救：包含探索全部内容。响应组默认摘要只保留六项真实数据：合并后的响应/规划状态、运动使能、当前任务、任务队列、编队 RMS/最大误差和最小净空；不单列语义相近或低频使用的行为模式、编队尺度、响应机器人数量和最近结果。
 
 ## 10. ROS Web Gateway Requirements
 
@@ -342,15 +356,15 @@ Webots、Gazebo 和 RViz 面板支持其原生鼠标拖动、旋转或缩放。�
 
 ### RW-003 TF
 
-需要坐标变换的地图图层通过 `tf2_web_republisher` 请求固定帧和显式可见机器人帧。当前直接使用 OccupancyGrid 与 Odometry 的二维路径不发起多余 TF 请求；默认不传输完整 TF 树。
+需要坐标变换的地图图层通过 `tf2_web_republisher` 请求固定帧和显式可见机器人帧。OccupancyGrid 保持其声明帧；群行为总体轨迹直接消费仿真器世界位姿，不为局部 Odometry 猜测或合成跨机器人 TF；默认不传输完整 TF 树。
 
 ### RW-004 视频
 
-相机通过 `web_video_server` 提供。单个浏览器默认最多一个活动主视频流，切换后释放旧流。
+相机通过 `web_video_server` 的 MJPEG stream 提供。单个浏览器默认最多一个活动主视频流，切换后释放旧流。低频、latched 的 `/task_allocation_image` 使用 snapshot：首帧前每 1.5 秒重试，成功后每 3 秒刷新，并通过变化的查询参数避免浏览器缓存旧响应。
 
 ### RW-005 地图
 
-`MapPanel` 对上层提供稳定接口。MVP 使用隔离并本地打包的 ros2djs 显示 OccupancyGrid、轨迹和机器人朝向，不使用 CDN。ros3djs 1.1.0 因旧 Three.js 传递依赖未通过当前漏洞门禁，在安全版本或受维护替代品验证前不进入生产依赖。
+`MapPanel` 对上层提供稳定接口。MVP 使用现有 web-video-server 的任务分配图快照和浏览器原生 SVG 绘制世界坐标轨迹，不引入 CDN 或未维护的三维渲染依赖。`ros3djs` 1.1.0 及旧 ROS2D/EaselJS 链均不进入当前依赖。
 
 ### RW-006 背压
 
@@ -440,17 +454,17 @@ MVP summary 可以包含运行时长、最终状态、数据缺失、任务数�
 ### 界面与数据真实性
 
 7. 探索 Gazebo、探索 Webots 和完整搜救进入运行页时，仿真、RViz、地图和传感器四个面板在 1440x900 viewport 同时可见。
-8. 群行为场景不渲染 RViz 面板，也不出现“聚合度”“平均间距”“速度一致性”字段。
+8. 群行为场景不渲染 RViz 面板，也不出现“聚合度”“平均间距”“速度一致性”字段；`command_world.wbt` 为固定世界且不显示世界选择控件，机器人类型以下拉框提供 `e_puck`、`burger`；1440x900 viewport 中仿真位于轨迹和传感器上方并横跨两者，390x844 viewport 中三个面板纵向排列且无横向溢出。
 9. 当 `/robot_2/camera` 不存在时，相机区域显示“未提供”，页面 DOM 和 WebSocket 消息中均不存在该相机的伪造数值。
 10. 当已连接 topic 超过 profile 阈值未更新时，UI 在 1 个检测周期内从 ONLINE 变为 STALE，并显示最后消息 age。
-11. `/percent_completed` 只在 exploration/rescue profile 中显示；群行为 profile 即使意外发现同名话题也不订阅。
-12. `ResponseGroupStatus.rms_slot_error` 只在消息存在且类型匹配时显示；缺失时显示状态而不是 0。
+11. `/percent_completed` 只在 exploration/rescue 的任务分配与建图面板中按 `ratio * 100` 显示；`/task_allocation` 标为“本轮分配”；默认探索 profile 不公开从未发出消息的 `/tasks_completed`。静默分配/对象源显示 `—`，真实空对象快照才显示 `0`。
+12. 完整搜救响应摘要只显示第 UI-012 条规定的六项核心数据；`ResponseGroupStatus.rms_slot_error` 只在消息存在且类型匹配时显示，缺失时显示状态而不是 0。响应面板不得与后续健康面板重叠。高视口中右栏面板必须共同填满可用高度；低视口中右栏必须可滚动，任务态势列表不得被父面板裁剪。
 13. 调整尺寸、最大化、恢复和弹出任一核心面板不会触发新的 `POST /runs`，也不会重启 ROS 进程。
 14. 浏览器刷新后恢复同一 `run_id`，从最后事件 cursor 继续显示，启动步骤计数不增加。
 
 ### 可视化与网关
 
-15. Webots R2025a streaming 能在通过 SSH 转发后的 Chromium 中显示非空画面，并可拖动/缩放视角。
+15. Webots R2025a GUI 通过 `:103` VirtualGL + noVNC 在 SSH 转发后的 Chromium 中显示非空画面并可拖动/缩放；renderer 必须为 NVIDIA，连续两轮启动/停止均成功且无 `18141`/Webots/ROS 子进程残留。
 16. Gazebo noVNC 与 RViz noVNC 在独立面板中同时显示，鼠标输入只作用于获得焦点的面板。
 17. 原生地图能显示 `/sim_map`，并在 TF 可用时叠加至少一个机器人位姿。
 18. 选择新的相机源后旧视频请求在 5 秒内释放；同一浏览器不保留两个主视频流。
@@ -486,9 +500,9 @@ MVP summary 可以包含运行时长、最终状态、数据缺失、任务数�
 
 ## 16. Rollback Plan
 
-1. 平台本体通过停止 host service/compose sidecar 回滚，不删除任何现有 ROS 工程或容器。
+1. `make docker-stop` 先停止活动 Run，再关闭 8 个 Compose 服务；不会删除业务镜像、现有 ROS 工程、Run 归档或无关容器。
 2. 现有工程兼容改动按独立提交回滚；因为参数默认关闭，紧急情况下不设置平台参数即可恢复原路径。
-3. 平台失败后仍可直接进入容器运行原顶层脚本和 Qt GUI。
+3. 平台模式参数保持默认关闭；在无平台 Run 时仍可进入对应 runtime 执行原顶层脚本和 Qt GUI。
 4. 场景 catalog 版本不兼容时拒绝启动，不自动降级或执行旧清单中的原始命令。
 5. 归档文件不在回滚时自动删除。
 
@@ -544,15 +558,42 @@ masar-simulation-platform/
 └── runs/                         # 运行时生成，不提交 Git
 ```
 
-基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Playwright 1.62.1；`roslib` 2.1.0；`ros2d` 0.10.0；EaselJS 1.0.2。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞；`ros3d` 1.1.0 同样因其旧 Three.js 链产生两个高危审计项而从生产基线移除。
+基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；Node.js 22.13.1；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Playwright 1.62.1；`roslib` 2.1.0。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞；`ros3d` 1.1.0 与旧 ROS2D/EaselJS 链均不进入当前生产依赖。
 
-控制平面作为 host systemd 服务运行，sidecar 使用 Docker Compose；浏览器不能接触 Docker socket。两个既有业务容器只运行 Agent 和业务进程，不修改镜像层。
+当前部署由 `make docker-start` 调用 `deploy/platform.sh`，并由单一
+`deploy/compose.yaml` 管理 8 个服务。两个 Runtime Agent 是业务 runtime 的容器
+主进程，容器重启后自动恢复。平台不挂载 Docker socket到 API、前端、Agent 或
+sidecar。依赖保存在镜像中；workspace、API/场景源码、sidecar/display/guard 配置和
+前端构建产物采用 bind mount，修改普通源码不要求重建服务镜像。
 
-`deploy/compose.yaml` 可以提供带 `dev-api` profile 的 API 镜像用于构建和健康检查，但生产控制面仍以 host systemd 服务为准。Compose 中的每个服务，以及 host API 和两个 Runtime Agent，都必须设置 `NO_PROXY` 与 `no_proxy` 为至少 `127.0.0.1,localhost,::1`，避免服务器的 SSH 反向代理截获本机健康检查和 WebSocket。
+首次启动在缺少 overlay 时顺序执行 ROS1 `catkin_make` 和 ROS2 `colcon build`，
+完整日志写入 `.runtime/logs`。本地完整 digest 命中时不访问 registry，只拉取缺失
+的公开 runtime 镜像。ROS2 runtime、sidecar、场景与 readiness 固定 Domain `42`。
+
+Compose 中的每个服务，以及未来的 host API 和两个 Runtime Agent，都必须设置 `NO_PROXY` 与 `no_proxy` 为至少 `127.0.0.1,localhost,::1`，避免服务器代理截获本机健康检查和 WebSocket。
 
 ### 19.2 端口和 URL
 
 除下述 Webots 原生实现例外，全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口。Webots R2025a 固定使用 `QHostAddress::Any` 且没有 bind-host 参数，因此 `webots-guard` 在 host network 对 `18141` 安装 IPv4/IPv6 INPUT 规则并拒绝所有非 loopback 流量；其有效访问边界仍是 `127.0.0.1:18141`。
+
+宿主机 workspace 支持任意绝对路径，但必须保持以下同级布局：
+
+```text
+<workspace>/masar-simulation-platform
+<workspace>/masar_ws
+<workspace>/ROS2swarm_w
+```
+
+`deploy/platform.sh` 默认从当前平台 checkout 的父目录推导 workspace，并接受
+`MASAR_WORKSPACE_ROOT` 作为显式覆盖；容器内部统一使用 `/root/workspace`。浏览器
+统一入口是 `http://127.0.0.1:18090`。远程服务器只需配置：
+
+```sshconfig
+LocalForward 18090 127.0.0.1:18090
+```
+
+本地和 SSH 转发后的浏览器地址保持一致，不单独暴露 Agent、rosbridge、noVNC、Webots
+或 Docker 端口。
 
 Gazebo/RViz 显示 sidecar 必须把 noVNC 绑定到 IPv4 loopback，把底层 VNC 显式绑定到 `127.0.0.1` 与 `::1`，不得依赖 x11vnc 的隐式 IPv6 默认值。每个显示组件启动后必须立即原子记录 `run_id`、PID、PGID 和 `/proc` start ticks；停止前必须重新证明所有权，PID 被复用时拒绝发送信号。
 
@@ -568,23 +609,26 @@ Gazebo/RViz 显示 sidecar 必须把 noVNC 绑定到 IPv4 loopback，把底层 V
 | ROS2 web video | `127.0.0.1:18122` | `/video/ros2/` |
 | Gazebo noVNC | `127.0.0.1:18131` | `/display/gazebo/` |
 | RViz noVNC | `127.0.0.1:18132` | `/display/rviz/` |
-| Webots stream | `127.0.0.1:18141` | `/webots/` |
+| Webots noVNC | `127.0.0.1:18133` | `/display/webots/` |
+| Webots W3D compatibility (default off) | `127.0.0.1:18141` | 不作为生产前端路径 |
 
-Agent 只接受含 `X-Platform-Run`、`X-Platform-Signature` 和单调 `X-Platform-Sequence` 的请求。API 与 Agent 共享每次运行生成的 32 字节 HMAC secret，secret 只存内存和 root-only runtime 文件。
+Agent 只接受含 `X-Platform-Run`、`X-Platform-Signature` 和单调 `X-Platform-Sequence` 的请求。API 与 Agent 共享初始化时生成的 32 字节 HMAC secret，secret 只存在于 `.runtime/agent.secret` 和容器内只读挂载。
 
-场景 manifest 的 `runtime.ros1_master_uri` 与 `runtime.ros2_domain_id` 是进程、ROS Web sidecar 和 readiness 的共同图身份。`swarm.webots.ros2swarm` 固定使用 ROS2 domain `42`；RoboSAR Webots 桥和其余场景使用 domain `0`。Runtime Agent 启动的所有子进程同时设置 `MASAR_PLATFORM_MODE=1`，使既有 ROS1 脚本不再创建脱离 Agent 的子会话、不启动原 Qt GUI，也不执行原生模式下的全局清理。
+场景 manifest 的 `runtime.ros1_master_uri` 与 `runtime.ros2_domain_id` 是进程、ROS Web sidecar 和 readiness 的共同图身份。平台六个场景、Humble ROS Web sidecar 与原生 `ROS2swarm_w/start_simulation.sh` 统一使用 ROS2 domain `42`，避免运行时重启 sidecar 或出现浏览器连接到错误 ROS 图。Runtime Agent 启动的所有子进程同时设置 `MASAR_PLATFORM_MODE=1`，使既有 ROS1 脚本不再创建脱离 Agent 的子会话、不启动原 Qt GUI，也不执行原生模式下的全局清理。
 
 ### 19.3 command refs
 
 command ref 是源码中的静态数组，不接受用户 shell 字符串。参数通过 argv 列表传入：
 
+ROS2 群控 START/STOP 发布前，Agent 必须读取当前 `/swarm_command` 订阅数，并以该数量执行 `--wait-matching-subscriptions`；发布 QoS 固定为 volatile/reliable，并保留有限的发布器存活时间。订阅数为 0、无法解析或在命令超时内无法匹配时返回失败，不得仅因 CLI 进程退出码为 0 就报告投递成功。
+
 | ref | argv 模板摘要 | stop grace |
 |---|---|---:|
-| `ros2.swarm` | `ros2 launch launch_webots create_enviroment.launch.py webots_world={world} pattern={pattern} number_robots={n} ... webots_stream:=true webots_port:=18141` | 10/5/5 s |
+| `ros2.swarm` | `vglrun -d :0 ros2 launch launch_webots create_enviroment.launch.py webots_world=command_world.wbt pattern={pattern} number_robots={n} ... webots_stream:=false`，环境 `DISPLAY=:103` | 10/5/5 s |
 | `ros1.response_deform` | `./run_response_deform_demo.sh --no-rviz --no-vglrun --shared-master` + allowlisted launch args | 10/5/5 s |
 | `ros1.response_controller` | `./run_response_controller_demo.sh {mode} --no-rviz --no-vglrun --shared-master` | 10/5/5 s |
 | `ros1.exploration_gazebo` | `./launch_robosar_g.sh --no-rviz --no-vglrun` | 10/5/5 s |
-| `ros2.exploration_webots` | `./start_robosar_webots.sh --no-vglrun`，并设置 `webots_stream=true webots_port=18141` | 10/5/5 s |
+| `ros2.exploration_webots` | `./start_robosar_webots.sh --vglrun`，环境 `DISPLAY=:103`、`ROS2SWARM_VGLRUN_DEVICE=:0`，并设置 `webots_stream=false` | 10/5/5 s |
 | `ros1.exploration_webots` | `./launch_robosar_w.sh --no-rviz --no-vglrun` | 10/5/5 s |
 | `ros1.tepper_response` | `./run_tepper_response_demo.sh --no-rviz --no-vglrun --no-gui --shared-master` | 10/5/5 s |
 
@@ -594,7 +638,7 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 
 | scenario_id | required readiness | timeout | profile |
 |---|---|---:|---|
-| `swarm.webots.ros2swarm` | Webots stream TCP、`/clock`、`/robot_0/odom` | 180 s | `swarm_sensor` |
+| `swarm.webots.ros2swarm` | Webots noVNC、`/clock`、`/robot_0/odom` | 180 s | `swarm_sensor` |
 | `control.gazebo.response-deform` | `/clock`、`/tb_0/odom`、`/response_group/status` | 120 s | `response_demo` |
 | `control.gazebo.response-controller` | `/clock`、`/tb_0/odom`、`/response_group/behavior_mode` | 120 s | `response_demo` |
 | `exploration.gazebo.tepper` | `/clock`、`/sim_map`、`/percent_completed` | 180 s | `exploration` |
@@ -603,7 +647,9 @@ command ref 是源码中的静态数组，不接受用户 shell 字符串。参�
 
 每个 ROS readiness 在 manifest 中显式声明 `message_type`、`max_age_seconds`，ROS2 还可声明 `qos_profile`。控制面通过签名 `POST /v1/runs/{run_id}/probe` 将这些冻结字段发送给对应 Agent；Agent 使用无 shell、有限时长的 CLI 订阅检查 ROS graph 精确类型和一条新消息。健康采样周期为 250 ms；未在 `max_age_seconds` 内观察到新消息为 `STALE`，类型错误为 `TYPE_MISMATCH`。TCP/HTTP 探针只允许 loopback，文件探针只能位于 Agent workspace 内。
 
-profile 固定定义：`swarm_sensor` 只含 scan/odom/cmd_vel/camera/battery/safety 和可选 `/global_info`；`response_demo` 含 Burger odom、cmd_vel、`ResponseGroupStatus`、behavior mode 和 task result；`exploration` 含 `/sim_map`、frontier、allocation、progress、agent status、emergency objects；`exploration_webots` 以 ROS1 业务话题为权威，ROS2 raw robot topic 只作为可选传感器源；`rescue` 是 exploration 与 response_demo 的并集。
+profile 固定定义：`swarm_sensor` 含 scan/odom/cmd_vel/camera/battery/safety 和 Webots 世界位姿 `/global_info`；`response_demo` 含 Gazebo 世界位姿 `/gazebo/model_states`、Burger odom、cmd_vel、`ResponseGroupStatus`、behavior mode 和 task result；`exploration` 含 `/sim_map`、frontier、allocation、progress、agent status、emergency objects；`exploration_webots` 以 ROS1 业务话题为权威，ROS2 raw robot topic 只作为可选传感器源；`rescue` 是 exploration 与 response_demo 的并集。
+
+探索 Webots 的 preflight 必须在创建 Run 子进程前验证 `ros1_bridge` 可执行、Webots noVNC 可用和 NVIDIA VirtualGL renderer。控制器 update period 必须与世界 `basicTimeStep` 一致；低频或 latched 业务话题以消息存在/最近观测为健康依据，不以固定高频率误判离线。
 
 控制器独立 demo 不发布 `ResponseGroupStatus`，其 readiness 因此使用 fixture 持续发布的 `/response_group/behavior_mode`。DEFORM 与 controller 的平台 argv 显式使用脚本已有的 `--shared-master`；该参数仅作用于平台启动，不改变两个原脚本的默认独立 master 行为。
 
@@ -640,14 +686,41 @@ SQLite 文件为 `runs/platform.sqlite3`，开启 WAL。`runs`、`run_steps`、`
 
 SSH 隧道是用户认证边界；Caddy 只接受同源 `Origin`，API 对 POST 要求 CSRF header。浏览器不能访问 Agent 端口和 Docker socket。平台不提供账号系统。
 
-## 20. Spec Review Checklist
+### 19.8 Stage A 实测基线
 
-书面批准本 Spec 前，请只检查以下设计结论是否准确：
+Stage A 于 2026-08-02 通过。三台与五台 Burger Webots 群行为的 30 秒实测 RTF 分别为 `0.980` 和 `0.940`，均使用 NVIDIA VirtualGL 和可交互的非空 noVNC 画面。Webots 探索严格先启动 ROS2 `start_robosar_webots.sh`，其 readiness 通过后再启动 ROS1 `launch_robosar_w.sh`，停止顺序相反。
 
-1. 六个 MVP 场景是否覆盖当前要统一操作的入口。
-2. 完整搜救 MVP 仅列 Gazebo/Tepper 是否符合当前真实入口。
-3. 群行为模块的数据真实性边界是否正确。
-4. 平台模式下跳过 Qt、由 Web 控制，但原命令保留 Qt 的方式是否正确。
-5. `18090` 作为新统一入口是否可接受。
+Gazebo 探索 Run `run-287b2dd9af264a0597cc9ec31dc188a1` 的 30.03 秒墙钟样本推进 26.94 秒仿真时间，RTF 为 `0.897`；Gazebo、RViz、OccupancyGrid 与真实相机浏览器验收通过。一次约 20 分钟的历史运行出现原生进程 `free(): invalid pointer`，平台已正确归档和清理；该问题属于 `masar_ws` 长运行稳定性风险，不改变 Run 所有权和停止语义。
 
-实施计划必须以本文件的 requirement ID 和 acceptance criteria 编号拆解，不再重新发明场景或指标。
+### 19.9 Stage B 实测基线
+
+Stage B 于 2026-08-03 完成复验。三台 e-puck 的 discussed-dispersion 与五台 e-puck 的 aggregation Run 均以固定的 `command_world.wbt` 运行；该固定参数不渲染为前端控件，机器人类型以下拉框提供 `e_puck`、`burger`。桌面端 Webots 位于上方并横跨两列，轨迹与传感器位于下方并排，移动端按三者顺序转为单列。真实面板显示多机器人世界坐标轨迹、所选机器人相机/LaserScan/八路红外、全部机器人健康、讨论观点/分散距离和 Run stdout/stderr。
+
+讨论模式的第一次验收揭示 `ros2 topic pub --once` 只等待一个匹配订阅者，导致部分策略节点漏收 START。Agent 改为先读取当前订阅数并等待全部当前订阅者，随后全新 Run 的单次平台 START 使三台 `/robot_N/opinion` 均稳定达到 `0.5 Hz`，真实 Chromium 门禁通过。两次验收 Run 均以 `COMPLETED/USER_STOP` 结束，无 Run-owned 残留且归档 checksum 全部通过。Burger aggregation 的算法行为问题已在平台外复现，按用户决定留给后续 ROS2swarm 算法阶段，不纳入平台闭环判定。
+
+五机器人 readiness 使用 Domain 42 的单个 rclpy Context 批量观察 `/clock` 与全部机器人 odom，避免多组 ROS2 CLI 与 controller spawner 并发争用。复验还发现 rosbridge 在主线程调用 `/rosapi/topics` 时可阻塞 WebSocket 接收循环；ROS2 Web sidecar 现使用 `call_services_in_new_thread:=true`。Run `run-4fdfe4f599094947bd10cefb97e2e064` 在 70 秒内达到 `RUNNING`，robot_2 与其余四台机器人的相机、LaserScan、八路红外、odom、健康和 SVG 轨迹均通过真实 Chromium 验收，停止后 11 个归档 checksum 全部通过。
+
+`sensor_type=lidar` 是群行为平台 UI 的验收默认值，但不限制前端展示 e-puck 的物理红外 `ps0..ps7`。手工 API 选择 ROS2swarm 的 `sensor_type=ir` 会触发其现有 `ir_layer` 尾斜杠话题错误；该模式层问题与 Burger aggregation 一样留待 ROS2swarm 算法/节点阶段处理，不影响默认平台闭环。
+
+世界坐标复验使用 Webots Run `run-bffc31333a064ea08e5628dc3cf87a94` 和 Gazebo DEFORM Run `run-c25cd415a2394c28a17397544edc9620`。Webots 页面从 `/global_info` 显示 `3/3 世界位姿`；Gazebo 页面从 `/gazebo/model_states` 显示 `4/4 世界位姿`，任务启动后四条轨迹各累积 81 个点。真实 Gazebo 首轮暴露 ROS1 Web sidecar 缺少 `gazebo_msgs`；补装 `ros-noetic-gazebo-msgs` 后同一订阅链路通过。两轮停止均为 `COMPLETED/USER_STOP`，无 Run 进程或 `1234/18141` 监听，归档 checksum 全部通过，业务容器未重启。空闲页显示 `0/0 世界位姿`、零轨迹/健康行和唯一“未发现机器人”传感器选项。
+
+### 19.10 Stage C 实测基线
+
+Stage C 于 2026-08-03 通过。Gazebo Runs `run-1e6dc13688634b0bb9bae467ffdb8ceb`、`run-4ba8c33b877149a8acf8e1da26caef8b` 和 Webots Runs `run-919530af7fae462893dfc5ebfff3bd7a`、`run-61aa650ac5814725bb95fcc1f950b284` 均完成真实浏览器、任务控制、停止清理和归档验收。Webots 两轮都严格先启动 ROS2 `start_robosar_webots.sh`，其 readiness 通过后再启动 ROS1 `launch_robosar_w.sh`，停止时按 RViz、ROS1、ROS2 逆序关闭；两个业务容器未重启。
+
+同一机器人、同一 capability 存在多个 ROS1/ROS2 候选源时，前端按 `ONLINE`、`STALE`、已发现但等待首帧、`DISCONNECTED`、`TYPE_MISMATCH`、`UNAVAILABLE` 的顺序选择，不能让静默重复源遮住实时来源。在线探索机器人数量优先由实时 per-robot Odometry 推导，再回退到 agent-status 快照。任务分配图使用 snapshot 而非 MJPEG 长连接，解决低频 latched 单帧在 Chromium 中无法提交首帧的问题。
+
+### 19.11 Stage D 实测基线
+
+Stage D 于 2026-08-03 完成实机闭环。最终 Run `run-8adea267bc8f43f4b89d396b5096f1f6` 在 Gazebo/Tepper 中同时运行探索组和四台 Burger 响应组；真实 Chromium 显示任务分配图、地图覆盖、候选前沿、本轮分配、五台在线探索机器人、应急对象、机载相机、Gazebo、RViz，以及六项紧凑响应摘要。响应组实测进入导航/路径跟踪状态，活动推送任务、任务队列、运动使能、编队误差和最小净空持续更新。
+
+响应摘要使用 `220px` 最小基准高度，任务态势使用 `180px`、其他状态面板使用 `145px` 最小基准高度。右侧状态栏按纵向流布局：高视口按权重增长填满可用高度，低视口保持最小高度并整体滚动，搜救对象列表在面板内独立滚动。自动几何断言和生产 Chromium 截图确认六项指标完整可见、不与健康面板重叠、任务文字不被裁剪且右栏无无意义底部留白。该 Run 在 `PREFLIGHT` 阶段拒绝 START 并返回 `409 RUN_NOT_ACTIVE`，进入 `RUNNING` 后任务命令成功。
+
+停止后 Run 为 `COMPLETED/USER_STOP`，录包、RViz、`tepper_response` 按顺序关闭，三个 Agent 记录均为 `STOPPED`；`current=null`，无 Run 进程或 `1234/18141` 监听，16 个归档文件全部通过 checksum，两个业务容器的 ID、启动时间和 restart count 保持不变。
+
+## 20. 文档入口
+
+根目录 `README.md` 提供项目汇总和快速开始；完整运维手册、架构设计、实施计划和
+验收证据分别位于 `docs/OPERATIONS.md`、`docs/PLATFORM_DESIGN.md`、
+`docs/IMPLEMENTATION_PLAN.md` 和 `docs/ACCEPTANCE.md`。实施计划必须以本文件的
+requirement ID 和 acceptance criteria 编号拆解，不再重新发明场景或指标。

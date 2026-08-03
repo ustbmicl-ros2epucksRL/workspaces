@@ -2,19 +2,24 @@
 
 > **Implementation mode:** One Codex agent executes this plan in gated batches. Each batch is implemented, verified, merged into the main workspace, recorded in `ACCEPTANCE.md`, and reported to the user before the next batch starts. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Current execution authority (2026-08-03):** Section 20 supersedes the old
+> external-container deployment steps in earlier completed task history. Current
+> startup and operations are defined only by `docs/OPERATIONS.md` and
+> `deploy/platform.sh`.
+
 **Goal:** Build a single-user Web workbench that launches and observes the six approved MASAR simulation scenarios without changing the default behavior of `ROS2swarm_w` or `masar_ws`.
 
-**Architecture:** A host FastAPI control plane owns a SQLite WAL run lease and invokes two standard-library runtime Agents inside the existing ROS containers. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, TF and video; Caddy exposes one loopback origin. A React/TypeScript workbench renders synchronized simulation, RViz, map, sensor, state and log panels.
+**Architecture:** One Compose project owns two ROS business runtimes and six platform services. Each runtime Agent is its container's main process. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, TF and video; Webots/Gazebo/RViz use independent noVNC desktops behind one Caddy loopback origin. A React/TypeScript workbench renders synchronized simulation, trajectory, mapping/task, sensor, state and log panels.
 
-**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, `ros2d` 0.10.0, Docker Compose and Caddy. `ros3d` 1.1.0 was evaluated but is not a production dependency because its legacy Three.js chain fails the current vulnerability gate.
+**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, Docker Compose and Caddy. The old ROS2D/EaselJS and ros3djs chains are not production dependencies.
 
 ---
 
 ## 0. Execution Rules
 
-- The implementation root is `/home/zjc/workspace/masar-simulation-platform`; the user-requested root-level plan location overrides the default `docs/superpowers/plans` location.
-- The only existing-project source change allowed by this plan is the default-off Webots `stream`/`port` launch argument and, if required by the actual launch graph, a default-off platform GUI skip argument. Every such change has a before/after dry-run test.
-- Do not touch `/home/zjc/workspace/masar-unified-platform`, its Agent, its processes, or port `18088`.
+- Commands run from the `masar-simulation-platform` checkout. Its host absolute path is not part of the implementation contract.
+- Existing-project changes must remain platform-scoped or preserve direct-run defaults. The approved scope includes Webots display/VirtualGL arguments, controller timestep alignment, explicit bridge prerequisite handling, the new discussed-dispersion behavior, and default-off platform GUI skip arguments. Every change has a before/after dry-run or focused regression test.
+- The deprecated platform, its Agent, processes and old entry port are outside this implementation scope.
 - Do not add `multi-agent-neat` to the platform.
 - Do not use `pkill`; every process is owned by a `run_id` and a process group.
 - Write tests before implementation in every task. Run the narrow test before the full suite.
@@ -46,11 +51,12 @@
 | `scenarios/schema.json` | Strict manifest schema, unknown-field rejection |
 | `scenarios/catalog.yaml` | Registration of exactly six public scenario IDs |
 | `scenarios/*.yaml` | One complete manifest per approved scenario |
-| `deploy/compose.yaml` | Caddy, API support services and sidecars |
+| `deploy/compose.yaml` | Eight-service runtime, API, sidecar, display and gateway stack |
+| `deploy/platform.sh` | Prerequisite checks, first builds, migration and lifecycle commands |
 | `deploy/ros1-web/Dockerfile` | Noetic rosbridge/TF/video sidecar image |
 | `deploy/ros2-web/Dockerfile` | Humble rosbridge/TF/video sidecar image |
 | `deploy/caddy/Caddyfile` | Same-origin HTTP, WebSocket and stream routes |
-| `deploy/sidecars/*.yaml` | Exact sidecar launch arguments and health checks |
+| `deploy/sidecars/*-supervisord.conf` | Exact sidecar process supervision and health behavior |
 | `deploy/display/display_manager.py` | Xvfb/noVNC Gazebo and RViz display lifecycle |
 | `frontend/package.json` | Locked frontend dependencies and scripts |
 | `frontend/src/app/` | Router, run state store and top-level workbench |
@@ -83,7 +89,7 @@ The live SQLite/event broadcaster retains 30 days or 10,000 events. At run final
 
 ### 2.3 Agent secret recovery
 
-The host service creates `/run/masar-platform/agent.secret` with mode `0600` at install time. The same secret is mounted read-only into both Agent processes. Each run receives a distinct derived HMAC key using `HMAC(master, run_id)`. On API restart, the master secret is read from this path; if the file is missing or has non-`0600` permissions, the service refuses to start and never sends a cleanup signal.
+`deploy/platform.sh` creates `.runtime/agent.secret` with 32 bytes and mode `0600`. Compose mounts the same file read-only at `/run/masar-platform/agent.secret` in the API and both Runtime Agents. Each run receives a distinct derived HMAC key using `HMAC(master, run_id)`. If the file is missing or has invalid permissions, startup fails before any cleanup signal is sent.
 
 ### 2.4 Sidecar commands
 
@@ -96,7 +102,7 @@ Profiles are explicit, not inferred from arbitrary topic names:
 | Profile | Allowed sources and type checks | UI rate cap |
 |---|---|---:|
 | `swarm_sensor` | `/<robot>/scan` `sensor_msgs/msg/LaserScan`; `/<robot>/odom` `nav_msgs/msg/Odometry`; `/<robot>/cmd_vel` `geometry_msgs/msg/Twist`; optional camera `sensor_msgs/msg/Image`, battery and safety, `/global_info` `std_msgs/msg/String` | 10 Hz |
-| `response_demo` | `/tb_i/odom`, `/tb_i/cmd_vel`, `/response_group/status` `robosar_messages/ResponseGroupStatus`, `/response_group/behavior_mode` `std_msgs/String`, `/response_group/task_result` `EmergencyTask` | 10 Hz |
+| `response_demo` | `/gazebo/model_states` `gazebo_msgs/ModelStates`, `/tb_i/odom`, `/tb_i/cmd_vel`, `/response_group/status` `robosar_messages/ResponseGroupStatus`, `/response_group/behavior_mode` `std_msgs/String`, `/response_group/task_result` `EmergencyTask` | 10 Hz |
 | `exploration` | `/sim_map` `nav_msgs/OccupancyGrid`; `/frontier_filter/filtered_frontiers`; `/task_allocation_image` `sensor_msgs/Image`; `/percent_completed` `std_msgs/Float32`; agent status; emergency objects/events | 10 Hz |
 | `exploration_webots` | ROS1 exploration profile is authoritative; ROS2 raw `/<robot>/scan`, `odom`, `cmd_vel` is optional sensor data | 10 Hz |
 | `rescue` | Union of `exploration` and `response_demo` with duplicate topic deduplication | 10 Hz |
@@ -260,7 +266,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - Modify: scenario schema/manifests, command environment, Runtime Agent, ROS1 launch scripts
 - Create: `tests/unit/test_deploy_contract.py`, `tests/unit/test_platform_script_contract.py`
 
-- [x] **Step 1: Freeze per-scenario ROS graph identity.** Require `runtime.ros1_master_uri` and `runtime.ros2_domain_id`; inject them into every platform invocation and readiness request. Domain `42` belongs to ROS2swarm; the RoboSAR Webots bridge uses domain `0`.
+- [x] **Step 1: Freeze per-scenario ROS graph identity.** Require `runtime.ros1_master_uri` and `runtime.ros2_domain_id`; inject them into every platform invocation and readiness request. All platform scenarios, the ROS2 Web sidecar and standalone ROS2swarm use domain `42`.
 
 - [x] **Step 2: Make readiness exact and executable.** Require `message_type` for every ROS probe, allow an explicit ROS2 QoS profile, and implement signed bounded Agent probes for loopback TCP/HTTP, workspace files, ROS1 topics and ROS2 topics. Topic readiness requires exact type and a newly observed message.
 
@@ -306,7 +312,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
 **Files:**
 - Create: `deploy/ros1-web/Dockerfile`, `deploy/ros2-web/Dockerfile`
-- Create: `deploy/sidecars/ros1-supervisor.yaml`, `deploy/sidecars/ros2-supervisor.yaml`
+- Create: `deploy/sidecars/ros1-supervisord.conf`, `deploy/sidecars/ros2-supervisord.conf`
 - Create: `deploy/compose.yaml`, `deploy/caddy/Caddyfile`
 - Create: `tests/integration/test_sidecar_configs.py`
 
@@ -334,7 +340,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
   Expected: Compose config succeeds, both sidecars report healthy, capabilities returns JSON, and `ss -ltnp` shows no public bind.
 
-- [ ] **Step 7: Commit deployment support.**
+- [x] **Step 7: Commit deployment support.** Historical integration is recorded in `ACCEPTANCE.md`; the current user-owned dirty worktree is not auto-committed.
 
   ```bash
   git add masar-simulation-platform/deploy masar-simulation-platform/tests/integration/test_sidecar_configs.py
@@ -344,11 +350,11 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 ## 9. Task 6: Webots Streaming Compatibility and Existing-Project Guardrails
 
 **Files:**
-- Modify: `/home/zjc/workspace/ROS2swarm_w/start_robosar_webots.sh`
-- Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py`
-- Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py` only if argument forwarding requires it
-- Modify: `/home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
-- Modify: `/home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py`
+- Modify: `../ROS2swarm_w/start_robosar_webots.sh`
+- Modify: `../ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py`
+- Modify: `../ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py` only if argument forwarding requires it
+- Modify: `../ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py`
+- Modify: `../ROS2swarm_w/tests/test_webots_start_scripts.py`
 - Create: `backend/masar_platform/webots.py`, `tests/integration/test_webots_proxy.py`
 - Create: `deploy/webots-guard/Dockerfile`, `deploy/webots-guard/webots-port-guard`
 
@@ -361,8 +367,8 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - [x] **Step 4: Run existing ROS2 tests and dry-run comparisons.**
 
   ```bash
-  python3 -m pytest /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py -q
-  cd /home/zjc/workspace/ROS2swarm_w
+  python3 -m pytest ../ROS2swarm_w/tests/test_webots_start_scripts.py -q
+  cd ../ROS2swarm_w
   ./start_simulation.sh --dry-run --no-vglrun
   ./start_robosar_webots.sh --dry-run --no-vglrun
   ```
@@ -374,7 +380,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 - [x] **Step 6: Commit the compatibility change separately from new platform code.** Integrated implementation commit: `65ab31c`.
 
   ```bash
-  git add /home/zjc/workspace/ROS2swarm_w/start_robosar_webots.sh /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py /home/zjc/workspace/ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py /home/zjc/workspace/ROS2swarm_w/tests/test_webots_start_scripts.py masar-simulation-platform/backend/masar_platform/webots.py masar-simulation-platform/tests/integration/test_webots_proxy.py
+  git add ../ROS2swarm_w/start_robosar_webots.sh ../ROS2swarm_w/src/launch_webots/launch/start_webots.launch.py ../ROS2swarm_w/src/launch_webots/launch/create_enviroment.launch.py ../ROS2swarm_w/src/launch_webots/launch/robosar_webots_sim.launch.py ../ROS2swarm_w/tests/test_webots_start_scripts.py backend/masar_platform/webots.py tests/integration/test_webots_proxy.py
   git commit -m "feat(ros2swarm): expose default-off Webots stream"
   ```
 
@@ -461,7 +467,7 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
 - [x] **Step 3: Implement the singleton connection manager.** Use `roslib` 2.1.0 and route all topic subscriptions through `TopicRegistry`. Components cannot create raw WebSockets. `TopicHealth` records observed frequency and last age as transport health only. ROS1 and ROS2 reconnect with bounded backoff while an unchanged contract preserves the existing subscription registry.
 
-- [x] **Step 4: Implement map and TF adapters.** Wrap locally bundled ros2djs 0.10.0 behind `MapRenderer` for OccupancyGrid and odometry traces; expose an explicit-frame-only `TfClient` for panels that require transforms; keep PointCloud2 disabled. ros3djs 1.1.0 was removed after `npm audit` traced two high-severity findings to its obsolete Three.js dependency.
+- [x] **Step 4: Implement map and TF adapters.** Keep the task-allocation image on the existing video snapshot path, render world-coordinate traces with native SVG, and expose an explicit-frame-only `TfClient` for panels that require transforms. PointCloud2 remains disabled. The unused ROS2D/EaselJS and ros3djs chains were removed after the dependency audit.
 
 - [x] **Step 5: Implement video and sensor adapters.** Build web-video URLs from the same-origin API capability response; synchronously clear the old stream before selecting a new one. Decode only profile-approved LaserScan, Odometry and Twist messages. Native MJPEG `<img>` load/error is reported as connection health without inventing per-frame timestamps.
 
@@ -522,73 +528,16 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
 ## 14. Task 11: Scenario Integration and Regression Gates
 
-**Files:**
-- Create: `tests/integration/test_scenario_smoke.py`, `tests/integration/test_failure_injection.py`
-- Create: `tests/fixtures/ros_graph/`, `tests/fixtures/processes/`
-- Create: `docs/OPERATIONS.md`, `docs/COMPATIBILITY_MATRIX.md`
-
-- [ ] **Step 1: Add deterministic fake ROS graph fixtures.** Provide topic/type/last-message fixtures for each profile, including missing camera, stale odom, wrong type and disconnected bridge cases. Keep physical containers out of unit tests.
-
-- [ ] **Step 2: Add six manifest smoke tests.** For each scenario assert preflight, rendered command refs, readiness probes, panel profile, stop order, final archive and no generic swarm score fields.
-
-- [ ] **Step 3: Add failure injection tests.** Cover occupied port, missing Agent, readiness timeout, Agent disconnect, rosbridge disconnect, disk below 2 GB, unexpected process exit and API restart with missing secret.
-
-- [ ] **Step 4: Run the existing-project regression commands.** Run exactly:
-
-  ```bash
-  cd /home/zjc/workspace/masar_ws
-  ./launch_robosar_g.sh --dry-run --headless --no-vglrun
-  ./launch_robosar_w.sh --dry-run --no-vglrun
-  ./run_response_deform_demo.sh --dry-run --headless --no-vglrun
-  ./run_response_controller_demo.sh --dry-run transport
-  ./run_tepper_response_demo.sh --dry-run --headless --no-vglrun
-  python3 -m pytest -q src/robosar/robosar_emergency_response/test
-  cd /home/zjc/workspace/ROS2swarm_w
-  ./start_robosar_webots.sh --dry-run --no-vglrun
-  ./start_simulation.sh --dry-run --no-vglrun
-  python3 -m pytest -q tests
-  ```
-
-  Expected: all existing dry-runs and tests pass with platform parameters unset.
-
-- [ ] **Step 5: Run one physical smoke per scenario.** Start only after preflight passes; verify the required topics, panel non-empty checks, allowed command actions, bounded stop and archive. Use one scenario at a time and record the run IDs in `docs/OPERATIONS.md`.
-
-- [ ] **Step 6: Commit regression evidence and operations docs.**
-
-  ```bash
-  git add masar-simulation-platform/tests/integration masar-simulation-platform/tests/fixtures masar-simulation-platform/docs
-  git commit -m "test(platform): add scenario and compatibility gates"
-  ```
+状态：已由 Stage A-D 与 E3 的自动化、原项目回归和真实三模块 Run 验收取代。
+当前保留 `tests/integration/test_scenario_smoke.py`、故障注入测试、ROS 图 fixture 与
+`ACCEPTANCE.md` 中的 Run 证据；不再维护一套重复的待办清单或第二份运维文档。
 
 ## 15. Task 12: Security, Readability and Release Gate
 
-**Files:**
-- Modify: `deploy/caddy/Caddyfile`, `backend/masar_platform/api.py`, `frontend/src/app/api.ts`
-- Create: `tests/contract/test_security.py`, `docs/RELEASE_CHECKLIST.md`
-
-- [ ] **Step 1: Write security tests.** Assert loopback-only listeners, same-origin POST/CSRF enforcement, arbitrary shell/topic rejection, artifact traversal rejection, HMAC replay rejection, no Docker socket mount and no old-project/18088 references in runtime files.
-
-- [ ] **Step 2: Run all local checks.**
-
-  ```bash
-  python3 -m pytest -q tests/unit tests/contract tests/integration
-  cd frontend && npm run typecheck && npx vitest run && npx playwright test --project=chromium
-  cd /home/zjc/workspace
-  git diff --check
-  ```
-
-  Expected: all checks PASS; failures block release.
-
-- [ ] **Step 3: Run a clean-start check.** Stop only the platform Compose stack and host service, confirm the two existing containers and any unrelated same-name process remain running, then start platform services and verify `GET /api/v1/capabilities`.
-
-- [ ] **Step 4: Generate release checklist.** Record exact image digests, lockfile hashes, ROS package versions, scenario catalog SHA-256, port table, SSH forwarding command and the seven original dry-run outputs.
-
-- [ ] **Step 5: Commit release evidence.**
-
-  ```bash
-  git add masar-simulation-platform/tests/contract/test_security.py masar-simulation-platform/docs/RELEASE_CHECKLIST.md masar-simulation-platform/deploy/caddy/Caddyfile masar-simulation-platform/backend/masar_platform/api.py masar-simulation-platform/frontend/src/app/api.ts
-  git commit -m "chore(platform): complete release and security gates"
-  ```
+状态：已由 Task 10、Stage D 与 E1-E4 的安全、归档、依赖审计、干净启动和文档门禁
+取代。Compose 现在拥有两个业务 runtime，因此旧的“平台停止后外部业务容器仍运行”
+要求已失效；当前权威发布证据统一记录在 `ACCEPTANCE.md`，当前使用方式统一记录在
+`OPERATIONS.md`。
 
 ## 16. Dependency Graph and Sequencing
 
@@ -634,3 +583,152 @@ Task 1 precedes all run work because no process may start without a validated sc
 6. Group behavior views show only real sensor/topic data and never fabricated generic behavior scores.
 7. Direct original commands retain their Qt/default behavior when platform parameters are unset.
 8. The release checklist contains image digests, lockfile hashes, port checks and all acceptance evidence.
+
+## 19. Stage 0 Closure Amendments (2026-08-02)
+
+Real dogfooding found lifecycle, rendering and data-panel gaps after Tasks 0-10. These amendments supersede conflicting W3D/display statements above while preserving their historical acceptance evidence. Stages execute strictly in order; any failed acceptance blocks the next stage.
+
+### 19.0 Measured diagnostic baseline
+
+- Swarm baseline `run-911043f496e84702ac0fbfdccff4a20e` used three Burger robots, `command_world.wbt` and `aggregation_pattern`. Webots consumed about `805% CPU`; during 19.09 wall seconds `/clock` advanced 8.66 seconds (real-time factor about `0.45`). `DISPLAY=:1` reported Mesa `llvmpipe`; `vglrun -d :0 glxinfo -B` reported an RTX 6000 Ada renderer. No Webots graphics process appeared as a GPU workload in `nvidia-smi pmon`.
+- The same Run published `/robot_0..2/{odom,scan,cmd_vel}`, `/clock` and `/global_info`; robot 0 moved from `(0.188,-0.035)` to `(0.848,-0.416)`. The live browser still showed waiting trajectory, sensor and graph-health panels, an instruction-only log panel and a blank W3D area. This proves the primary panel gap is discovery/decoding/UI wiring, not absence of ROS data.
+- That Run stopped as `COMPLETED/USER_STOP`; port `18141` and all Run-owned Webots/ROS children disappeared, both business containers stayed running, and all 11 archived checksums passed.
+- Historical swarm `run-d92eef4e4fda4f08abb6cd52b65a86b8` stopped cleanly, but the next Run `run-dfbd61a2b4564ac485f10cb4f6e5d789` ended in Webots exit code `139` before readiness. Historical exploration `run-7af1d9ba386a4523aed53bd808903f6e` timed out with `Package 'ros1_bridge' not found` and repeated controller switch timeouts.
+- `ros1_bridge` is present at `/root/ros-humble-ros1-bridge/install`; platform non-interactive startup simply does not source it. After either business container restarts, its Runtime Agent is also absent until manually bootstrapped. Both are environment/lifecycle contract defects, not missing application functionality.
+
+### 19.1 Stage A: Runtime lifecycle and performance
+
+- [x] Add tests for Webots noVNC display plan, `:103/18133` lifecycle, command gating outside `RUNNING`, exact Run process cleanup and normal viewer disconnect handling. The live browser gate additionally rejects a blank noVNC framebuffer by sampled color/luminance evidence.
+- [x] Run Webots with `DISPLAY=:103` and `vglrun -d :0`; production launch sets `webots_stream=false`. Preflight rejects `llvmpipe` and missing `ros1_bridge` before starting a child.
+- [x] Source the existing `/root/ros-humble-ros1-bridge/install/setup.bash` explicitly for platform exploration, and fail preflight with the exact missing executable if that installation is unavailable.
+- [x] Align each platform-generated Webots world's `basicTimeStep` and ros2_control update period without changing direct-run defaults. Three- and five-Burger real-time factors reached `0.980` and `0.940`; both used the NVIDIA VirtualGL renderer and delivered changing browser frames.
+- [x] Provide one idempotent platform startup command that restores both Runtime Agents after container restart and verifies their health before enabling the launch button.
+- [x] Fix exploration Webots startup and ensure stop terminates every process owned by the Run while leaving both business containers and host processes intact. Run `run-ccceea6a7b254acea82f0db22e536a17` started ROS2 `start_robosar_webots.sh` before ROS1 `launch_robosar_w.sh`, stopped them in reverse order, and passed full archive checksum verification.
+- [x] Measure and record the Gazebo exploration baseline, then run the full Python, frontend, Playwright and existing ROS-project regression gates. Run `run-287b2dd9af264a0597cc9ec31dc188a1` measured RTF `0.897`; the live Gazebo/RViz/map/camera Chromium gate, archive checksum and exact cleanup checks passed. Platform Python returned `224 passed`, frontend Chromium `14 passed, 4 live-only skipped`, ROS1 `90 passed` and ROS2 `22 passed`.
+- [x] Acceptance: two consecutive swarm Webots runs and one exploration Webots run reached `RUNNING`; every stop ended `COMPLETED/USER_STOP`; no Run-owned process or run-only port remained. The shared Xvfb/noVNC gateways remain healthy between Runs by design. After warm-up, 30-second `/clock` samples reached real-time factors `0.980` for three Burger robots and `0.940` for the default five-Burger case. The renderer was NVIDIA, noVNC canvases were non-empty and changing, drag/zoom changed the Webots view, and the Gazebo exploration baseline was measured. Stage A passed on 2026-08-02.
+
+### 19.2 Stage B: Group behavior/control module
+
+- [x] Default world is `command_world.wbt`; expose `e_puck`/`burger`; add `discussed_dispersion_pattern` and a real discussion-event/status source.
+- [x] Replace the map/trajectory placeholder with a live multi-robot world-coordinate trace and pose table. Use Webots `/global_info` and Gazebo `/gazebo/model_states`; keep local Odometry in the selected-robot sensor deck only. Sensor presentation follows the selected robot's actual camera/LaserScan/infrared/IMU capabilities. On desktop, place Webots/Gazebo above the equal-width trajectory and sensor panels; retain ordered single-column mobile behavior. Fix the group-behavior world to `command_world.wbt` without a world selector, and expose `e_puck`/`burger` through the robot-type selector.
+- [x] Periodically rediscover topics, render all matched robots instead of an arbitrary first six, expose real topic freshness, and stream Run-owned stdout/stderr through the existing logs API.
+- [x] Return the expected Run robot inventory from `/robots`, but keep ROS graph discovery, type validation, first-frame/Hz/STALE status in the browser `RosDataRuntime`. Batch all ROS2 readiness topics through one Domain 42 rclpy Context.
+- [x] Keep rosapi service calls off the ROS2 rosbridge WebSocket event loop with `call_services_in_new_thread:=true`; reproduce the blocked handshake before the fix and verify a direct `101 Switching Protocols` response after deployment.
+- [x] Do not expose planned robots as observed runtime state outside an active Run. Idle and terminal pages pass empty sources and zero expected robots to trajectory, health and sensor panels.
+- [x] Reaccept both simulator coordinate paths. Webots Run `run-bffc31333a064ea08e5628dc3cf87a94` rendered `3/3` Supervisor world poses. Gazebo Run `run-c25cd415a2394c28a17397544edc9620` rendered `4/4` ModelStates poses and four 81-point moving traces after START. The live Gazebo test found the ROS1 Web image lacked the `gazebo_msgs` manifest; add `ros-noetic-gazebo-msgs`, rebuild only `ros1-web`, and verify real rosbridge decoding. Both Runs stopped cleanly with valid archives and unchanged business containers.
+- [x] Acceptance: both robot types are selectable and the known-working Burger/e-puck platform paths have real Runs; trajectory, selected-robot sensors, all robot rows, discussion state, noVNC and Run logs are live; no RViz is started. Platform START waits for every current `/swarm_command` subscriber. Five-e-puck Run `run-4fdfe4f599094947bd10cefb97e2e064` passed robot_2, all-sensor, trajectory, Webots, log, stop and checksum gates after API/sidecar deployment. Burger aggregation and the manually selected ROS2swarm `sensor_type=ir` layer defect remain deferred outside the default platform path. Stage B passed on 2026-08-03.
+
+### 19.3 Stage C: Exploration module
+
+- [x] Replace the static task-map placeholder with the existing Qt allocation image and decode the real exploration sources: `/task_allocation_image`, `/task_allocation`, `/frontier_filter/filtered_frontiers`, `/percent_completed`, robot status/odometry and emergency-object snapshots. Latch the ROS1 allocator/filter state publishers so browser and video subscribers created after mission start receive the latest snapshot.
+- [x] Add one shared per-robot selector for actual camera/scan/IMU/odometry sources, and decode discovered fire/victim/push-obstacle positions, detector robot IDs and optional push goals from emergency-object snapshots.
+- [x] Close the panel semantics found during real Gazebo dogfooding. `任务分配与建图` owns the allocation image plus map coverage, candidate-frontier count and latest allocation batch (`本轮分配`). `探索任务态势` owns online exploration robots plus emergency counts and discoveries only. Remove duplicate allocation/progress fields, remove `已完成任务` because the default HIGH allocator never emits `/tasks_completed`, and never fabricate zero for a discovered but silent source; emergency counts become zero only after an observed empty snapshot.
+- [x] Add an allocation-image first-frame watchdog. A successful MJPEG response may close with an empty multipart body before the first ROS image, without firing an image `error`; while the Run is active and `naturalWidth === 0`, reconnect after a bounded delay until a real frame arrives. Treat `/percent_completed` as the observed `0..1` coverage ratio and render `ratio * 100` percent.
+- [x] Correct the allocation-image reconnect transport. Gazebo acceptance candidate `run-d6d8007aac864d6bae4bfcfde8e14179` received one HTTP 200 empty multipart response for `/task_allocation_image`; its Playwright trace contained no second image request even though the watchdog repeatedly changed React state and ROS later held a real latched `640x480` frame. The cause was that `VideoClient` deduplicated the unchanged URL and Chromium reused the completed empty response. Only watchdog retries now append `retry=N`; the initial allocation URL and ordinary robot-camera URLs remain unchanged. The replacement Playwright gate counts actual browser requests and first failed with one request, then passed with distinct retry URLs.
+- [x] Use the video server's snapshot transport for the low-frequency allocation image. Diagnostic Webots Run `run-f02a8da600e548ec9e7ae5a5ae7ebea7` proved that changing MJPEG URLs alone is insufficient when a latched source emits one JPEG and then keeps the multipart connection open: Chromium aborted 40 distinct requests at the watchdog interval without committing `naturalWidth`, although direct curl received the valid 29 KB part. The existing same-origin `/video/ros1/snapshot` route returned the complete JPEG in 7 ms. The allocation panel now retries snapshots every 1.5 seconds until its first frame and refreshes every 3 seconds afterward, with a changing cache key; robot cameras remain on MJPEG streams.
+- [x] Prefer an observed per-robot source over a silent duplicate. Webots publishes ROS2 `/robot_i/odom` around 40-45 Hz while ROS1 `/robosar_agent_bringup_node/agent_i/odom_data_euler` can be discovered without a publisher; first-match selection made sensors and health wait forever. Per-robot capability selection now ranks `ONLINE` above `STALE`, waiting/discovered, disconnected, type-mismatch and unavailable sources. The online exploration count uses live per-robot odometry before falling back to the low-frequency agent-status snapshot.
+- [x] Automated gate: first prove the old UI fails for map/mission ownership, `0.375 -> 37.5%`, absence of fabricated assignment/completion zero and retry after an empty successful MJPEG stream. The three RED failures were observed, then the focused panel suite returned `20 passed`, adapter units `30 passed`, TypeScript/build passed and Chromium returned `27 passed, 7 live-only skipped` on 2026-08-03.
+- [x] Provide the ROS1 Web sidecar with the existing `masar_ws/devel` message overlay. Failed acceptance Run `run-37e0e2076e0a4402aca51349e0467bf6` proved the browser sent subscriptions for latched `/task_allocation` and `/frontier_filter/filtered_frontiers`, while rosbridge delivered only standard-message `/percent_completed`; `rospack` and Python imports inside ros1-web confirmed `robosar_messages` was absent. The deployed fix mounts `masar_ws` read-only at its canonical path and requires/sources `devel/setup.bash` before every sidecar program. Container imports and a temporary real-browser custom `task_allocation` smoke passed; the temporary publisher/topic disappeared and neither business container restarted.
+- [x] Gazebo acceptance: two complete fresh cycles passed. In each cycle mission commands before `RUNNING` returned `409 RUN_NOT_ACTIVE`; after `RUNNING`, the browser observed a real allocation frame, coverage/frontier/latest-batch metrics, five selectable robot sensor views, online robots and emergency snapshots. Runs `run-1e6dc13688634b0bb9bae467ffdb8ceb` and `run-4ba8c33b877149a8acf8e1da26caef8b` both stopped as `COMPLETED/USER_STOP`, passed all 13 archive checksums and left no Run-owned process or Run-only port without restarting either business container.
+- [x] Webots acceptance: Runs `run-919530af7fae462893dfc5ebfff3bd7a` and `run-61aa650ac5814725bb95fcc1f950b284` passed the same two-cycle gate with required startup order `ROS2swarm_w/start_robosar_webots.sh` then `masar_ws/launch_robosar_w.sh`, reverse RViz/ROS1/ROS2 stop order, nonblank Webots and RViz noVNC canvases, late-source recovery and no residual Run process. Both Runs ended `COMPLETED/USER_STOP`, each verified 16 archived files and neither business container restarted. Stage C passed on 2026-08-03.
+
+### 19.4 Stage D: Complete rescue and documentation closure
+
+- [x] Reuse exploration panels and decode `ResponseGroupStatus`, active task/result, behavior mode, planning state, formation error, clearance and motion-enabled values for the Run data layer.
+- [x] Compact the production response summary to six operator-critical metrics: combined response/planning state, motion enabled, active task, task queue, formation error and minimum clearance. Do not render separate behavior mode, formation scale, assigned-robot count or latest-result rows; their current information is duplicate, secondary or inactive for most of the Run.
+- [x] Protect the compact layout with Chromium assertions that the last response metric remains inside the response panel and that the following health panel starts after it. Use a vertical status-rail flow so expanding one panel cannot overlap another.
+- [x] Close the right-rail clipping and unused-space regression. Keep mission/response/ordinary panels at `180px`/`220px`/`145px` minimum bases, distribute spare height across them, scroll the rail when the viewport is shorter, and scroll the emergency-object list inside its mission panel. RED browser evidence measured a `200px` tall-viewport gap and a task row `51px` outside the panel; the focused GREEN gate returned `2 passed`.
+- [x] Remove every hardcoded `未提供`/instruction-only visible panel whose contract has an available real source. Low-frequency/latched sources are not marked offline solely from frequency.
+- [x] Acceptance: real complete rescue Run `run-8adea267bc8f43f4b89d396b5096f1f6` showed exploration targets/tasks and changing response-group values, then stopped as `COMPLETED/USER_STOP`; all Agent records stopped, all 16 archive checksums passed, no Run process/port remained and neither business container restarted.
+- [x] Synchronize the specification, design, plan and acceptance documents; add an exact operations guide for startup, SSH forwarding, use and shutdown; run the full Python, frontend, Playwright, ROS regression and clean-start gates. Final evidence is recorded in `docs/ACCEPTANCE.md` under Stage D.
+
+## 20. Compose-Managed Runtime Closure (2026-08-03 to 2026-08-04)
+
+This is the active deployment plan. It supersedes external runtime containers,
+post-start Agent injection, host Node builds and Compose profiles described in
+earlier historical tasks.
+
+### 20.1 Stage 1: Automated deployment contract
+
+- [x] Add `ros1-runtime` and `ros2-runtime` to the single Compose project with
+  immutable public v2 digests, host network/IPC, GPU, X11, workspace mounts,
+  Domain 42 and Runtime Agent health checks.
+- [x] Keep exactly eight long-running services and make the Agent each runtime
+  container's main process.
+- [x] Bind-mount mutable backend, scenario, sidecar, display, guard, Caddy and
+  frontend output so ordinary source changes do not rebuild dependency images.
+- [x] Add `make docker-init`, `docker-start`, `docker-stop`, `docker-status`,
+  `docker-logs` and `docker-doctor` through `deploy/platform.sh`.
+- [x] Reuse matching local image digests, pull only missing runtime images,
+  build frontend assets in a pinned Node container, and build missing catkin/
+  colcon overlays with full logs under `.runtime/logs`.
+- [x] Remove the obsolete startup script, Agent injection path, Caddy frontend
+  build image and unused duplicate sidecar YAML manifests.
+- [x] Pass the complete Python, frontend, Compose, shell, Ruff, compile and diff
+  gate, then record exact counts in `ACCEPTANCE.md`. E1 passed with Python
+  `250 passed, 2 skipped` and frontend unit `36 passed`.
+
+### 20.2 Stage 2: Real migration and restart recovery
+
+- [x] Require `current Run = null`, capture unrelated container IDs and verify
+  both v2 RepoDigests before migration.
+- [x] Run `make docker-start`; migrate only the two exact old runtime container
+  names and require all eight services healthy.
+- [x] Restart each runtime container independently and prove its Agent returns
+  without a repair command or restart of the other runtime.
+- [x] Run `make docker-stop` and prove unrelated containers and host processes
+  are unchanged; start the stack again and record evidence.
+
+### 20.3 Stage 3: Three-module real regression
+
+- [x] Accept one Webots group-behavior Run, clean stop and archive.
+- [x] Accept one Webots exploration Run with ROS2-before-ROS1 startup, reverse
+  stop, non-empty panels and archive.
+- [x] Accept one complete Gazebo rescue Run with exploration, emergency object,
+  response group, Gazebo/RViz and archive evidence.
+
+### 20.4 Stage 4: Fresh overlay and documentation closure
+
+- [x] Exercise missing `masar_ws/devel` and `ROS2swarm_w/install` in an isolated
+  workspace; require successful setup files, logs and generated-directory
+  ownership without source ownership changes.
+- [x] Run stale-reference scans and a final clean `make docker-stop` /
+  `make docker-start` regression.
+- [x] Make `docs/OPERATIONS.md` the only complete startup guide and record all final
+  evidence and residual upstream risks in `docs/ACCEPTANCE.md`.
+
+## 21. Portable Workspace, Unified SSH Entry and Documentation Closure (2026-08-04)
+
+This section is the active documentation/deployment cleanup plan. The detailed test-first
+steps are recorded in `docs/superpowers/plans/2026-08-04-workspace-path-and-ssh-entry.md`.
+
+### 21.1 Portable workspace path
+
+- [x] Resolve the workspace from the current checkout or `MASAR_WORKSPACE_ROOT` and normalize
+  it to a real absolute directory.
+- [x] Reject an invalid workspace before any Docker call and preserve the three canonical
+  paths inside `/root/workspace`.
+- [x] Pass 21 focused startup/deployment tests, Compose validation, Bash syntax and a real
+  read-only `make docker-doctor`. Implementation commit: `b42148b`.
+
+### 21.2 One-to-one SSH entry
+
+- [x] Keep the only browser URL at `http://127.0.0.1:18090` for both local and remote use.
+- [x] Print `LocalForward 18090 127.0.0.1:18090` from start/status without opening another
+  listener or managing an SSH process.
+- [x] Remove the alternate browser URL from the operator guide and pass 13 focused platform
+  script tests plus a live status check. Implementation commit: `e244285`.
+
+### 21.3 Documentation layout and stale-content removal
+
+- [ ] Keep project summary and quick start in the root `README.md`.
+- [ ] Move operations, specification, architecture, implementation plan and acceptance ledger
+  to `docs/`; update every current link.
+- [ ] Remove duplicate 2026-08-03 Compose task documents and all active host-specific paths or
+  alternate SSH port instructions.
+
+### 21.4 Complete regression and closure
+
+- [ ] Run the complete Python, frontend, Compose, shell, Ruff, compile and diff gates.
+- [ ] Verify all eight services, the gateway and current Run state without launching a new Run.
+- [ ] Record exact results in `docs/ACCEPTANCE.md` and recheck README/operations consistency.

@@ -142,7 +142,7 @@ SSH 配置和文档索引，不复制完整运维步骤。
 1. 运行 Python 全套测试、前端单测、TypeScript/Vite、Ruff 和 compileall。
 2. 验证 Compose 配置、镜像 digest、八服务健康状态和当前 Run 状态。
 3. 验证服务器 `127.0.0.1:18090` 入口，并记录 SSH 一对一转发的人工配置步骤。
-4. 将最终结果追加到 `ACCEPTANCE.md`，确保 `OPERATIONS.md` 与实现一致。
+4. 将最终结果追加到 `docs/ACCEPTANCE.md`，确保 `docs/OPERATIONS.md` 与实现一致。
 
 ## 8. 非目标
 

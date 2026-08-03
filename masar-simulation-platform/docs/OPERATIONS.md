@@ -1,7 +1,9 @@
 # MASAR 仿真平台使用与运维手册
 
-本文是当前平台唯一的启动和使用入口。设计契约见 `SPEC.md` 与
-`PLATFORM_DESIGN.md`，阶段验收证据见 `ACCEPTANCE.md`。
+本文是当前平台唯一的完整启动和使用手册。项目概览与最短入口见根目录
+[`README.md`](../README.md)，设计契约见 [`SPEC.md`](./SPEC.md) 与
+[`PLATFORM_DESIGN.md`](./PLATFORM_DESIGN.md)，阶段验收证据见
+[`ACCEPTANCE.md`](./ACCEPTANCE.md)。
 
 ## 1. 最短启动流程
 
@@ -36,18 +38,19 @@ http://127.0.0.1:18090
 宿主机不要求安装 ROS、Python 依赖、Node.js 或 npm。默认目录结构是：
 
 ```text
-workspaces/
+<workspace>/
 ├── masar-simulation-platform/
 ├── masar_ws/
 └── ROS2swarm_w/
 ```
 
-路径或显示环境不同可覆盖：
+脚本默认从 `masar-simulation-platform` 的父目录自动推导并规范化 `<workspace>`，
+宿主机绝对路径不需要固定。只有同级 workspace 位于另一目录时才覆盖：
 
 ```bash
 export MASAR_WORKSPACE_ROOT=/absolute/path/to/workspaces
 export MASAR_HOST_DISPLAY=:0
-export MASAR_XAUTHORITY=/home/your-user/.Xauthority
+export MASAR_XAUTHORITY=/absolute/path/to/.Xauthority
 ```
 
 先做只读检查：
@@ -113,18 +116,10 @@ masar-simulation-platform/.runtime/logs/frontend.log
 后续检测到 overlay 已存在时直接跳过。脚本只修复 `build/devel/install/log` 等生成
 目录的 UID/GID，不改源码目录所有权。
 
-若设备上存在同名的旧外部业务容器，启动脚本只迁移以下两个精确名称：
-
-```text
-masar_ros1_srv-g
-masar_ros2_bridge-w
-```
-
-迁移前必须没有活动 Run。脚本不会删除业务镜像、workspace、归档或其他容器。
-
 ## 5. 开发阶段目录挂载
 
-当前不区分生产和开发 Compose。镜像保存依赖，可变内容从仓库只读挂载：
+当前不区分生产和开发 Compose。镜像保存依赖；平台配置通常只读挂载，ROS 业务
+workspace 读写挂载，以便直接修改源码并复用构建结果：
 
 - `backend/`、`scenarios/` 挂载到 `api`。
 - ROS Web 启动脚本和 supervisor 配置挂载到两个 sidecar。

@@ -126,7 +126,7 @@ git commit -m "fix: resolve workspace paths independently of host location"
 **Files:**
 - Modify: `deploy/platform.sh:390-470`
 - Modify: `tests/unit/test_platform_startup.py:350-390`
-- Modify: `OPERATIONS.md:1-245`
+- Modify: `docs/OPERATIONS.md:1-245`
 - Modify: `docs/superpowers/specs/2026-08-04-workspace-path-and-ssh-entry-design.md` only if wording differs from the approved design
 
 **Interfaces:**
@@ -193,7 +193,7 @@ rosbridge, noVNC, Webots, and Docker ports are not individually forwarded.
 ```bash
 .venv/bin/python -m pytest tests/unit/test_platform_startup.py -q
 git diff --check
-git add deploy/platform.sh tests/unit/test_platform_startup.py OPERATIONS.md
+git add deploy/platform.sh tests/unit/test_platform_startup.py docs/OPERATIONS.md
 git commit -m "docs: standardize the 18090 ssh entry"
 ```
 
@@ -217,10 +217,10 @@ git commit -m "docs: standardize the 18090 ssh entry"
 - Create: `tests/unit/test_document_contract.py`
 
 **Interfaces:**
-- Consumes: the approved path/SSH design and the current Compose closure in `ACCEPTANCE.md`.
+- Consumes: the approved path/SSH design and the current Compose closure in `docs/ACCEPTANCE.md`.
 - Produces: one README entry point, one operator manual, current architecture/spec/plan contracts, and historical acceptance evidence without executable superseded instructions.
 
-- [ ] **Step 1: Add the failing document contract tests.**
+- [x] **Step 1: Add the failing document contract tests.**
 
 Create `tests/unit/test_document_contract.py`:
 
@@ -257,7 +257,7 @@ The host-path test excludes the new design document because its approved removal
 explicitly names the historical value as an example; runtime and operator documents must
 remain path-neutral.
 
-- [ ] **Step 2: Run the document tests and confirm they fail.**
+- [x] **Step 2: Run the document tests and confirm they fail.**
 
 ```bash
 python3 -m pytest tests/unit/test_document_contract.py -q
@@ -266,7 +266,7 @@ python3 -m pytest tests/unit/test_document_contract.py -q
 Expected: the existing `18089` block, host-specific plan/design references, and duplicate
 Compose documents cause failures.
 
-- [ ] **Step 3: Consolidate active documentation.**
+- [x] **Step 3: Consolidate active documentation.**
 
 Apply these exact edits:
 
@@ -289,7 +289,7 @@ Apply these exact edits:
 8. Delete the two dated Compose documents after confirming their unique active decisions are
    represented in the five current `docs/` documents and the approved design.
 
-- [ ] **Step 4: Run stale-reference and Markdown contract scans.**
+- [x] **Step 4: Run stale-reference and Markdown contract scans.**
 
 ```bash
 python3 -m pytest tests/unit/test_document_contract.py -q
@@ -302,7 +302,7 @@ Expected: the test passes. The scan returns no active implementation or operator
 matches; any permitted historical mention must be outside the scanned active paths or be
 removed rather than retained as an instruction.
 
-- [ ] **Step 5: Commit documentation consolidation.**
+- [x] **Step 5: Commit documentation consolidation.**
 
 ```bash
 git add README.md docs/OPERATIONS.md docs/SPEC.md docs/PLATFORM_DESIGN.md docs/IMPLEMENTATION_PLAN.md docs/ACCEPTANCE.md .env.example tests/unit/test_document_contract.py
