@@ -4,7 +4,7 @@
 
 **Goal:** Remove host-specific workspace and alternate SSH URL assumptions while keeping the three-project layout, container paths, and platform behavior unchanged.
 
-**Architecture:** `deploy/platform.sh` resolves one absolute workspace parent from its checkout location or `MASAR_WORKSPACE_ROOT`, validates the three sibling projects, and exports the result to Compose. The browser gateway remains the only entry at `127.0.0.1:18090`; remote access uses a one-to-one SSH `LocalForward 18090 127.0.0.1:18090`. Root documents remain the active contract, while duplicate dated Compose documents are removed after their current decisions are represented in the root documents.
+**Architecture:** `deploy/platform.sh` resolves one absolute workspace parent from its checkout location or `MASAR_WORKSPACE_ROOT`, validates the three sibling projects, and exports the result to Compose. The browser gateway remains the only entry at `127.0.0.1:18090`; remote access uses a one-to-one SSH `LocalForward 18090 127.0.0.1:18090`. The root `README.md` is a short project entry point, while development, architecture, operations, planning, specification, and acceptance documents live under `docs/`.
 
 **Tech Stack:** Bash, Docker Compose, Python/pytest contract tests, Markdown, Make.
 
@@ -200,10 +200,17 @@ git commit -m "docs: standardize the 18090 ssh entry"
 ### Task 3: Remove Stale and Duplicate Deployment Documentation
 
 **Files:**
-- Modify: `PLATFORM_DESIGN.md:37-49,54-60`
-- Modify: `SPEC.md:575-600,704-712`
-- Modify: `IMPLEMENTATION_PLAN.md:1-25,645-690`
-- Modify: `ACCEPTANCE.md:1-10,418-430`
+- Move: `PLATFORM_DESIGN.md` -> `docs/PLATFORM_DESIGN.md`
+- Move: `SPEC.md` -> `docs/SPEC.md`
+- Move: `IMPLEMENTATION_PLAN.md` -> `docs/IMPLEMENTATION_PLAN.md`
+- Move: `ACCEPTANCE.md` -> `docs/ACCEPTANCE.md`
+- Move: `OPERATIONS.md` -> `docs/OPERATIONS.md`
+- Create: `README.md`
+- Modify: `docs/PLATFORM_DESIGN.md:37-49,54-60`
+- Modify: `docs/SPEC.md:575-600,704-712`
+- Modify: `docs/IMPLEMENTATION_PLAN.md:1-25,645-690`
+- Modify: `docs/ACCEPTANCE.md:1-10,418-430`
+- Modify: `docs/OPERATIONS.md:1-245`
 - Modify: `.env.example:1-8`
 - Delete: `docs/superpowers/specs/2026-08-03-compose-managed-runtime-design.md`
 - Delete: `docs/superpowers/plans/2026-08-03-compose-managed-runtime-implementation.md`
@@ -211,7 +218,7 @@ git commit -m "docs: standardize the 18090 ssh entry"
 
 **Interfaces:**
 - Consumes: the approved path/SSH design and the current Compose closure in `ACCEPTANCE.md`.
-- Produces: one operator manual, current architecture/spec/plan contracts, and historical acceptance evidence without executable superseded instructions.
+- Produces: one README entry point, one operator manual, current architecture/spec/plan contracts, and historical acceptance evidence without executable superseded instructions.
 
 - [ ] **Step 1: Add the failing document contract tests.**
 
@@ -222,14 +229,17 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-ACTIVE_DOCS = ("OPERATIONS.md", "SPEC.md", "PLATFORM_DESIGN.md", "IMPLEMENTATION_PLAN.md", "ACCEPTANCE.md", ".env.example")
+ACTIVE_DOCS = ("docs/OPERATIONS.md", "docs/SPEC.md", "docs/PLATFORM_DESIGN.md", "docs/IMPLEMENTATION_PLAN.md", "docs/ACCEPTANCE.md", ".env.example")
 
 
 def test_active_docs_use_the_single_gateway_mapping() -> None:
-    operations = (ROOT / "OPERATIONS.md").read_text(encoding="utf-8")
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
+    operations = (ROOT / "docs/OPERATIONS.md").read_text(encoding="utf-8")
     assert "LocalForward 18090 127.0.0.1:18090" in operations
     assert "LocalForward 18089" not in operations
     assert "127.0.0.1:18089" not in operations
+    assert "http://127.0.0.1:18090" in readme
+    assert "docs/OPERATIONS.md" in readme
 
 
 def test_active_runtime_docs_have_no_host_specific_workspace_path() -> None:
@@ -260,28 +270,32 @@ Compose documents cause failures.
 
 Apply these exact edits:
 
-1. In `PLATFORM_DESIGN.md`, replace the fixed `/home/zjc/workspace/masar-unified-platform`
+1. In `docs/PLATFORM_DESIGN.md`, replace the fixed `/home/zjc/workspace/masar-unified-platform`
    exclusion section with a short statement that the deprecated project is outside this
    repository and is never used by Compose; describe the workspace as `<workspace>`.
-2. In `SPEC.md`, add the portable sibling-layout and one-to-one `18090` contract near the
+2. In `docs/SPEC.md`, add the portable sibling-layout and one-to-one `18090` contract near the
    port section, and remove the completed “Spec Review Checklist” asking for approval.
-3. In `IMPLEMENTATION_PLAN.md`, replace the fixed implementation-root wording with
+3. In `docs/IMPLEMENTATION_PLAN.md`, replace the fixed implementation-root wording with
    repository-relative paths and add the three tasks from this plan under the active
    Compose closure section. Keep historical tasks only when explicitly marked superseded.
-4. In `ACCEPTANCE.md`, state that E4's operator guide and current deployment contract are
+4. In `docs/ACCEPTANCE.md`, state that E4's operator guide and current deployment contract are
    path-neutral and use the one-to-one gateway mapping; leave measured Run IDs and counts
    untouched.
-5. In `.env.example`, document the automatic parent-directory derivation and the optional
+5. In `README.md`, add the project summary and a quick-start section that points to
+   `docs/OPERATIONS.md`; do not duplicate the full service table or troubleshooting guide.
+6. In `.env.example`, document the automatic parent-directory derivation and the optional
    `MASAR_WORKSPACE_ROOT` override without an example tied to a real user's home path.
-6. Delete the two dated Compose documents after confirming their unique active decisions are
-   represented in the five root documents and the approved design.
+7. Update cross-document links and all current-document references to the new `docs/` paths.
+8. Delete the two dated Compose documents after confirming their unique active decisions are
+   represented in the five current `docs/` documents and the approved design.
 
 - [ ] **Step 4: Run stale-reference and Markdown contract scans.**
 
 ```bash
 python3 -m pytest tests/unit/test_document_contract.py -q
 rg -n --hidden --glob '!**/.git/**' --glob '!**/node_modules/**' --glob '!**/dist/**' \
-  '/home/zjc/workspace|18089|7897' deploy OPERATIONS.md SPEC.md PLATFORM_DESIGN.md IMPLEMENTATION_PLAN.md ACCEPTANCE.md .env.example
+  '/home/zjc/workspace|18089|7897' deploy README.md docs/OPERATIONS.md docs/SPEC.md \
+  docs/PLATFORM_DESIGN.md docs/IMPLEMENTATION_PLAN.md docs/ACCEPTANCE.md .env.example
 ```
 
 Expected: the test passes. The scan returns no active implementation or operator-guide
@@ -291,7 +305,7 @@ removed rather than retained as an instruction.
 - [ ] **Step 5: Commit documentation consolidation.**
 
 ```bash
-git add OPERATIONS.md SPEC.md PLATFORM_DESIGN.md IMPLEMENTATION_PLAN.md ACCEPTANCE.md .env.example tests/unit/test_document_contract.py
+git add README.md docs/OPERATIONS.md docs/SPEC.md docs/PLATFORM_DESIGN.md docs/IMPLEMENTATION_PLAN.md docs/ACCEPTANCE.md .env.example tests/unit/test_document_contract.py
 git add -u docs/superpowers/specs/2026-08-03-compose-managed-runtime-design.md docs/superpowers/plans/2026-08-03-compose-managed-runtime-implementation.md
 git commit -m "docs: remove stale deployment and ssh instructions"
 ```
@@ -299,8 +313,8 @@ git commit -m "docs: remove stale deployment and ssh instructions"
 ### Task 4: Run the Full Acceptance Gate and Record Closure
 
 **Files:**
-- Modify: `ACCEPTANCE.md` end section with the dated path/SSH closure result
-- Modify: `IMPLEMENTATION_PLAN.md` checkboxes for this plan's completed tasks
+- Modify: `docs/ACCEPTANCE.md` end section with the dated path/SSH closure result
+- Modify: `docs/IMPLEMENTATION_PLAN.md` checkboxes for this plan's completed tasks
 
 **Interfaces:**
 - Consumes: passing Task 1-3 tests, the current Compose stack, and the existing browser gateway.
@@ -337,7 +351,7 @@ and the current Run is `null` or is reported without being stopped by this gate.
 
 - [ ] **Step 3: Record the final acceptance evidence.**
 
-Append a dated entry to `ACCEPTANCE.md` containing the exact test counts, `docker compose
+Append a dated entry to `docs/ACCEPTANCE.md` containing the exact test counts, `docker compose
 config` result, resolved workspace-root behavior, gateway URL, and the one-to-one SSH snippet.
 Mark this plan's path and documentation stages `PASS`; do not claim a new simulation Run if
 none was executed.
@@ -347,7 +361,8 @@ none was executed.
 ```bash
 git diff --stat
 git status --short
-rg -n '/home/zjc/workspace|18089|7897' deploy OPERATIONS.md SPEC.md PLATFORM_DESIGN.md IMPLEMENTATION_PLAN.md ACCEPTANCE.md .env.example || true
+rg -n '/home/zjc/workspace|18089|7897' deploy README.md docs/OPERATIONS.md docs/SPEC.md \
+  docs/PLATFORM_DESIGN.md docs/IMPLEMENTATION_PLAN.md docs/ACCEPTANCE.md .env.example || true
 ```
 
 Expected: only intentional files from Tasks 1-4 are changed by this work, no active stale
@@ -356,6 +371,6 @@ references remain, and unrelated ROS project changes are untouched.
 - [ ] **Step 5: Commit the acceptance record.**
 
 ```bash
-git add ACCEPTANCE.md IMPLEMENTATION_PLAN.md
+git add docs/ACCEPTANCE.md docs/IMPLEMENTATION_PLAN.md
 git commit -m "docs: record portable workspace acceptance"
 ```
