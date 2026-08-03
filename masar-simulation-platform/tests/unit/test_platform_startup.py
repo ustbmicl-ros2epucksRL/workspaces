@@ -323,6 +323,21 @@ def test_start_is_idempotent_when_all_services_are_healthy(tmp_path: Path) -> No
     assert "already healthy" in result.stdout
 
 
+def test_start_reports_one_to_one_gateway_and_ssh_entry(tmp_path: Path) -> None:
+    environment, _, _ = _prepare_harness(tmp_path)
+    state = Path(environment["FAKE_STATE"])
+    for marker in ("ros1-image", "ros2-image", "gateway", "compose-running"):
+        (state / marker).touch()
+
+    result = _run_platform(environment, "start")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "http://127.0.0.1:18090" in result.stdout
+    assert "LocalForward 18090 127.0.0.1:18090" in result.stdout
+    assert "18089" not in result.stdout
+    assert "7897" not in result.stdout
+
+
 def test_start_migrates_only_exact_legacy_container_names(tmp_path: Path) -> None:
     environment, docker_log, _ = _prepare_harness(tmp_path)
     state = Path(environment["FAKE_STATE"])

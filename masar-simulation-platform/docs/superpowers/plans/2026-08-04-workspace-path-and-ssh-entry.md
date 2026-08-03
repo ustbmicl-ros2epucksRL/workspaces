@@ -133,7 +133,7 @@ git commit -m "fix: resolve workspace paths independently of host location"
 - Consumes: existing `gateway_url=http://127.0.0.1:18090`.
 - Produces: a stable startup/status access hint containing `LocalForward 18090 127.0.0.1:18090`.
 
-- [ ] **Step 1: Add the failing access-output test.**
+- [x] **Step 1: Add the failing access-output test.**
 
 Add to the existing fake-harness tests:
 
@@ -153,15 +153,15 @@ def test_start_reports_one_to_one_gateway_and_ssh_entry(tmp_path: Path) -> None:
     assert "7897" not in result.stdout
 ```
 
-- [ ] **Step 2: Run the focused test and confirm it fails.**
+- [x] **Step 2: Run the focused test and confirm it fails.**
 
 ```bash
-python3 -m pytest tests/unit/test_platform_startup.py::test_start_reports_one_to_one_gateway_and_ssh_entry -q
+.venv/bin/python -m pytest tests/unit/test_platform_startup.py::test_start_reports_one_to_one_gateway_and_ssh_entry -q
 ```
 
 Expected: the current idempotent start only prints the old healthy message and no SSH hint.
 
-- [ ] **Step 3: Add one access-hint helper and use it on start/status.**
+- [x] **Step 3: Add one access-hint helper and use it on start/status.**
 
 Add a shell helper next to `log`:
 
@@ -176,7 +176,7 @@ Call it when `command_start` returns from either the already-healthy branch or t
 ready branch, and when `command_status` reports a healthy gateway. Do not add a second
 listener, SSH process, or environment variable.
 
-- [ ] **Step 4: Replace the alternate SSH URL in the operator manual.**
+- [x] **Step 4: Replace the alternate SSH URL in the operator manual.**
 
 Keep the canonical block:
 
@@ -188,10 +188,10 @@ Delete the `18089` alternative and state that both local and remote browser URLs
 `http://127.0.0.1:18090`; only the SSH configuration differs. Keep the warning that Agent,
 rosbridge, noVNC, Webots, and Docker ports are not individually forwarded.
 
-- [ ] **Step 5: Run focused tests and commit.**
+- [x] **Step 5: Run focused tests and commit.**
 
 ```bash
-python3 -m pytest tests/unit/test_platform_startup.py -q
+.venv/bin/python -m pytest tests/unit/test_platform_startup.py -q
 git diff --check
 git add deploy/platform.sh tests/unit/test_platform_startup.py OPERATIONS.md
 git commit -m "docs: standardize the 18090 ssh entry"

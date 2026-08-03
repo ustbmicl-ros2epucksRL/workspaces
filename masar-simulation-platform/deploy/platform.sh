@@ -50,6 +50,11 @@ log() {
   printf '[platform] %s\n' "$*"
 }
 
+print_access_hint() {
+  log "browser: $gateway_url"
+  log "remote SSH: LocalForward 18090 127.0.0.1:18090"
+}
+
 warn() {
   printf '[platform][warning] %s\n' "$*" >&2
 }
@@ -499,6 +504,7 @@ command_start() {
   if platform_healthy; then
     prepare_frontend_assets
     log "platform is already healthy: $gateway_url"
+    print_access_hint
     return 0
   fi
 
@@ -516,6 +522,7 @@ command_start() {
   compose up -d --remove-orphans
   wait_for_platform
   log "ready: $gateway_url"
+  print_access_hint
 }
 
 command_stop() {
@@ -528,6 +535,7 @@ command_status() {
   compose ps || true
   if gateway_healthy; then
     log "gateway healthy: $gateway_url"
+    print_access_hint
   else
     warn "gateway unavailable: $gateway_url"
   fi
