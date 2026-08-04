@@ -56,7 +56,7 @@ else:
     from actions import ActionNotAllowed, ActionPublishError, ActionPublisher  # type: ignore[no-redef]
 
 
-_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs|command|graph)$")
+_RUN_ROUTE = re.compile(r"^/v1/runs/([^/]+)/(start|stop|probe|logs|command|graph|webots-preflight)$")
 _MAX_BODY_BYTES = 1024 * 1024
 
 
@@ -86,7 +86,12 @@ class AgentApplication:
         parsed = urlsplit(target)
         if method == "GET" and parsed.path == "/healthz":
             return 200, success_response(
-                {"agent": self.agent_kind, "protocol_version": PROTOCOL_VERSION, "status": "ok"},
+                {
+                    "agent": self.agent_kind,
+                    "protocol_version": PROTOCOL_VERSION,
+                    "status": "ok",
+                    "capabilities": ["webots_preflight"] if self.agent_kind == "ros2" else [],
+                },
                 request_id=request_id,
             )
 
@@ -177,6 +182,13 @@ class AgentApplication:
                 if set(payload) != {"runtime"} or not isinstance(payload["runtime"], dict):
                     raise ProbeRequestError("graph snapshot requires exactly one runtime object")
                 result = self.probe_runner.graph_snapshot(payload["runtime"])
+                result["run_id"] = run_id
+                return 200, success_response(result, request_id=request_id)
+            if operation == "webots-preflight" and method == "POST":
+                payload = _json_object(body)
+                if set(payload) != {"require_bridge"} or not isinstance(payload["require_bridge"], bool):
+                    raise ProbeRequestError("Webots preflight requires exactly one require_bridge boolean")
+                result = self.probe_runner.webots_preflight(require_bridge=payload["require_bridge"])
                 result["run_id"] = run_id
                 return 200, success_response(result, request_id=request_id)
             return 405, error_response(

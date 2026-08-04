@@ -1,3 +1,4 @@
+import configparser
 from pathlib import Path
 import re
 import subprocess
@@ -14,8 +15,10 @@ def _compose() -> dict:
     return yaml.safe_load((DEPLOY / "compose.yaml").read_text(encoding="utf-8"))
 
 
-def _manifest(name: str) -> dict:
-    return yaml.safe_load((DEPLOY / "sidecars" / f"{name}-supervisor.yaml").read_text(encoding="utf-8"))
+def _supervisor(name: str) -> configparser.ConfigParser:
+    parser = configparser.ConfigParser()
+    parser.read(DEPLOY / "sidecars" / f"{name}-supervisord.conf", encoding="utf-8")
+    return parser
 
 
 def test_compose_defines_loopback_only_web_stack() -> None:
@@ -30,14 +33,22 @@ def test_compose_defines_loopback_only_web_stack() -> None:
         assert "ports" not in service, name
 
     assert services["ros1-web"]["environment"]["ROS_MASTER_URI"] == "http://127.0.0.1:11311"
-    assert services["ros2-web"]["environment"]["ROS_DOMAIN_ID"] == "${MASAR_ROS2_DOMAIN_ID:-0}"
+    assert services["ros2-web"]["environment"]["ROS_DOMAIN_ID"] == "${MASAR_ROS2_DOMAIN_ID:-42}"
     assert services["ros2-web"]["environment"]["ROS_LOCALHOST_ONLY"] == "${MASAR_ROS2_LOCALHOST_ONLY:-0}"
     assert services["ros2-web"]["ipc"] == "host"
+    assert "../../masar_ws:/root/workspace/masar_ws:ro" in services["ros1-web"]["volumes"]
+    assert "../../ROS2swarm_w:/root/workspace/ROS2swarm_w:ro" in services["ros2-web"]["volumes"]
     assert services["caddy"]["image"].startswith("caddy:2.10.2-alpine@sha256:")
+    assert "./caddy/Caddyfile:/etc/caddy/Caddyfile:ro" in services["caddy"]["volumes"]
     assert "../frontend/dist:/srv/frontend:ro" in services["caddy"]["volumes"]
+    assert "build" not in services["caddy"]
     assert services["webots-guard"]["cap_add"] == ["NET_ADMIN"]
     assert services["webots-guard"]["security_opt"] == ["no-new-privileges:true"]
     assert services["webots-guard"]["read_only"] is True
+    assert services["webots-guard"]["entrypoint"] == ["/usr/local/bin/webots-port-guard"]
+    assert "./webots-guard/webots-port-guard:/usr/local/bin/webots-port-guard:ro" in services[
+        "webots-guard"
+    ]["volumes"]
     assert services["webots-guard"]["environment"]["MASAR_WEBOTS_STREAM_PORT"] == "18141"
     assert services["caddy"]["depends_on"]["webots-guard"]["condition"] == "service_healthy"
 
@@ -55,6 +66,8 @@ def test_sidecar_images_pin_ros_distro_and_packages() -> None:
     assert "rosbridge_capabilities = [CallService, Subscribe, Defragment]" in patch
     assert "listenWS(factory, context_factory, interface=address)" in patch
     ros1_runner = (DEPLOY / "sidecars" / "run-ros1-sidecar").read_text(encoding="utf-8")
+    assert "source /root/workspace/masar_ws/devel/setup.bash" in ros1_runner
+    assert "masar_ws devel overlay is unavailable" in ros1_runner
     assert "roslaunch rosbridge_server rosbridge_websocket.launch" in ros1_runner
     assert "services_glob:=\"[rosapi/topics,/rosapi/topics]\"" in ros1_runner
 
@@ -63,33 +76,25 @@ def test_sidecar_images_pin_ros_distro_and_packages() -> None:
     assert "ros-humble-tf2-web-republisher" in ros2
     assert "ros-humble-web-video-server" in ros2
     ros2_runner = (DEPLOY / "sidecars" / "run-ros2-sidecar").read_text(encoding="utf-8")
+    assert "source /root/workspace/ROS2swarm_w/install/setup.bash" in ros2_runner
     assert "topics_glob:=\"'[]'\"" in ros2_runner
     assert "topics_pub_glob:=\"'[]'\"" in ros2_runner
     assert "topics_sub_glob:=\"${MASAR_ROS2_TOPICS_GLOB" in ros2_runner
     assert "services_glob:=\"'[rosapi/topics,/rosapi/topics]'\"" in ros2_runner
+    assert "call_services_in_new_thread:=true" in ros2_runner
 
 
-def test_supervisor_manifests_have_exact_ports_and_read_only_policy() -> None:
-    ros1 = _manifest("ros1")
-    ros2 = _manifest("ros2")
-
-    assert ros1["distribution"] == "noetic"
-    assert ros1["ports"] == {"rosbridge": "127.0.0.1:18111", "video": "127.0.0.1:18121"}
-    assert ros1["browser_policy"] == {
-        "publish": False,
-        "call_service": False,
-        "parameters": False,
-    }
-    assert set(ros1["programs"]) == {"rosbridge", "tf2_web_republisher", "web_video_server"}
-
-    assert ros2["distribution"] == "humble"
-    assert ros2["ports"] == {"rosbridge": "127.0.0.1:18112", "video": "127.0.0.1:18122"}
-    assert ros2["browser_policy"] == {
-        "topics_pub_glob": "[]",
-        "services_glob": "[]",
-        "params_glob": "[]",
-    }
-    assert set(ros2["programs"]) == {"rosbridge", "tf2_web_republisher", "web_video_server"}
+def test_supervisor_configs_run_exactly_the_three_sidecar_programs() -> None:
+    expected_programs = {"rosbridge", "tf2_web_republisher", "web_video_server"}
+    for distribution in ("ros1", "ros2"):
+        supervisor = _supervisor(distribution)
+        program_sections = {section for section in supervisor if section.startswith("program:")}
+        assert program_sections == {f"program:{program}" for program in expected_programs}
+        for program in expected_programs:
+            settings = supervisor[f"program:{program}"]
+            assert settings["command"] == f"/usr/local/bin/run-{distribution}-sidecar {program}"
+            assert settings.getboolean("stopasgroup") is True
+            assert settings.getboolean("killasgroup") is True
 
 
 def test_caddy_is_single_origin_and_preserves_websocket_upgrades() -> None:
@@ -105,7 +110,7 @@ def test_caddy_is_single_origin_and_preserves_websocket_upgrades() -> None:
         "/video/ros2/*",
         "/display/gazebo/*",
         "/display/rviz/*",
-        "/webots/*",
+        "/display/webots/*",
     ):
         assert route in caddy
 
@@ -120,6 +125,7 @@ def test_caddy_is_single_origin_and_preserves_websocket_upgrades() -> None:
     assert "try_files {path} /index.html" in caddy
     assert "file_server" in caddy
     assert "18088" not in caddy
+    assert "reverse_proxy 127.0.0.1:18141" not in caddy
     assert "18101" not in caddy
     assert "18102" not in caddy
 

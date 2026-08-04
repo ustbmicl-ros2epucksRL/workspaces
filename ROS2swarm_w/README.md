@@ -1,11 +1,14 @@
 # ROS2swarm_w
 
-`ROS2swarm_w` 是当前工作区中的 ROS2 Humble + Webots 群体行为验证环境。它承担两类工作：
+`ROS2swarm_w` 是一个可独立运行的 ROS2 Humble + Webots 群体行为验证项目。它承担两类工作：
 
 - 独立运行 ROS2swarm 群体行为模式，在 Webots 中验证 `aggregation`、`dispersion`、`navigation`、`roundflocking`、`transport` 等规则/学习策略。
 - 在双容器 RoboSAR 系统中作为 ROS2/Webots 侧，启动 Webots 仿真、`robosar_bridge_adapter` 和 `ros1_bridge`，把 Webots 机器人接入 ROS1 RoboSAR 搜救系统。
 
-当前部署默认位于 `4a6000` 设备的 `masar_ros2_bridge-w` 容器中。`4a6000` 是无头服务器，图形界面通过 TurboVNC 显示，Webots 通过 VirtualGL/vglrun 使用 GPU 加速。迁移到其他设备时，不要假设裸 ROS2 镜像能直接运行；需要配置 Webots、ROS2 Humble、`ros1_bridge` 和本工作区依赖。若新设备有本地显示/渲染环境，可以不配置 TurboVNC/VirtualGL，使用 `--no-vglrun` 直接运行。
+项目源码、构建结果和运行脚本都位于本目录。Docker Hub 镜像
+`talent18/masar_ros2_bridge-w:v2` 提供 ROS2 Humble、Webots、`ros1_bridge` 和系统
+依赖；源码通过挂载进入容器，因此修改本项目通常不需要重建镜像。文中的
+`/root/workspace/ROS2swarm_w` 是推荐的容器内挂载路径，不是宿主机固定路径。
 
 相关依赖配置资料：
 - webots安装：
@@ -18,10 +21,20 @@ sudo dpkg -i webots_2025a_amd64.deb
 
 ## 快速开始
 
+先取得独立运行环境镜像：
+
+```bash
+docker pull talent18/masar_ros2_bridge-w:v2
+```
+
+创建容器时需要把包含本项目的 workspace 挂载到 `/root/workspace`，并按运行设备提供
+host network、GPU、X11 和 `/dev/dri`。这些参数依赖宿主显示环境，本项目不假定固定的
+宿主路径或显卡节点。以下命令默认在该镜像创建的容器中执行。
+
 ### 1. 构建
 
 ```bash
-cd /ROS2swarm_w
+cd /root/workspace/ROS2swarm_w
 colcon build --symlink-install
 source install/setup.bash
 ```
@@ -31,17 +44,17 @@ source install/setup.bash
 ### 2. 运行普通 Webots 群体仿真
 
 ```bash
-cd /ROS2swarm_w
-./start_simulation.sh --vglrun
+cd /root/workspace/ROS2swarm_w
+./start_simulation.sh
 ```
 
-这是 `4a6000` 无头服务器上的推荐方式。若在有本地显示/渲染能力的设备上运行，且未安装 `vglrun`，使用：
+脚本默认使用 `ROS2SWARM_USE_VGLRUN=auto`：检测到 `vglrun` 时使用 VirtualGL，未检测
+到时直接启动。也可以显式选择：
 
 ```bash
+./start_simulation.sh --vglrun
 ./start_simulation.sh --no-vglrun
 ```
-
-已在另一台安装好 Webots、ROS2 等依赖但没有配置 vglrun 的设备上验证：直接运行 `./start_simulation.sh` 会因为脚本默认尝试 vglrun 而报 `env: 'vglrun': No such file or directory`；改用 `./start_simulation.sh --no-vglrun` 后可以正常启动 Webots 仿真和 ROS2 节点。
 
 常用调试：
 
@@ -56,10 +69,11 @@ cd /ROS2swarm_w
 WEBOTS_WORLD=command_world.wbt
 PATTERN=roundflocking_pattern
 NUMBER_ROBOTS=5
-ROBOT=e_puck
+ROBOT=burger
 SENSOR_TYPE=lidar
 WEBOTS_MODE=realtime
 WEBOTS_GUI=true
+ROS_DOMAIN_ID=42
 ```
 
 如需无界面运行，修改脚本顶部 `WEBOTS_GUI=false`，或手动 launch 时传入 `webots_gui:=false`。
@@ -67,7 +81,7 @@ WEBOTS_GUI=true
 要切换实验，直接修改脚本顶部变量，或绕过脚本手动 launch：
 
 ```bash
-ros2 launch launch_webots create_enviroment.launch.py \
+ROS_DOMAIN_ID=42 ros2 launch launch_webots create_enviroment.launch.py \
   webots_world:=command_world.wbt \
   pattern:=transport_pattern \
   number_robots:=5 \
@@ -93,14 +107,14 @@ bash add_robots_to_simulation.sh
 先在 ROS2 容器启动 Webots 和 bridge：
 
 ```bash
-cd /ROS2swarm_w
+cd /root/workspace/ROS2swarm_w
 ./start_robosar_webots.sh --vglrun
 ```
 
 再到 ROS1 容器启动 RoboSAR：
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./launch_robosar_w.sh
 ```
 
@@ -120,7 +134,20 @@ PUBLISH_STATIC_MAP=false
 ROS1_MASTER_IP=localhost
 ```
 
-启动顺序很重要：先 ROS2 Webots + `ros1_bridge`，再 ROS1 RoboSAR。ROS1 侧是 `/sim_map` 和 `map -> agent_N/odom` 的权威来源；ROS2 侧默认不发布 `/sim_map`。
+直接调试时启动顺序很重要：先 ROS2 Webots + `ros1_bridge`，再 ROS1 RoboSAR。
+ROS1 侧是 `/sim_map` 和 `map -> agent_N/odom` 的权威来源；ROS2 侧默认不发布
+`/sim_map`。
+
+## 平台集成
+
+同级的 `masar-simulation-platform` 已集成本项目。平台 Compose 以固定 digest 复用
+`talent18/masar_ros2_bridge-w:v2`，把 workspace 挂载到 `/root/workspace`，并在首次
+缺少 `install/setup.bash` 时自动执行 `colcon build`。
+
+平台的 `swarm.webots.ros2swarm` 场景调用 `start_simulation.sh` 对应的 ROS2 launch，
+`exploration.webots.robosar` 场景先调用 `start_robosar_webots.sh`，再启动 ROS1 侧。
+完整平台入口见[平台 README](../masar-simulation-platform/README.md)。平台存在活动 Run
+时不要手工启动第二套 Webots 或 ROS 图。
 
 ## 项目结构
 
@@ -131,7 +158,11 @@ ROS2swarm_w/
 ├── run_vnc_gpu.sh                  # VNC/X11/VirtualGL/GPU 环境对齐
 ├── add_robots_to_simulation.sh     # 已有仿真中追加机器人
 ├── docs/
-│   └── robosar_webots_bridge_plan.md
+│   ├── robosar_webots_bridge_plan.md
+│   ├── EPUCK2_REAL_DEPLOYMENT_GUIDE.md
+│   ├── EPUCK2_ARENA_ADAPTATION_GUIDE.md
+│   ├── PT_NEAT_REAL_ROBOT_DEPLOYMENT_GUIDE.md
+│   └── REAL_EPUCK_DEPLOYMENT_IMPLEMENTATION_PLAN.md
 └── src/
     ├── communication_interfaces/   # ROS2 自定义消息
     ├── launch_webots/              # Webots world、robot 生成、RoboSAR bridge adapter
@@ -193,6 +224,7 @@ src/launch_webots/maps/
 aggregation_pattern
 attraction_pattern
 dispersion_pattern
+discussed_dispersion_pattern
 drive_pattern
 magnetometer_pattern
 minimalist_flocking_pattern
@@ -252,12 +284,14 @@ docs/robosar_webots_bridge_plan.md
 
 ## VNC/GPU 注意事项
 
-当前 VNC/GPU 设计是为 `4a6000` 无头服务器准备的：服务器没有直接可见的桌面显示，Webots 窗口通过 TurboVNC 显示，渲染通过 VirtualGL/vglrun 走 GPU。脚本会自动 source：
+直接运行本项目脚本时会自动 source：
 
 ```text
 run_vnc_gpu.sh
 ```
 
+它用于对齐容器内 X11、VirtualGL 和 GPU 环境。直接运行时应按当前设备检查
+`DISPLAY`、`XAUTHORITY` 和 vglrun target，不要照搬旧服务器的显卡节点编号。
 这样做的原因是宿主机或 VNC 重启后，`DISPLAY`、`XAUTHORITY` 和可用 GPU 设备可能变化；脚本会尽量自动对齐这些变量，并默认启用 vglrun。
 
 常用检查：
@@ -271,10 +305,10 @@ run_vnc_gpu.sh
 ```text
 ROS2SWARM_VNC_DISPLAY=:1
 ROS2SWARM_XAUTHORITY=/tmp/.docker.xauth
-ROS2SWARM_USE_VGLRUN=true
-ROS2SWARM_VGLRUN_DEVICE=/dev/dri/card2
-ROBOSAR_USE_VGLRUN=true
-ROBOSAR_VGLRUN_DEVICE=/dev/dri/card2
+ROS2SWARM_USE_VGLRUN=auto
+ROS2SWARM_VGLRUN_DEVICE=:0
+ROBOSAR_USE_VGLRUN=auto
+ROBOSAR_VGLRUN_DEVICE=:0
 ```
 
 如果 Webots 窗口不可见或退回 llvmpipe，先检查 `DISPLAY`、`XAUTHORITY`、`vglrun` 和 `/dev/dri/*`。
@@ -291,6 +325,9 @@ export ROBOSAR_USE_VGLRUN=false
 
 这种模式仍要求 Webots、ROS2 Humble、相关 Python/ROS 包等项目依赖已经安装好；禁用 vglrun 只是不走 TurboVNC/VirtualGL GPU 包装，不会改变 ROS2swarm 的算法逻辑。
 
+通过统一平台运行时，平台会在独立 Xvfb/noVNC 桌面中显示 Webots，并负责所需的
+VirtualGL 和浏览器代理；这些平台端口不属于本项目独立运行接口。
+
 ## 结果和视频
 
 `videos/` 中按行为类型和机器人型号保留各模式的演示视频，例如：
@@ -306,20 +343,45 @@ voting_patterns/e_puck/voter_model_pattern.mp4
 
 这些视频适合快速判断每个行为模式的预期效果。`videos/.logs/` 是批量录制产生的日志。
 
+## 文档职责
+
+- [RoboSAR Webots 桥接说明](docs/robosar_webots_bridge_plan.md)：当前双容器启动、地图与 TF 口径。
+- [e-puck2 实机部署指南](docs/EPUCK2_REAL_DEPLOYMENT_GUIDE.md)：当前无硬件闭环候选版本的启动、标定和验收入口。
+- [e-puck2 场地适配指南](docs/EPUCK2_ARENA_ADAPTATION_GUIDE.md)：真实场地、地图、标记和机器人参数适配。
+- [PT/NEAT 实机策略契约](docs/PT_NEAT_REAL_ROBOT_DEPLOYMENT_GUIDE.md)：策略输入、输出和 sim-to-real 约束。
+- [e-puck 实物部署代码实施方案](docs/REAL_EPUCK_DEPLOYMENT_IMPLEMENTATION_PLAN.md)：2026-07-19 实施前计划快照；其中“当前状态”只描述当日初始基线，完成情况以实机部署指南为准。
+- [ROS2swarm 配置参考](src/ros2swarm/config/CONFIG.md)：包级参数含义；不替代本 README 或平台运维手册。
+- `src/launch_webots/assets/**/docs` 是 Webots 传感器资产资料，不是 MASAR 操作手册。
+
 ## 测试
 
-当前可运行的轻量测试：
+当前发布门使用的轻量测试：
 
 ```bash
-cd /ROS2swarm_w
-pytest tests/test_webots_start_scripts.py
-pytest src/launch_webots/test/test_environment_generator.py
-pytest src/ros2swarm/test
+cd /root/workspace/ROS2swarm_w
+python3 -m pytest tests/test_webots_start_scripts.py
+python3 -m pytest src/launch_webots/test/test_environment_generator.py
+python3 -m pytest src/ros2swarm/test/test_real_robot_geometry.py \
+       src/ros2swarm/test/test_real_robot_policy_mode.py \
+       src/ros2swarm/test/test_real_robot_safety.py \
+       src/ros2swarm/test/test_real_robot_state.py \
+       src/ros2swarm/test/test_global_info_bridge.py \
+       src/ros2swarm/test/test_roundflocking_neat_safety.py
 ```
 
-部分测试依赖已构建的 ROS2 环境、Python 包路径或特定系统依赖；若在新容器中失败，先确认已经执行 `colcon build --symlink-install` 并 source `install/setup.bash`。
+这些入口覆盖平台启动、世界生成、真实机器人安全/几何、世界位姿桥和 NEAT 输入边界。
+完整的 `src/ros2swarm/test` 还保留上游旧接口、launch 和代码风格检查，当前不作为平台发布门；
+若要运行它，先确认已经执行 `colcon build --symlink-install` 并 source `install/setup.bash`，
+再单独处理其中的历史测试债务。
 
 ## 常见问题
+
+当前已知的 ROS2swarm 行为限制：
+
+- `aggregation_pattern` 已验证可由 `e_puck` 完成；`burger` 当前不能完成同一模式，
+  属于 ROS2swarm/机器人模型适配问题，不是平台编排故障。
+- 手动选择 `sensor_type=ir` 时仍有传感器层问题。平台默认使用 `lidar`，不会走该
+  已知异常路径。
 
 Webots/bridge 能启动，但 ROS1 侧没有机器人数据：
 

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "profile": "exploration",
+  "graphs": {
+    "ros1": {
+      "connected": true,
+      "topics": [
+        {"name": "/sim_map", "message_type": "nav_msgs/OccupancyGrid", "last_message_age_seconds": 0.1},
+        {"name": "/frontier_filter/filtered_frontiers", "message_type": "robosar_messages/PointArray", "last_message_age_seconds": 0.2},
+        {"name": "/task_allocation_image", "message_type": "sensor_msgs/Image", "last_message_age_seconds": 0.2},
+        {"name": "/percent_completed", "message_type": "std_msgs/Float32", "last_message_age_seconds": 0.1},
+        {"name": "/robosar_agent_bringup_node/all_agent_status", "message_type": "robosar_messages/agents_status", "last_message_age_seconds": 0.2},
+        {"name": "/robosar_sim/emergency_objects", "message_type": "robosar_messages/EmergencyObjectArray", "last_message_age_seconds": 0.2},
+        {"name": "/robosar_sim/emergency_events", "message_type": "robosar_messages/EmergencyObject", "last_message_age_seconds": 0.2}
+      ]
+    }
+  }
+}

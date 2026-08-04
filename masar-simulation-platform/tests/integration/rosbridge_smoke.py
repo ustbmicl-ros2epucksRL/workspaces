@@ -127,11 +127,11 @@ def main() -> None:
         topic_type="std_msgs/msg/String",
         container="masar_ros2_bridge-w",
         publisher_command=(
-            "source /opt/ros/humble/setup.bash && export ROS_DOMAIN_ID=0 ROS_LOCALHOST_ONLY=0 && "
+            "source /opt/ros/humble/setup.bash && export ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 && "
             "ros2 topic pub --once /platform_smoke std_msgs/msg/String \"{data: ros2-ok}\""
         ),
         graph_command=(
-            "source /opt/ros/humble/setup.bash && export ROS_DOMAIN_ID=0 ROS_LOCALHOST_ONLY=0 && ros2 topic list"
+            "source /opt/ros/humble/setup.bash && export ROS_DOMAIN_ID=42 ROS_LOCALHOST_ONLY=0 && ros2 topic list"
         ),
     )
     print("ROS1 and ROS2 subscription paths passed; browser publish capability was denied.")

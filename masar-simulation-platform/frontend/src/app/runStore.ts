@@ -7,12 +7,15 @@ import {
   type DataSource,
   type RunEvent,
   type RunRecord,
+  type RobotInventoryItem,
+  type RunState,
   type ScenarioDetail,
   type ScenarioSummary,
   type WorkspaceId
 } from "./api";
 
 export type PanelSize = "normal" | "wide";
+export type ControlPlaneStatus = "checking" | "online" | "offline";
 
 export interface PanelState {
   size: PanelSize;
@@ -21,6 +24,7 @@ export interface PanelState {
 
 export interface WorkbenchState {
   loading: boolean;
+  controlPlaneStatus: ControlPlaneStatus;
   error: string | null;
   capabilities: Capabilities | null;
   scenarios: ScenarioSummary[];
@@ -30,6 +34,7 @@ export interface WorkbenchState {
   parameters: Record<string, unknown>;
   run: RunRecord | null;
   dataSources: DataSource[];
+  robots: RobotInventoryItem[];
   events: RunEvent[];
   eventCursor: number;
   panels: Record<string, PanelState>;
@@ -47,6 +52,7 @@ function requestedWorkspace(): WorkspaceId {
 class RunStore {
   private state: WorkbenchState = {
     loading: true,
+    controlPlaneStatus: "checking",
     error: null,
     capabilities: null,
     scenarios: [],
@@ -56,6 +62,7 @@ class RunStore {
     parameters: {},
     run: null,
     dataSources: [],
+    robots: [],
     events: [],
     eventCursor: 0,
     panels: {}
@@ -71,6 +78,11 @@ class RunStore {
   getState = (): WorkbenchState => this.state;
 
   async initialize(): Promise<void> {
+    this.set({
+      loading: this.state.scenario === null,
+      controlPlaneStatus: "checking",
+      error: null
+    });
     try {
       const [capabilities, scenarios, currentRun] = await Promise.all([
         api.capabilities(),
@@ -99,9 +111,11 @@ class RunStore {
         candidates[0] ??
         scenarios[0];
       const scenario = selected ? await api.scenario(selected.scenario_id) : null;
-      const parameters = scenario ? defaultsFor(scenario) : {};
+      const parameters = scenario ? { ...defaultsFor(scenario), ...(run?.parameters ?? {}) } : {};
       this.set({
         loading: false,
+        controlPlaneStatus: "online",
+        error: null,
         capabilities,
         scenarios,
         selectedWorkspace: workspace,
@@ -112,8 +126,12 @@ class RunStore {
       });
       if (run) await this.attachRun(run);
     } catch (error) {
-      this.set({ loading: false, error: messageFor(error) });
+      this.set({ loading: false, controlPlaneStatus: "offline", error: messageFor(error) });
     }
+  }
+
+  reconnect(): void {
+    void this.initialize();
   }
 
   async selectWorkspace(workspace: WorkspaceId): Promise<void> {
@@ -121,6 +139,7 @@ class RunStore {
       this.set({ error: "当前运行结束后才能切换验证模块" });
       return;
     }
+    this.clearCompletedRun();
     const selected = this.state.scenarios.find((item) => item.workspace === workspace);
     this.set({ selectedWorkspace: workspace, error: null });
     updateLocation({ workspace, scenario: selected?.scenario_id ?? null });
@@ -132,6 +151,7 @@ class RunStore {
       this.set({ error: "当前运行结束后才能切换场景" });
       return;
     }
+    this.clearCompletedRun();
     updateLocation({ workspace: this.state.selectedWorkspace, scenario: scenarioId });
     await this.loadScenario(scenarioId);
   }
@@ -186,7 +206,7 @@ class RunStore {
   clearCompletedRun(): void {
     if (this.state.run && !this.hasActiveRun()) {
       localStorage.removeItem(ACTIVE_RUN_KEY);
-      this.set({ run: null, dataSources: [], events: [], eventCursor: 0, error: null });
+      this.set({ run: null, dataSources: [], robots: [], events: [], eventCursor: 0, error: null });
     }
   }
 
@@ -233,16 +253,18 @@ class RunStore {
     localStorage.setItem(ACTIVE_RUN_KEY, run.run_id);
     const cursor = Number(localStorage.getItem(CURSOR_PREFIX + run.run_id) ?? "0");
     try {
-      const [dataSources, events] = await Promise.all([
+      const [dataSources, robots, events] = await Promise.all([
         api.dataSources(run.run_id),
+        api.robots(run.run_id),
         api.events(run.run_id, Number.isFinite(cursor) ? cursor : 0)
       ]);
       const eventCursor = events.at(-1)?.sequence ?? (Number.isFinite(cursor) ? cursor : 0);
-      this.set({ dataSources, events, eventCursor });
+      const nextRun = events.reduce<RunRecord | null>(applyRunEvent, this.state.run ?? run);
+      this.set({ dataSources, robots, events, eventCursor, run: nextRun });
       localStorage.setItem(CURSOR_PREFIX + run.run_id, String(eventCursor));
-      this.connectEvents(run.run_id, eventCursor);
+      if (this.hasActiveRun()) this.connectEvents(run.run_id, eventCursor);
     } catch (error) {
-      this.set({ error: messageFor(error), dataSources: [] });
+      this.set({ error: messageFor(error), dataSources: [], robots: [] });
     }
   }
 
@@ -254,8 +276,11 @@ class RunStore {
       const envelope = JSON.parse(String(message.data)) as { type: string; event?: RunEvent };
       if (envelope.type !== "event" || !envelope.event) return;
       const event = envelope.event;
-      this.set({ events: [...this.state.events, event].slice(-200), eventCursor: event.sequence });
+      const run = this.state.run;
+      const nextRun = run?.run_id === runId ? applyRunEvent(run, event) : run;
+      this.set({ events: [...this.state.events, event].slice(-200), eventCursor: event.sequence, run: nextRun });
       localStorage.setItem(CURSOR_PREFIX + runId, String(event.sequence));
+      if (nextRun && isTerminalState(nextRun.state)) this.closeEventSocket();
     };
   }
 
@@ -296,6 +321,33 @@ function messageFor(error: unknown): string {
   if (error instanceof ApiError) return `${error.code}：${error.message}`;
   if (error instanceof Error) return `平台连接失败：${error.message}`;
   return "平台连接失败：未知错误";
+}
+
+function runStateFromPayload(payload: Record<string, unknown>): RunState | null {
+  const value = payload.state;
+  return typeof value === "string" && ["PREFLIGHT", "STARTING", "RUNNING", "STOPPING", "COMPLETED", "FAILED"].includes(value)
+    ? (value as RunState)
+    : null;
+}
+
+function applyRunEvent(run: RunRecord | null, event: RunEvent): RunRecord | null {
+  const nextState = event.kind === "RUN_STATE_CHANGED" ? runStateFromPayload(event.payload) : null;
+  if (!run || !nextState) return run;
+  return {
+    ...run,
+    state: nextState,
+    reason_code: stringOrNull(event.payload.reason_code),
+    updated_at: event.wall_time,
+    ended_at: isTerminalState(nextState) ? event.wall_time : run.ended_at
+  };
+}
+
+function stringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function isTerminalState(state: RunState): boolean {
+  return state === "COMPLETED" || state === "FAILED";
 }
 
 export const runStore = new RunStore();

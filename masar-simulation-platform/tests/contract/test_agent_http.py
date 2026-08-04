@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 from pathlib import Path
 import sys
-from threading import Thread
+from threading import Event, Thread
 import time
 from typing import Any
 
@@ -88,7 +88,12 @@ def test_health_is_loopback_safe_and_contains_no_secret(running_agent: tuple[int
 
     assert status == 200
     assert body["ok"] is True
-    assert body["data"] == {"agent": "test", "protocol_version": 1, "status": "ok"}
+    assert body["data"] == {
+        "agent": "test",
+        "protocol_version": 1,
+        "status": "ok",
+        "capabilities": [],
+    }
     assert MASTER_SECRET.decode() not in json.dumps(body)
 
 
@@ -167,7 +172,7 @@ def test_signed_readiness_probe_returns_process_and_exact_probe_results(
     marker = manager.workspace / "ready.flag"
     marker.write_text("ready", encoding="utf-8")
     payload = {
-        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 42},
         "probes": [{"type": "file", "name": "ready.flag", "required": True}],
     }
 
@@ -188,7 +193,7 @@ def test_readiness_probe_rejects_missing_ros_message_type(
 ) -> None:
     port, _ = running_agent
     payload = {
-        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 42},
         "probes": [{"type": "ros1_topic", "name": "/clock"}],
     }
 
@@ -204,7 +209,7 @@ def test_signed_fixed_command_route_accepts_only_an_action_and_runtime(
     port, _ = running_agent
     payload = {
         "action": "ros1.mission.start",
-        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 0},
+        "runtime": {"ros1_master_uri": "http://127.0.0.1:11311", "ros2_domain_id": 42},
     }
 
     status, body = _request(port, "POST", "/v1/runs/run-1/command", sequence=1, payload=payload)
@@ -249,6 +254,38 @@ def test_signed_graph_snapshot_route_and_host_client(tmp_path: Path) -> None:
 
     assert snapshot["agent"] == "ros2"
     assert snapshot["topics"][0]["name"] == "/topic_a"
+
+
+def test_signed_webots_preflight_route_and_host_client(tmp_path: Path) -> None:
+    class WebotsProbeRunner:
+        def webots_preflight(self, *, require_bridge: bool) -> dict[str, Any]:
+            assert require_bridge is True
+            return {
+                "ready": True,
+                "display": ":103",
+                "renderer": "NVIDIA RTX 6000 Ada Generation/PCIe/SSE2",
+                "bridge_setup": "/root/ros-humble-ros1-bridge/install/setup.bash",
+                "bridge_executable": (
+                    "/root/ros-humble-ros1-bridge/install/ros1_bridge/lib/ros1_bridge/dynamic_bridge"
+                ),
+            }
+
+    manager = ProcessManager("ros2", tmp_path, tmp_path / "runs")
+    app = AgentApplication("ros2", MASTER_SECRET, manager, probe_runner=WebotsProbeRunner())  # type: ignore[arg-type]
+    server = create_server("127.0.0.1", 0, app)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    client = AgentClient("127.0.0.1", server.server_port, MASTER_SECRET, retry_attempts=0)
+    try:
+        result = client.webots_preflight("preflight-webots", require_bridge=True)
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
+
+    assert result["ready"] is True
+    assert result["display"] == ":103"
+    assert result["renderer"].startswith("NVIDIA")
 
 
 class _RetryHandler(BaseHTTPRequestHandler):
@@ -299,3 +336,115 @@ def test_host_client_retries_probe_but_never_start() -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+class _ConcurrentSequenceHandler(BaseHTTPRequestHandler):
+    first_received = Event()
+    second_received = Event()
+    accepted_sequences: list[int] = []
+
+    def do_GET(self) -> None:  # noqa: N802
+        sequence = int(self.headers["X-Platform-Sequence"])
+        if sequence == 1:
+            type(self).first_received.set()
+            type(self).second_received.wait(timeout=1)
+        elif sequence == 2:
+            type(self).second_received.set()
+        type(self).accepted_sequences.append(sequence)
+        body = json.dumps({"ok": True, "data": {"processes": []}}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:
+        return
+
+
+def test_host_client_serializes_signed_requests_in_sequence_order() -> None:
+    _ConcurrentSequenceHandler.first_received = Event()
+    _ConcurrentSequenceHandler.second_received = Event()
+    _ConcurrentSequenceHandler.accepted_sequences = []
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _ConcurrentSequenceHandler)
+    server_thread = Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    client = AgentClient("127.0.0.1", server.server_port, MASTER_SECRET, retry_attempts=0)
+    errors: list[BaseException] = []
+
+    def probe() -> None:
+        try:
+            client.probe("run-concurrent")
+        except BaseException as exc:  # pragma: no cover - surfaced by the assertion below
+            errors.append(exc)
+
+    first = Thread(target=probe)
+    second = Thread(target=probe)
+    try:
+        first.start()
+        assert _ConcurrentSequenceHandler.first_received.wait(timeout=2)
+        second.start()
+        first.join(timeout=3)
+        second.join(timeout=3)
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=3)
+
+    assert not errors
+    assert not first.is_alive() and not second.is_alive()
+    assert _ConcurrentSequenceHandler.accepted_sequences == [1, 2]
+
+
+def test_host_client_recovers_sequence_after_control_plane_restart(
+    running_agent: tuple[int, ProcessManager],
+) -> None:
+    port, _ = running_agent
+    run_id = "run-client-restart"
+
+    first_client = AgentClient("127.0.0.1", port, MASTER_SECRET, retry_attempts=0)
+    assert first_client.probe(run_id)["run_id"] == run_id
+
+    restarted_client = AgentClient("127.0.0.1", port, MASTER_SECRET, retry_attempts=0)
+    assert restarted_client.probe(run_id)["run_id"] == run_id
+
+
+class _SlowStopHandler(BaseHTTPRequestHandler):
+    def do_POST(self) -> None:  # noqa: N802
+        time.sleep(0.15)
+        body = json.dumps({"ok": True, "data": {"status": "STOPPED"}}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def log_message(self, format: str, *args: object) -> None:
+        return
+
+
+def test_host_client_stop_timeout_covers_declared_grace_periods() -> None:
+    server = ThreadingHTTPServer(("127.0.0.1", 0), _SlowStopHandler)
+    server_thread = Thread(target=server.serve_forever, daemon=True)
+    server_thread.start()
+    client = AgentClient(
+        "127.0.0.1",
+        server.server_port,
+        MASTER_SECRET,
+        read_timeout=0.05,
+        retry_attempts=0,
+    )
+    try:
+        stopped = client.stop(
+            "run-slow-stop",
+            {
+                "process_id": "simulation",
+                "grace_seconds": {"sigint": 0.2, "sigterm": 0.0, "sigkill": 0.0},
+            },
+        )
+    finally:
+        server.shutdown()
+        server.server_close()
+        server_thread.join(timeout=3)
+
+    assert stopped["status"] == "STOPPED"

@@ -1,6 +1,8 @@
 import os
+import importlib.util
 import subprocess
 from pathlib import Path
+import sys
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +52,53 @@ def _baseline(script_name: str) -> str:
     )
 
 
+def _environment_generator():
+    path = REPO_ROOT / "src/launch_webots/launch_webots/environment_generator.py"
+    specification = importlib.util.spec_from_file_location("platform_environment_generator", path)
+    assert specification is not None and specification.loader is not None
+    module = importlib.util.module_from_spec(specification)
+    sys.modules[specification.name] = module
+    specification.loader.exec_module(module)
+    return module
+
+
+def _startup_policy():
+    path = REPO_ROOT / "src/launch_webots/launch_webots/startup_policy.py"
+    specification = importlib.util.spec_from_file_location("platform_startup_policy", path)
+    assert specification is not None and specification.loader is not None
+    module = importlib.util.module_from_spec(specification)
+    sys.modules[specification.name] = module
+    specification.loader.exec_module(module)
+    return module
+
+
+def test_platform_generated_world_aligns_timestep_without_changing_native_default(tmp_path: Path, monkeypatch):
+    generator = _environment_generator()
+    template = tmp_path / "template.wbt"
+    native_output = tmp_path / "native.wbt"
+    platform_output = tmp_path / "platform.wbt"
+    template.write_text(
+        "#VRML_SIM R2025a utf8\nWorldInfo {\n  basicTimeStep 16\n}\n",
+        encoding="utf-8",
+    )
+
+    generator.generate_world_file(template, native_output, "e_puck", 0, [])
+    monkeypatch.setenv("MASAR_PLATFORM_MODE", "1")
+    assert generator.platform_basic_time_step_ms("e_puck") == 20
+    assert generator.platform_basic_time_step_ms("burger") == 10
+    generator.generate_world_file(
+        template,
+        platform_output,
+        "e_puck",
+        0,
+        [],
+        basic_time_step_ms=20,
+    )
+
+    assert "basicTimeStep 16" in native_output.read_text(encoding="utf-8")
+    assert "basicTimeStep 20" in platform_output.read_text(encoding="utf-8")
+
+
 def test_default_webots_dry_runs_match_pre_change_baseline():
     baseline_env = {
         "ROS2SWARM_VNC_DISPLAY": ":99",
@@ -77,10 +126,32 @@ def test_robosar_platform_stream_environment_is_forwarded_explicitly():
     assert "webots_port:=18141" in output
 
 
+def test_robosar_platform_mode_sources_installed_ros1_bridge_overlay():
+    result = _run_script(
+        "start_robosar_webots.sh",
+        "--dry-run",
+        "--vglrun",
+        env={
+            "MASAR_PLATFORM_MODE": "1",
+            "ROS2SWARM_VNC_DISPLAY": ":103",
+            "ROBOSAR_VGLRUN_DEVICE": ":0",
+            "WEBOTS_STREAM": "false",
+            "WEBOTS_PORT": "1234",
+        },
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    assert "DISPLAY=:103" in output
+    assert "vglrun -d :0 ros2 launch" in output
+    assert "bridge-source: source /root/ros-humble-ros1-bridge/install/setup.bash" in output
+
+
 def test_both_webots_launch_paths_forward_default_off_stream_arguments():
     start_source = (REPO_ROOT / "src/launch_webots/launch/start_webots.launch.py").read_text()
     swarm_source = (REPO_ROOT / "src/launch_webots/launch/create_enviroment.launch.py").read_text()
     robosar_source = (REPO_ROOT / "src/launch_webots/launch/robosar_webots_sim.launch.py").read_text()
+    robot_nodes_source = (REPO_ROOT / "src/launch_webots/launch_webots/robot_nodes.py").read_text()
 
     assert "'webots_stream',\n        default_value='false'" in start_source
     assert "'webots_port',\n        default_value='1234'" in start_source
@@ -90,6 +161,35 @@ def test_both_webots_launch_paths_forward_default_off_stream_arguments():
     for source in (swarm_source, robosar_source):
         assert "'webots_stream':" in source
         assert "'webots_port':" in source
+
+    assert swarm_source.count("webots_port=webots_port") == 2
+    assert "_build_robot_actions(number_robots, robot_type, webots_port)" in robosar_source
+    assert robot_nodes_source.count("port=webots_port") == 2
+
+
+def test_robot_controller_spawners_are_serialized_per_robot():
+    source = (REPO_ROOT / "src/launch_webots/launch_webots/robot_nodes.py").read_text()
+
+    assert source.count(
+        "arguments=['diffdrive_controller', 'joint_state_broadcaster']"
+    ) == 2
+    assert source.count("'--service-call-timeout', '50'") == 2
+    assert source.count("ros_control_spawners = [_staggered_action(controller_spawner, robot_index)]") == 2
+    assert "TimerAction(period=delay, actions=[action])" in source
+
+
+def test_platform_controller_start_delay_is_opt_in_and_indexed(monkeypatch):
+    policy = _startup_policy()
+    monkeypatch.delenv("MASAR_PLATFORM_MODE", raising=False)
+    assert policy.controller_start_delay_seconds(3) == 0.0
+
+    monkeypatch.setenv("MASAR_PLATFORM_MODE", "1")
+    monkeypatch.delenv("MASAR_PLATFORM_CONTROLLER_START_DELAY_SECONDS", raising=False)
+    assert policy.controller_start_delay_seconds(0) == 0.0
+    assert policy.controller_start_delay_seconds(3) == 3.0
+
+    monkeypatch.setenv("MASAR_PLATFORM_CONTROLLER_START_DELAY_SECONDS", "0.25")
+    assert policy.controller_start_delay_seconds(4) == 1.0
 
 
 def test_robosar_stream_environment_rejects_partial_or_invalid_values():

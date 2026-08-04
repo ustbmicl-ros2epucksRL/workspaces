@@ -2,6 +2,11 @@
 set -eo pipefail
 
 source /opt/ros/noetic/setup.bash
+if [[ ! -f /root/workspace/masar_ws/devel/setup.bash ]]; then
+  echo "masar_ws devel overlay is unavailable" >&2
+  exit 78
+fi
+source /root/workspace/masar_ws/devel/setup.bash
 set -u
 
 case "${1:-}" in

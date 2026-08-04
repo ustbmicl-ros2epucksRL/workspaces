@@ -6,6 +6,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         python3 \
         supervisor \
+        ros-noetic-gazebo-msgs \
         ros-noetic-rosbridge-suite \
         ros-noetic-tf2-web-republisher \
         ros-noetic-web-video-server \

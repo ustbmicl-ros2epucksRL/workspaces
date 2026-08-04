@@ -21,6 +21,7 @@ from launch_ros.actions import Node
 from launch_webots.environment_generator import (
     generate_random_positions_with_obstacles,
     generate_world_file,
+    platform_basic_time_step_ms,
     normalize_transport_object_shape,
     parse_world_file_objects,
 )
@@ -95,11 +96,13 @@ def _scene_objects_to_occupied(task_objects):
     return occupied
 
 
-def _build_robot_actions(number_robots: int, robot_type: str):
+def _build_robot_actions(number_robots: int, robot_type: str, webots_port: str):
     node_factory = create_epuck_nodes if robot_type == 'e_puck' else create_burger_nodes
     actions = []
     for index in range(number_robots):
-        actions.extend(node_factory(index, use_sim_time=True))
+        actions.extend(
+            node_factory(index, use_sim_time=True, webots_port=webots_port)
+        )
     return actions
 
 
@@ -199,6 +202,7 @@ def _build_launch(context, *args, **kwargs):
         positions,
         z_height,
         task_objects,
+        basic_time_step_ms=platform_basic_time_step_ms(robot_type),
     )
 
     actions = []
@@ -216,7 +220,7 @@ def _build_launch(context, *args, **kwargs):
         )
     )
 
-    actions.extend(_build_robot_actions(number_robots, robot_type))
+    actions.extend(_build_robot_actions(number_robots, robot_type, webots_port))
 
     spawn_x_list = [float(pos[0]) for pos in positions]
     spawn_y_list = [float(pos[1]) for pos in positions]

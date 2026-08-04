@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "profile": "swarm_sensor",
+  "graphs": {
+    "ros2": {
+      "connected": true,
+      "topics": [
+        {"name": "/robot_0/scan", "message_type": "sensor_msgs/msg/LaserScan", "last_message_age_seconds": 0.1},
+        {"name": "/robot_0/odom", "message_type": "nav_msgs/msg/Odometry", "last_message_age_seconds": 0.1},
+        {"name": "/robot_0/cmd_vel", "message_type": "geometry_msgs/msg/Twist", "last_message_age_seconds": 0.1},
+        {"name": "/robot_0/camera", "message_type": "sensor_msgs/msg/Image", "last_message_age_seconds": 0.2},
+        {"name": "/robot_0/battery", "message_type": "sensor_msgs/msg/BatteryState", "last_message_age_seconds": 0.2},
+        {"name": "/robot_0/safety", "message_type": "std_msgs/msg/Bool", "last_message_age_seconds": 0.1},
+        {"name": "/global_info", "message_type": "std_msgs/msg/String", "last_message_age_seconds": 0.3}
+      ]
+    }
+  }
+}

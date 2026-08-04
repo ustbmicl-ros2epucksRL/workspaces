@@ -31,6 +31,7 @@ class FakeAgent:
         self.health_ok = health_ok
         self.exit_during_readiness = exit_during_readiness
         self.processes: dict[str, dict[str, Any]] = {}
+        self.webots_preflight_run_ids: list[str] = []
 
     def health(self) -> dict[str, Any]:
         self.trace.append(f"health:{self.kind}")
@@ -39,6 +40,21 @@ class FakeAgent:
 
             raise AgentUnavailable("offline")
         return {"agent": self.kind, "protocol_version": 1, "status": "ok"}
+
+    def webots_preflight(self, run_id: str, *, require_bridge: bool) -> dict[str, Any]:
+        self.webots_preflight_run_ids.append(run_id)
+        self.trace.append(f"webots-preflight:{self.kind}:{require_bridge}")
+        return {
+            "ready": True,
+            "display": ":103",
+            "renderer": "NVIDIA RTX 6000 Ada Generation/PCIe/SSE2",
+            "bridge_setup": "/root/ros-humble-ros1-bridge/install/setup.bash" if require_bridge else None,
+            "bridge_executable": (
+                "/root/ros-humble-ros1-bridge/install/ros1_bridge/lib/ros1_bridge/dynamic_bridge"
+                if require_bridge
+                else None
+            ),
+        }
 
     def start(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         process_id = payload["process_id"]

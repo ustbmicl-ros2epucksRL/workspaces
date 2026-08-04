@@ -865,6 +865,18 @@ def _ensure_pedestrian_proto_import(world_content: str) -> str:
     return header + '\n' + import_line + '\n' + remainder
 
 
+def platform_basic_time_step_ms(robot_type: str) -> int | None:
+    """Match the existing controller rates only for platform-generated worlds."""
+    platform_mode = os.environ.get('MASAR_PLATFORM_MODE', '').strip().lower()
+    if platform_mode not in {'1', 'true', 'yes', 'on'}:
+        return None
+    if robot_type == 'burger':
+        return 10
+    if robot_type == 'e_puck':
+        return 20
+    raise ValueError(f'unsupported robot type for platform timing: {robot_type}')
+
+
 def generate_world_file(
     template_world: str,
     output_world: str,
@@ -873,12 +885,24 @@ def generate_world_file(
     positions: list,
     z_height: float = 0.0,
     task_objects: dict = None,
+    basic_time_step_ms: int | None = None,
 ) -> str:
     """基于模板世界文件生成包含机器人和任务物体的新世界文件"""
     with open(template_world, 'r') as f:
         template_content = f.read()
     
     output_content = template_content
+    if basic_time_step_ms is not None:
+        if isinstance(basic_time_step_ms, bool) or not isinstance(basic_time_step_ms, int) or basic_time_step_ms <= 0:
+            raise ValueError('basic_time_step_ms must be a positive integer')
+        output_content, replacements = re.subn(
+            r'(\bbasicTimeStep\s+)[0-9]+(?:\.[0-9]+)?',
+            rf'\g<1>{basic_time_step_ms}',
+            output_content,
+            count=1,
+        )
+        if replacements != 1:
+            raise ValueError('template world has no basicTimeStep')
     if task_objects and task_objects.get('victims'):
         output_content = _ensure_pedestrian_proto_import(output_content)
     if not output_content.endswith('\n'):

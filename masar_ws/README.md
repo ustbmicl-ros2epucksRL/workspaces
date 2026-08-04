@@ -1,15 +1,30 @@
 # masar_ws
 
-`masar_ws` 是当前项目中的 ROS1 Noetic catkin 工作空间，主要用于未知环境下多机器人搜救系统 RoboSAR，以及 4 台 TurtleBot 响应组的 DEFORM 可变编队/任务控制验证。
+`masar_ws` 是一个可独立运行的 ROS1 Noetic catkin 工作空间，主要用于未知环境下
+多机器人搜救系统 RoboSAR，以及 4 台 TurtleBot 响应组的 DEFORM 可变编队和任务
+控制验证。
 
-当前部署默认位于 `4a6000` 设备的 `masar_ros1_srv-g` 容器中。`4a6000` 是无头服务器，图形界面通过 TurboVNC 显示，Gazebo/RViz/Webots 相关渲染通过 VirtualGL/vglrun 使用 GPU 加速。它可以独立跑 Gazebo/Tepper 搜救闭环，也可以和 `ROS2swarm_w` 所在的 `masar_ros2_bridge-w` 容器配合，用 Webots 作为 3D 物理仿真器。若迁移到有本地显示/渲染能力的设备，可以禁用 VNC/GPU 自动包装，使用 `--no-vglrun` 运行。
+项目源码、构建结果、Qt GUI 和顶层脚本都位于本目录。Docker Hub 镜像
+`talent18/masar_ros1_srv-g:v2` 提供 ROS1 Noetic、Gazebo 和系统依赖；源码通过挂载
+进入容器，因此修改本项目通常不需要重建镜像。文中的 `/root/workspace/masar_ws`
+是推荐的容器内挂载路径，不是宿主机固定路径。
 
 ## 快速开始
+
+先取得独立运行环境镜像：
+
+```bash
+docker pull talent18/masar_ros1_srv-g:v2
+```
+
+创建容器时需要把包含本项目的 workspace 挂载到 `/root/workspace`，并按运行设备提供
+host network、GPU、X11 和 `/dev/dri`。这些参数依赖宿主显示环境，本项目不假定固定的
+宿主路径或显卡节点。以下命令默认在该镜像创建的容器中执行。
 
 ### 1. 构建工作空间
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./build_sequence.sh -j8
 source devel/setup.bash
 ```
@@ -19,7 +34,7 @@ source devel/setup.bash
 ### 2. 跑 Gazebo/Tepper 搜救主系统
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./launch_robosar_g.sh --vglrun
 ```
 
@@ -52,14 +67,14 @@ GUI 启动后通过 START/STOP/HOME 控制任务流程。
 先在 ROS2 容器启动 Webots 和 bridge：
 
 ```bash
-cd /ROS2swarm_w
+cd /root/workspace/ROS2swarm_w
 ./start_robosar_webots.sh --vglrun
 ```
 
 再在 ROS1 容器启动 RoboSAR：
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./launch_robosar_w.sh
 ```
 
@@ -76,7 +91,7 @@ Webots 模式下，ROS2 侧负责 Webots、`robot_N` 和 `ros1_bridge`；ROS1 �
 ### 4. 跑响应组 DEFORM 编队导航 demo
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./run_response_deform_demo.sh --vglrun
 ```
 
@@ -103,7 +118,7 @@ src/robosar/robosar_emergency_response/config/response_goal_sequence.yaml
 ### 5. 跑响应组任务控制器 demo
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./run_response_controller_demo.sh roundflocking
 ./run_response_controller_demo.sh roundflocking-heuristic
 ./run_response_controller_demo.sh transport
@@ -115,13 +130,13 @@ cd /masar
 ### 6. 跑 Tepper + 响应组完整叠加
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./run_tepper_response_demo.sh --vglrun
 ```
 
 该入口默认使用标准 ROS/Gazebo master（未另行设置时为 `11311/11345`），启动前通过 ROS API 关闭旧节点、清除失效注册和旧参数，并确认 `/clock` 无发布者后再启动 Gazebo。这样 ROS2 侧 `ros1_bridge` 仍可按标准 `11311` 连接，不需要知道 Tepper 专用端口。若已有 ROS 图由外部进程管理，可显式使用 `--shared-master`，此模式不清理节点，但发现已有 `/clock` 时会拒绝启动。完整 Tepper 入口不再维护独立端口分支，避免形成第二套主系统运行语义。
 
-需要与 `/root/workspace/ROS2swarm_w` 桥接时，推荐先启动默认 Tepper 入口完成清理，再启动 `ros1_bridge`；若桥已经启动且图中没有其他仿真时钟，则使用 `--shared-master`。第二个终端按标准主站观测即可：
+需要与 `/root/workspace/ROS2swarm_w` 桥接时，推荐先启动默认 Tepper 入口完成清理，再启动 `ros1_bridge`；若桥已经启动且图中没有其他仿真时钟，则使用 `--shared-master`。统一平台会自动使用共享主站并按 Run 管理进程，无需手工执行这一顺序。第二个终端按标准主站观测即可：
 
 ```bash
 export ROS_MASTER_URI=http://127.0.0.1:11311
@@ -135,6 +150,17 @@ export GAZEBO_MASTER_URI=http://127.0.0.1:11345
 ```
 
 默认 `use_spin_placeholder:=false` 时，victim/fire 进入 roundflocking，box 进入 transport。
+
+## 平台集成
+
+同级的 `masar-simulation-platform` 已集成本项目。平台 Compose 以固定 digest 复用
+`talent18/masar_ros1_srv-g:v2`，把 workspace 挂载到 `/root/workspace`，并在首次缺少
+`devel/setup.bash` 时自动执行 `catkin_make`。
+
+平台调用本项目现有的 Gazebo/Webots、DEFORM、控制器和完整搜救脚本，并以一次 Run
+统一管理这些脚本启动的进程。Qt GUI 只在平台 Run 中禁用，直接执行本项目脚本时仍然
+保留。完整平台入口见[平台 README](../masar-simulation-platform/README.md)。平台存在
+活动 Run 时不要手工启动第二套仿真。
 
 ## 项目结构
 
@@ -251,19 +277,20 @@ src/robosar/robosar_emergency_response/config/formation_navigation.yaml
 
 ## Webots 双容器口径
 
-Webots 搜救闭环需要两个容器配合：
+Webots 搜救闭环使用 ROS1 和 ROS2 两个业务容器：
 
 ```text
 masar_ros2_bridge-w:
-  /ROS2swarm_w/start_robosar_webots.sh
+  /root/workspace/ROS2swarm_w/start_robosar_webots.sh
   Webots + robot_N + robosar_bridge_adapter + ros1_bridge
 
 masar_ros1_srv-g:
-  /masar/launch_robosar_w.sh
+  /root/workspace/masar_ws/launch_robosar_w.sh
   RoboSAR 主任务流 + /sim_map + SLAM + GUI
 ```
 
-推荐启动顺序：
+无论直接运行还是由平台编排，都必须遵守以下启动顺序；平台场景
+`exploration.webots.robosar` 会自动执行并按相反顺序停止：
 
 ```text
 1. ROS2: ./start_robosar_webots.sh
@@ -321,13 +348,14 @@ RoboSAR 搜索主链路：
 
 ## VNC/GPU 注意事项
 
-当前 VNC/GPU 配置是为 `4a6000` 无头服务器准备的：服务器没有直接可见的桌面显示，仿真器图形界面通过 TurboVNC 显示，渲染通过 VirtualGL/vglrun 使用 GPU。顶层启动脚本会自动加载：
+直接运行本项目脚本时，顶层入口会自动加载：
 
 ```text
 run_vnc_gpu.sh
 ```
 
-用于对齐容器内 VNC/X11/VirtualGL/GPU 环境。这样做的原因是宿主机或 VNC 重启后，`DISPLAY`、`XAUTHORITY` 和 `/dev/dri/*` 可能变化；脚本会尽量自动修正这些变量，避免 Gazebo/RViz/Webots 窗口发到不可见的 X server，或退回软件渲染。
+用于对齐容器内 X11/VirtualGL/GPU 环境。直接运行时应按当前设备检查 `DISPLAY`、
+`XAUTHORITY` 和 vglrun target，不要照搬旧服务器的显卡节点编号。
 
 常用检查：
 
@@ -339,7 +367,7 @@ run_vnc_gpu.sh
 
 ```text
 ROBOSAR_USE_VGLRUN=true
-ROBOSAR_VGLRUN_DEVICE=/dev/dri/card0
+ROBOSAR_VGLRUN_DEVICE=:0
 ROBOSAR_AUTO_VNC_GPU=1
 ROBOSAR_RVIZ=true
 ROBOSAR_GZ_GUI=true
@@ -361,6 +389,9 @@ export ROBOSAR_USE_VGLRUN=false
 
 这只改变图形显示/渲染包装方式，不改变 RoboSAR、SLAM、任务分配、DEFORM 编队导航或响应组控制器逻辑。若使用 Webots 双容器模式，ROS2 侧也需要对应使用 `./start_robosar_webots.sh --no-vglrun`。
 
+通过统一平台运行时，平台会为 Gazebo、RViz 和 Webots 分配独立 Xvfb/noVNC 桌面，
+并负责 VirtualGL 和浏览器代理；平台的 `127.0.0.1:18090` 不属于本项目独立运行接口。
+
 ## 结果与资料
 
 ```text
@@ -377,6 +408,15 @@ videos/
 - [launch_robosar_g.mp4](videos/launch_robosar_g.mp4)：ROS1 + Gazebo/Tepper 搜救主系统启动与运行演示。
 - [launch_robosar_w.mp4](videos/launch_robosar_w.mp4)：ROS1 + Webots 桥接搜救闭环启动与运行演示。
 
+当前文档职责：
+
+- [ROBOSAR_DEFORM_INTEGRATION_DESIGN.md](docs/ROBOSAR_DEFORM_INTEGRATION_DESIGN.md)：当前响应组实现和运行链。
+- [RESPONSE_FORMATION_REQUIREMENTS.md](docs/RESPONSE_FORMATION_REQUIREMENTS.md)：稳定需求与验收边界。
+- [RESPONSE_FORMATION_REFACTOR_PLAN.md](docs/RESPONSE_FORMATION_REFACTOR_PLAN.md)：阶段划分和退出条件。
+- [RESPONSE_FORMATION_REFACTOR_PROGRESS.md](docs/RESPONSE_FORMATION_REFACTOR_PROGRESS.md)：历史实跑证据与仍未完成的算法验收。
+- [RoboSAR 包级索引](src/robosar/README.md)：`src/robosar` 当前组成和顶层入口指引；各子包 README 可能保留上游或包级历史说明，不作为平台操作手册。
+- [平台运维手册](../masar-simulation-platform/docs/OPERATIONS.md)：当前 Compose 部署和 Web 操作入口。
+
 ## 测试与检查
 
 轻量检查：
@@ -389,10 +429,12 @@ videos/
 ./run_response_controller_demo.sh --dry-run transport
 ```
 
-当前 `robosar_emergency_response` 的源码回归可直接运行：
+当前响应组和任务状态快照的源码回归可直接运行：
 
 ```bash
-python3 -m pytest -q src/robosar/robosar_emergency_response/test
+python3 -m pytest -q \
+  src/robosar/robosar_emergency_response/test \
+  src/robosar/robosar_task_allocator/test/test_state_snapshot_publishers.py
 ```
 
 运行测试前需要先 source ROS/catkin 环境：

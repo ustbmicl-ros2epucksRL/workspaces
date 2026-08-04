@@ -5,8 +5,9 @@ usage() {
   cat <<'EOF'
 Usage: agent-bootstrap.sh <ros1|ros2> [runtime-agent options]
 
-Starts the MASAR standard-library runtime Agent inside an existing ROS
-container. The Agent binds only to 127.0.0.1 and does not modify the image.
+Starts the MASAR standard-library Runtime Agent as the managed service inside
+a ROS runtime container. The Agent binds only to 127.0.0.1 and does not modify
+the image.
 EOF
 }
 
@@ -39,7 +40,9 @@ if [[ "$agent" == "ros1" ]]; then
   [[ -f /root/workspace/masar_ws/devel/setup.bash ]] && source /root/workspace/masar_ws/devel/setup.bash
 else
   [[ -f /opt/ros/humble/setup.bash ]] && source /opt/ros/humble/setup.bash
+  [[ -f /root/ros2_ws/install/setup.bash ]] && source /root/ros2_ws/install/setup.bash
   [[ -f /root/workspace/ROS2swarm_w/install/setup.bash ]] && source /root/workspace/ROS2swarm_w/install/setup.bash
+  [[ -f /root/ros-humble-ros1-bridge/install/setup.bash ]] && source /root/ros-humble-ros1-bridge/install/setup.bash
 fi
 if (( had_nounset )); then
   set -u

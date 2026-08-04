@@ -27,6 +27,12 @@ interface RosDataRuntimeOptions {
   ) => TopicRegistryAdapter;
 }
 
+interface TopicSubscription {
+  contract: TopicContract;
+  callback: (message: unknown) => void;
+  releaseRegistry: (() => void) | null;
+}
+
 /**
  * Resolves profile patterns against rosapi and exposes only exact, type-checked
  * topics to panels. It is the sole owner of TopicRegistry in the browser.
@@ -40,9 +46,13 @@ export class RosDataRuntime {
   private connectionReleases: Array<() => void> = [];
   private registry: TopicRegistryAdapter | null = null;
   private registryContractsKey = "";
+  private registryContractKeys = new Set<string>();
+  private readonly topicSubscriptions = new Map<number, TopicSubscription>();
+  private nextTopicSubscriptionId = 1;
+  private discoveryTimer: ReturnType<typeof setInterval> | null = null;
+  private readonly discoveringGraphs = new Set<RosGraph>();
   private healthTimer: ReturnType<typeof setInterval> | null = null;
   private activeTopicSubscriptions = 0;
-  private readonly externalAvailability = new Map<string, DataAvailability>();
   private configurationKey: string | null = null;
   private generation = 0;
   private readonly createRegistry: NonNullable<RosDataRuntimeOptions["createRegistry"]>;
@@ -93,48 +103,41 @@ export class RosDataRuntime {
         this.markGraph(graph, "DISCONNECTED");
       }
     }
+    this.discoveryTimer = setInterval(() => {
+      if (generation !== this.generation) return;
+      for (const graph of this.expectedGraphs) {
+        if (this.connections.state(graph) === "ONLINE") void this.discover(graph, generation);
+      }
+    }, 2000);
   }
 
   subscribe(source: DataSource, callback: (message: unknown) => void): () => void {
     const contract = contractFor(source);
-    if (!contract || !this.registry || source.availability === "TYPE_MISMATCH") {
+    if (!contract || source.availability === "TYPE_MISMATCH") {
       return () => undefined;
     }
-    const release = this.registry.subscribe(contract, (message) => {
-      callback(message);
-      this.refreshHealth();
-    });
-    this.activeTopicSubscriptions += 1;
+    const subscriptionId = this.nextTopicSubscriptionId;
+    this.nextTopicSubscriptionId += 1;
+    const subscription: TopicSubscription = {
+      contract,
+      callback,
+      releaseRegistry: null
+    };
+    this.topicSubscriptions.set(subscriptionId, subscription);
+    this.attachTopicSubscription(subscription);
+    this.activeTopicSubscriptions = this.topicSubscriptions.size;
     this.ensureHealthTimer();
     let active = true;
     return () => {
       if (!active) return;
       active = false;
-      release();
-      this.activeTopicSubscriptions = Math.max(0, this.activeTopicSubscriptions - 1);
+      const current = this.topicSubscriptions.get(subscriptionId);
+      current?.releaseRegistry?.();
+      this.topicSubscriptions.delete(subscriptionId);
+      this.activeTopicSubscriptions = this.topicSubscriptions.size;
       if (this.activeTopicSubscriptions === 0) this.stopHealthTimer();
       this.refreshHealth();
     };
-  }
-
-  markObserved(source: DataSource): void {
-    this.externalAvailability.set(sourceId(source), "ONLINE");
-    this.patchSource(source, {
-      availability: "ONLINE",
-      last_message_age_ms: undefined,
-      last_age_seconds: undefined,
-      observed_hz: undefined
-    });
-  }
-
-  markDisconnected(source: DataSource): void {
-    this.externalAvailability.set(sourceId(source), "DISCONNECTED");
-    this.patchSource(source, {
-      availability: "DISCONNECTED",
-      last_message_age_ms: undefined,
-      last_age_seconds: undefined,
-      observed_hz: undefined
-    });
   }
 
   private handleConnectionState(
@@ -152,6 +155,8 @@ export class RosDataRuntime {
   }
 
   private async discover(graph: RosGraph, generation: number): Promise<void> {
+    if (this.discoveringGraphs.has(graph)) return;
+    this.discoveringGraphs.add(graph);
     try {
       const topics = await this.connections.topics(graph);
       if (generation !== this.generation) return;
@@ -167,6 +172,8 @@ export class RosDataRuntime {
         }
         this.markGraph(graph, "DISCONNECTED");
       }
+    } finally {
+      this.discoveringGraphs.delete(graph);
     }
   }
 
@@ -183,13 +190,35 @@ export class RosDataRuntime {
     });
     const contractsKey = contractFingerprint(contracts);
     if (!this.registry || contractsKey !== this.registryContractsKey) {
+      for (const subscription of this.topicSubscriptions.values()) {
+        subscription.releaseRegistry?.();
+        subscription.releaseRegistry = null;
+      }
       this.registry?.close();
       this.registry = this.createRegistry(this.connections, contracts);
       this.registryContractsKey = contractsKey;
+      this.registryContractKeys = new Set(contracts.map(topicContractKey));
+    }
+    for (const subscription of this.topicSubscriptions.values()) {
+      this.attachTopicSubscription(subscription);
     }
     this.sources = resolved;
     this.refreshHealth();
     this.emit();
+  }
+
+  private attachTopicSubscription(subscription: TopicSubscription): void {
+    if (
+      subscription.releaseRegistry ||
+      !this.registry ||
+      !this.registryContractKeys.has(topicContractKey(subscription.contract))
+    ) {
+      return;
+    }
+    subscription.releaseRegistry = this.registry.subscribe(subscription.contract, (message) => {
+      subscription.callback(message);
+      this.refreshHealth();
+    });
   }
 
   private refreshHealth(): void {
@@ -198,10 +227,7 @@ export class RosDataRuntime {
     const next = this.sources.map((source) => {
       const contract = contractFor(source);
       if (!contract || source.availability === "TYPE_MISMATCH") return source;
-      const externalState = this.externalAvailability.get(sourceId(source));
-      const snapshot = externalState
-        ? { availability: externalState, lastAgeMs: null, observedHz: null }
-        : this.registry!.health(contract).snapshot();
+      const snapshot = this.registry!.health(contract).snapshot();
       const lastMessageAgeMs = snapshot.lastAgeMs ?? undefined;
       const observedHz = snapshot.observedHz ?? undefined;
       if (
@@ -249,28 +275,24 @@ export class RosDataRuntime {
     }
   }
 
-  private patchSource(source: DataSource, patch: Partial<DataSource>): void {
-    const id = sourceId(source);
-    let changed = false;
-    this.sources = this.sources.map((candidate) => {
-      if (sourceId(candidate) !== id) return candidate;
-      changed = true;
-      return { ...candidate, ...patch };
-    });
-    if (changed) this.emit();
-  }
-
   private releaseConfiguration(): void {
     for (const release of this.connectionReleases) release();
     this.connectionReleases = [];
     this.discoveries.clear();
+    this.discoveringGraphs.clear();
     this.expectedGraphs.clear();
+    for (const subscription of this.topicSubscriptions.values()) {
+      subscription.releaseRegistry?.();
+      subscription.releaseRegistry = null;
+    }
     this.registry?.close();
     this.registry = null;
     this.registryContractsKey = "";
-    this.activeTopicSubscriptions = 0;
-    this.externalAvailability.clear();
-    this.stopHealthTimer();
+    this.registryContractKeys.clear();
+    this.activeTopicSubscriptions = this.topicSubscriptions.size;
+    if (this.discoveryTimer !== null) clearInterval(this.discoveryTimer);
+    this.discoveryTimer = null;
+    if (this.activeTopicSubscriptions === 0) this.stopHealthTimer();
   }
 
   private emit(): void {
@@ -331,11 +353,17 @@ function contractFor(source: DataSource): TopicContract | null {
 function staleThreshold(capability: string): number {
   if (capability === "map") return 10_000;
   if (capability === "camera") return 3_000;
+  if ([
+    "information_map",
+    "frontiers",
+    "task_allocation",
+    "task_allocation_image",
+    "exploration_progress",
+    "agent_status",
+    "emergency_objects",
+    "emergency_events"
+  ].includes(capability)) return 60_000;
   return 2_000;
-}
-
-function sourceId(source: DataSource): string {
-  return [source.graph, source.topic ?? source.topic_pattern, source.message_type, source.capability].join(":");
 }
 
 function fingerprint(sources: DataSource[]): string {
@@ -349,6 +377,10 @@ function contractFingerprint(contracts: TopicContract[]): string {
     .map((contract) => [contract.graph, contract.topic, contract.messageType, contract.staleAfterMs].join("|"))
     .sort()
     .join(";");
+}
+
+function topicContractKey(contract: TopicContract): string {
+  return [contract.graph, contract.topic, contract.messageType, contract.staleAfterMs].join("|");
 }
 
 export const rosDataRuntime = new RosDataRuntime();

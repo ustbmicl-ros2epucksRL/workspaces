@@ -2,6 +2,10 @@
 
 本文档记录 `Response Formation Navigation` 重构的实际执行状态、验证证据和遗留问题，作为后续阶段继续工作的唯一进度入口。
 
+当前结论：阶段 1-6 已完成，阶段 4 曾完成 2026-07-13 全任务长跑；阶段 7 的定向
+改动与回归已完成，但最新完整 Tepper 仍被跨组让行停滞阻断。统一平台的 Stage D
+证明的是该场景可编排、可观测、可停止和可归档，不替代这里的算法全任务长跑验收。
+
 - 需求与架构基线：`docs/RESPONSE_FORMATION_REQUIREMENTS.md`
 - 完整实施计划：`docs/RESPONSE_FORMATION_REFACTOR_PLAN.md`
 - 执行原则：逐阶段修改；每阶段先写测试，再实现；完成后运行 Tepper 大系统并记录可复现证据。

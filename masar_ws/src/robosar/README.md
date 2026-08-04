@@ -1,59 +1,67 @@
-# RoboSAR - Autonomous Search and Rescue System
-RoboSAR is an autonomous search and rescue system developed using the Robot Operating System (ROS) that uses a team of robots to explore and map an environment to search for victims. The system includes several subsystems, including a task generator, task allocator, multi-robot SLAM (MRSLAM), navigation among others. The system is also equipped with a user-friendly Mission Control GUI that allows users to monitor and interact with the system. The package also includes a multi-robot simulator based on the ROS Stage simulator for testing and debugging purposes. For more information about the RoboSAR project, please visit our [website](https://mrsdprojects.ri.cmu.edu/2022teamf/).
+# RoboSAR ROS1 packages
 
-### Running the system
-To run the RoboSAR system in simulation, you need to launch various ROS nodes. You can do this by running the following commands:
-```bash
-roslaunch robosar_agent_bringup robosar_agent_bringup_node.launch
-roslaunch robosar_sim_bringup robosar_sim_[insert world name].launch
-roslaunch slam_toolbox robosar_mapping_sim.launch
-roslaunch robosar_task_generator task_generator.launch
-roslaunch robosar_navigation mission_executive.launch
-rosrun robosar_controller robosar_traffic_controller_node
-rosrun robosar_task_allocator mission_commander.py -s=true -t="high"
-python3 src/robosar/robosar_gui/src/robosar_gui.py
+本目录保存 RoboSAR 搜救系统的 ROS1 Noetic 包。系统由多机器人接入、Gazebo/Webots
+场景上下文、SLAM、任务生成与分配、导航、交通控制、Mission Control GUI 和应急响应组
+组成。原项目资料可参考 [RoboSAR 项目网站](https://mrsdprojects.ri.cmu.edu/2022teamf/)。
+
+本文是包级架构索引，不是当前平台启动手册，也不建议操作者逐个手工启动节点。当前入口
+以 [`masar_ws/README.md`](../../README.md) 为准；统一 Web 平台的部署、操作和停止流程见
+[`masar-simulation-platform/docs/OPERATIONS.md`](../../../masar-simulation-platform/docs/OPERATIONS.md)。
+
+## 当前运行入口
+
+从 `masar_ws` 根目录使用以下聚合脚本：
+
+| 入口 | 当前用途 |
+|---|---|
+| `launch_robosar_g.sh` | ROS1 + Gazebo/Tepper 探索组搜救闭环 |
+| `launch_robosar_w.sh` | ROS1 侧 Webots RoboSAR 链；必须在 ROS2 `start_robosar_webots.sh` 就绪后启动 |
+| `run_response_deform_demo.sh` | 4 台 Burger 响应组 DEFORM 编队导航验证 |
+| `run_response_controller_demo.sh` | roundflocking/transport 控制器独立验证 |
+| `run_tepper_response_demo.sh` | Gazebo/Tepper 探索组与响应组完整系统 |
+
+统一平台会调用同一批脚本，并在一次 Run 中管理其全部业务、仿真、RViz 和录制进程。
+平台模式禁用该 Run 内的 Qt GUI；直接运行上述原生入口时 Qt GUI 继续保留。不要在平台
+存在活动 Run 时再手工启动第二套 ROS 图或仿真器。
+
+## 主任务链
+
+```text
+机器人与仿真接入
+-> 多机器人 SLAM 与 /sim_map
+-> frontier/coverage 任务生成
+-> HIGH 任务分配
+-> mission executive 与路径规划
+-> 多机器人交通控制
+-> Qt GUI 或统一 Web 平台控制与观测
 ```
-Once you've launched all of these nodes, you can start the mission by clicking on the "Start Mission" button in the GUI.
 
-Here is the simulation run of the system in Tepper world
+完整搜救会在此基础上加入应急对象、任务队列和 4 台 Burger 响应组。响应组当前只有一条
+生产运行链：共享编队中心规划、连续形变槽位、导航/任务控制切换和唯一最终
+`/tb_i/cmd_vel` 输出。实现与限制见
+[`ROBOSAR_DEFORM_INTEGRATION_DESIGN.md`](../../docs/ROBOSAR_DEFORM_INTEGRATION_DESIGN.md)。
 
-![simulation_tepper](tepper_sim.gif)
+## 包职责
 
-## Running the system with your robots
-TODO
-## Highlevel Architecture of the RoboSAR System
-![Highlevel architecture of RoboSAR](robosar_highlevel.jpg)
-Here is a brief overview of each subsystem in RoboSAR:
+| 包 | 职责 |
+|---|---|
+| `robosar_agent_bringup` | 机器人/仿真 agent 接入，以及 scan、odom、cmd_vel 话题 |
+| `robosar_sim_bringup` | Gazebo/Webots 场景上下文、静态地图和仿真对象 |
+| `robosar_SLAM_toolbox` | 项目内定制的多机器人 SLAM launch/config |
+| `robosar_task_generator` | frontier、coverage 和应急对象相关任务生成 |
+| `robosar_task_allocator` | HIGH 分配器、mission commander 和任务状态快照 |
+| `robosar_navigation` | mission executive、MultiAStar 和路径执行 |
+| `robosar_controller` | 多机器人交通控制、避碰和任务运动门 |
+| `robosar_gui` | 原生 Mission Control Qt GUI |
+| `robosar_emergency_response` | 应急任务、响应组编队导航、控制切换和返航 |
+| `robosar_messages` | 搜救、应急对象和响应组自定义消息 |
 
-### Hardware specific packages
-##### robosar_agent_bringup
-This package is responsible for launching the hardware drivers for the robots. It initializes the robot hardware and establishes the communication between the robots and the rest of the system. This package is essential for the proper functioning of the RoboSAR system, as it ensures that the hardware is properly configured and ready for use.
-##### robosar_khepera_code
-##### robosar_khepera_perception
+![RoboSAR high-level architecture](robosar_highlevel.jpg)
 
-### Hardware agnostic packages
-##### slam_toolbox
-This package provides SLAM (Simultaneous Localization and Mapping) functionality for the RoboSAR system. It uses sensor data from the robots to build a map of the environment and estimate the location of the robots within that map. This information is used by other subsystems of the RoboSAR system, such as the task allocator and navigation nodes, to plan and execute missions.
+## 文档边界
 
-##### robosar_task_generator
-This package is responsible for generating the tasks that the robots will perform during a mission. It creates both frontier and coverage tasks, which are then passed to the task allocator node. The task generator uses information from the SLAM node to identify areas of the environment that have not yet been explored or covered by the robots, and creates tasks based on that information. This package is important for ensuring that the robots are always working on tasks that are relevant to the overall mission objectives.
-
-##### robosar_task_allocator
-This package is responsible for assigning tasks to the robots during a mission. It uses an algorithm that takes into account task distance, utility, and information gain to assign tasks to the robots in an efficient and effective manner. The task allocator balances the need for exploration of new areas of the environment with the need to complete coverage tasks. This package is crucial for ensuring that the robots are working efficiently and effectively towards achieving the mission objectives.
-
-##### robosar_navigation
-This package is responsible for path planning for the RoboSAR system. It uses the map built by the SLAM node and plans paths for the robots to follow in order to complete all the tasks assigned to them. This package is responsible for ensuring that the robots have optimal paths without any collisions with the environment.
-
-##### robosar_controller
-This package is responsible for coordinating the movements of multiple robots in the system. It ensures that the robots do not collide with each other while performing their missions. This node monitors the positions and velocities of all the robots and sends commands to adjust their speeds and trajectories as necessary to avoid collisions. The robosar_controller ndoe is critical for the safe operation of the system, especially in scenarios where multiple robots are working in close proximity to each other.
-
-##### robosar_gui
-This package provides a graphical user interface (GUI) for monitoring and controlling the RoboSAR system. It displays real-time information about the status of the robots, the tasks being performed, and the progress of the mission. The GUI also allows the user to start and stop missions. This node is important for enabling human operators to interact with and manage the RoboSAR system.
-
-##### robosar_sim_bringup
-This package is used to launch the multi-robot simulator for testing and debugging the RoboSAR system before transferring it to real hardware. It is based on the ROS Stage simulator, which allows for the simulation of multiple robots in a 2D environment.
-
-### Command to update all submodules
-* git submodule update --init --recursive
-* git submodule foreach git pull origin main
-
+- 本文件只解释 `src/robosar` 的当前组成和权威入口。
+- `src/robosar/*/README.md` 可能是包级说明、第三方项目原文或上游历史资料，不替代
+  `masar_ws/README.md` 与平台运维手册。
+- `robosar_SLAM_toolbox/README.md` 保留上游 Slam Toolbox 说明；它不是 MASAR 的启动指南。
+- `docs/superpowers/` 保存已确认的设计/实施历史快照，不作为当前操作步骤。

@@ -109,6 +109,65 @@ def test_create_single_run_events_commands_artifacts_and_stop(tmp_path: Path) ->
     assert "command:ros1:ros1.mission.start" in trace
 
 
+def test_swarm_run_exposes_its_expected_robot_inventory(tmp_path: Path) -> None:
+    orchestrator, _, _ = build_test_orchestrator(tmp_path)
+    with TestClient(create_api_app(orchestrator), raise_server_exceptions=False) as client:
+        created = client.post(
+            "/api/v1/runs",
+            json={
+                "scenario_id": "swarm.webots.ros2swarm",
+                "parameters": {"number_robots": 3, "robot": "e_puck"},
+            },
+        )
+        run_id = created.json()["run_id"]
+        _wait_for_state(client, run_id, "RUNNING")
+
+        response = client.get(f"/api/v1/runs/{run_id}/robots")
+        client.post(f"/api/v1/runs/{run_id}/stop")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "robots": [
+            {
+                "robot_id": f"robot_{index}",
+                "label": f"机器人 {index}",
+                "model": "e_puck",
+                "topic_prefix": f"/robot_{index}",
+                "expected": True,
+            }
+            for index in range(3)
+        ]
+    }
+
+
+def test_exploration_run_exposes_five_expected_search_robots(tmp_path: Path) -> None:
+    orchestrator, _, _ = build_test_orchestrator(tmp_path)
+    with TestClient(create_api_app(orchestrator), raise_server_exceptions=False) as client:
+        created = client.post(
+            "/api/v1/runs",
+            json={"scenario_id": "exploration.gazebo.tepper", "parameters": {}},
+        )
+        run_id = created.json()["run_id"]
+        _wait_for_state(client, run_id, "RUNNING")
+
+        response = client.get(f"/api/v1/runs/{run_id}/robots")
+        client.post(f"/api/v1/runs/{run_id}/stop")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "robots": [
+            {
+                "robot_id": f"agent_{index}",
+                "label": f"搜索机器人 {index}",
+                "model": "robosar_search",
+                "topic_prefix": f"/robosar_agent_bringup_node/agent_{index}",
+                "expected": True,
+            }
+            for index in range(5)
+        ]
+    }
+
+
 def test_deform_home_is_distinct_from_response_return_home(tmp_path: Path) -> None:
     orchestrator, _, _ = build_test_orchestrator(tmp_path)
     with TestClient(create_api_app(orchestrator), raise_server_exceptions=False) as client:

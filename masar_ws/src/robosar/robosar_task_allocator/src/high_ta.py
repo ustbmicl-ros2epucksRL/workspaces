@@ -59,8 +59,12 @@ class HIGHAssignmentCommander(FrontierAssignmentCommander):
         topic_name="/sim_map" #静态地图话题，用于计算总体可探索区域
         self.tot_area = get_map_tot_area_info(topic_name)
         self.covered_area = 0.0
-        self.area_explored_pub = rospy.Publisher("/percent_completed", Float32, queue_size=1)
-        self.info_map_pub = rospy.Publisher("/information_map", OccupancyGrid, queue_size=1)
+        self.area_explored_pub = rospy.Publisher(
+            "/percent_completed", Float32, queue_size=1, latch=True
+        )
+        self.info_map_pub = rospy.Publisher(
+            "/information_map", OccupancyGrid, queue_size=1, latch=True
+        )
         self.downsample = 5
         self.cost_calculator = CostCalculator(self.utility_range, self.downsample)
 

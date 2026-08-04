@@ -68,8 +68,8 @@ http://127.0.0.1:18090 {
 		}
 	}
 
-	handle_path /webots/* {
-		reverse_proxy 127.0.0.1:18141 {
+	handle_path /display/webots/* {
+		reverse_proxy 127.0.0.1:18133 {
 			header_up Upgrade {http.request.header.Upgrade}
 			header_up Connection {http.request.header.Connection}
 		}

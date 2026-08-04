@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "profile": "response_demo",
+  "graphs": {
+    "ros1": {
+      "connected": true,
+      "topics": [
+        {"name": "/tb_0/odom", "message_type": "nav_msgs/Odometry", "last_message_age_seconds": 0.1},
+        {"name": "/tb_0/cmd_vel", "message_type": "geometry_msgs/Twist", "last_message_age_seconds": 0.1},
+        {"name": "/response_group/status", "message_type": "robosar_messages/ResponseGroupStatus", "last_message_age_seconds": 0.2},
+        {"name": "/response_group/behavior_mode", "message_type": "std_msgs/String", "last_message_age_seconds": 0.2},
+        {"name": "/response_group/task_result", "message_type": "robosar_messages/EmergencyTask", "last_message_age_seconds": 0.3}
+      ]
+    }
+  }
+}

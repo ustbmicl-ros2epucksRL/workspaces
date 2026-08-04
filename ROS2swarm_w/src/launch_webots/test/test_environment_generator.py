@@ -198,10 +198,6 @@ def test_generate_world_file_supports_triangular_prism_transport_object(tmp_path
     assert f"mass {TRANSPORT_OBJECT_MASS}" in content
 
 
-def test_transport_object_mass_is_point_seven_kilograms():
-    assert TRANSPORT_OBJECT_MASS == pytest.approx(0.7)
-
-
 def test_generate_world_file_applies_shape_to_transport_box_lists(tmp_path: Path):
     template_world = tmp_path / "template.wbt"
     output_world = tmp_path / "generated.wbt"

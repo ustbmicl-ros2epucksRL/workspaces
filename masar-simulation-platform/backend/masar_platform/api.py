@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.concurrency import run_in_threadpool
 
-from .agents import AgentClient, AgentHTTPError, AgentUnavailable, SecretFileError, load_master_secret
+from .agents import AgentClient, AgentHTTPError, AgentUnavailable, load_master_secret
 from .artifacts import ArtifactNotFound, ArtifactStore
 from .catalog import CatalogError, ScenarioCatalog
 from .commands import render_invocation
@@ -24,6 +24,7 @@ from .displays import check_display_prerequisites, display_plan
 from .config import Settings, get_settings
 from .db import Database, datetime_to_text
 from .events import EventStore
+from .gateways import check_web_gateway_prerequisites
 from .leases import LeaseStore
 from .orchestrator import (
     CommandNotSupported,
@@ -62,46 +63,6 @@ class ValidateScenarioRequest(BaseModel):
     parameters: dict[str, Any] = Field(default_factory=dict)
 
 
-class _UnavailableRuntimeAgent:
-    def __init__(self, agent_kind: str) -> None:
-        self.agent_kind = agent_kind
-
-    def _raise(self) -> None:
-        raise AgentUnavailable(f"{self.agent_kind} Runtime Agent secret is unavailable")
-
-    def health(self) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def start(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def stop(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def probe(self, run_id: str) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def probe_readiness(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def logs(self, run_id: str, process_id: str, **kwargs: Any) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def command(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-    def graph_snapshot(self, run_id: str, payload: dict[str, Any]) -> dict[str, Any]:
-        self._raise()
-        return {}
-
-
 def build_orchestrator(settings: Settings | None = None) -> Orchestrator:
     runtime_settings = settings or get_settings()
     database = Database(runtime_settings.data_dir / "platform.sqlite3")
@@ -116,14 +77,11 @@ def build_orchestrator(settings: Settings | None = None) -> Orchestrator:
     leases = LeaseStore(database, events)
     artifacts = ArtifactStore(database, runtime_settings.data_dir)
     catalog = ScenarioCatalog.from_directory(runtime_settings.scenario_dir)
-    try:
-        secret = load_master_secret(runtime_settings.secret_path)
-        agents: dict[str, Any] = {
-            "ros1": AgentClient(runtime_settings.ros1_agent_host, runtime_settings.ros1_agent_port, secret),
-            "ros2": AgentClient(runtime_settings.ros2_agent_host, runtime_settings.ros2_agent_port, secret),
-        }
-    except SecretFileError:
-        agents = {"ros1": _UnavailableRuntimeAgent("ros1"), "ros2": _UnavailableRuntimeAgent("ros2")}
+    secret = load_master_secret(runtime_settings.secret_path)
+    agents: dict[str, Any] = {
+        "ros1": AgentClient(runtime_settings.ros1_agent_host, runtime_settings.ros1_agent_port, secret),
+        "ros2": AgentClient(runtime_settings.ros2_agent_host, runtime_settings.ros2_agent_port, secret),
+    }
     preflight = PreflightChecker(
         runtime_settings.data_dir,
         agents,
@@ -132,6 +90,12 @@ def build_orchestrator(settings: Settings | None = None) -> Orchestrator:
             runtime_settings.visual_stack_ready,
             gazebo_port=runtime_settings.ros1_novnc_port,
             rviz_port=runtime_settings.ros2_novnc_port,
+            webots_port=runtime_settings.webots_novnc_port,
+        ),
+        gateway_check=lambda manifest: check_web_gateway_prerequisites(
+            manifest,
+            ros1_port=runtime_settings.ros1_rosbridge_port,
+            ros2_port=runtime_settings.ros2_rosbridge_port,
         ),
     )
     return Orchestrator(catalog, states, leases, events, artifacts, agents, preflight)
@@ -371,8 +335,38 @@ def create_api_app(
 
     @application.get(f"{API_PREFIX}/runs/{{run_id}}/robots")
     async def robots(request: Request, run_id: str) -> dict[str, Any]:
-        _orchestrator(request).states.get(run_id)
-        return {"robots": []}
+        run = _orchestrator(request).states.get(run_id)
+        manifest = _orchestrator(request).catalog.get(run.scenario_id)
+        parameters = run.resolved_manifest.get("parameters", {})
+        count = parameters.get("number_robots")
+        if not isinstance(count, bool) and isinstance(count, int) and count > 0:
+            model = parameters.get("robot")
+            return {
+                "robots": [
+                    {
+                        "robot_id": f"robot_{index}",
+                        "label": f"机器人 {index}",
+                        "model": model if isinstance(model, str) else None,
+                        "topic_prefix": f"/robot_{index}",
+                        "expected": True,
+                    }
+                    for index in range(count)
+                ]
+            }
+        if manifest.module not in {"exploration", "rescue"}:
+            return {"robots": []}
+        return {
+            "robots": [
+                {
+                    "robot_id": f"agent_{index}",
+                    "label": f"搜索机器人 {index}",
+                    "model": "robosar_search",
+                    "topic_prefix": f"/robosar_agent_bringup_node/agent_{index}",
+                    "expected": True,
+                }
+                for index in range(5)
+            ]
+        }
 
     @application.websocket(f"{API_PREFIX}/events")
     async def event_socket(websocket: WebSocket) -> None:

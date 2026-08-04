@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import signal
 import subprocess
 import sys
@@ -10,6 +11,7 @@ import time
 
 import pytest
 
+from agents.runtime_agent import processes
 from agents.runtime_agent.processes import (
     CommandNotAllowed,
     CommandPolicy,
@@ -17,6 +19,7 @@ from agents.runtime_agent.processes import (
     GracePeriods,
     ProcessManager,
     RECORDER_REGEXES,
+    ProcessRecord,
 )
 
 
@@ -36,6 +39,20 @@ def _wait_for(predicate: object, timeout: float = 3.0) -> None:
             return
         time.sleep(0.01)
     raise AssertionError("condition did not become true")
+
+
+def test_proc_owner_scan_ignores_pid_that_exits_during_environment_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environ_path = Path("/proc/123/environ")
+    monkeypatch.setattr(Path, "glob", lambda _self, _pattern: [environ_path])
+
+    def process_exited(_self: Path) -> bytes:
+        raise ProcessLookupError(3, "No such process")
+
+    monkeypatch.setattr(Path, "read_bytes", process_exited)
+
+    assert processes._tagged_pids("run-1", "step-1") == []
 
 
 def test_spawn_records_pid_pgid_run_command_and_argv(tmp_path: Path) -> None:
@@ -68,6 +85,26 @@ def test_unknown_command_ref_and_mismatched_executable_are_rejected(tmp_path: Pa
         manager.start("run-1", "step-1", "test.python", ["/bin/sh", "-c", "sleep 30"])
 
     assert manager.probe("run-1") == []
+
+
+def test_swarm_recorder_allows_discussion_topics() -> None:
+    expression = RECORDER_REGEXES["record.ros2.swarm_sensor"]
+
+    assert re.fullmatch(expression, "/robot_2/opinion")
+    assert re.fullmatch(expression, "/robot_2/dispersion_distance")
+    assert re.fullmatch(expression, "/majority_broadcast")
+    assert re.fullmatch(expression, "/robot_2/camera/image_color")
+    assert re.fullmatch(expression, "/robot_2/imu")
+    assert re.fullmatch(expression, "/robot_2/ps0")
+    assert re.fullmatch(expression, "/robot_2/ps7")
+
+
+def test_rescue_recorder_includes_response_laser_but_not_inactive_depth() -> None:
+    expression = RECORDER_REGEXES["record.ros1.rescue"]
+
+    assert re.fullmatch(expression, "/tb_2/scan")
+    assert re.fullmatch(expression, "/tb_2/imu")
+    assert not re.fullmatch(expression, "/tb_2/camera/depth/image_raw")
 
 
 @pytest.mark.parametrize(
@@ -180,6 +217,100 @@ def test_stop_escalates_only_the_owned_process_group(tmp_path: Path) -> None:
         external.wait(timeout=3)
 
 
+def test_stop_cleans_descendant_in_detached_session_with_matching_owner_tags(tmp_path: Path) -> None:
+    manager = _manager(tmp_path)
+    child_pid_path = tmp_path / "detached-child.pid"
+    script = (
+        "import pathlib, subprocess, sys, time; "
+        "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], "
+        "start_new_session=True); "
+        "pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+        "time.sleep(30)"
+    )
+    record = manager.start(
+        "run-1",
+        "step-1",
+        "test.python",
+        [sys.executable, "-c", script, str(child_pid_path)],
+    )
+    try:
+        _wait_for(child_pid_path.exists)
+        child_pid = int(child_pid_path.read_text(encoding="utf-8"))
+        assert _pid_exists(child_pid)
+
+        stopped = manager.stop("run-1", "step-1", GracePeriods(0.05, 0.05, 0.05))
+
+        assert stopped.status == "STOPPED"
+        _wait_for(lambda: not _pid_exists(child_pid))
+    finally:
+        if _pid_exists(record.pid):
+            manager.stop("run-1", "step-1", GracePeriods(0.05, 0.05, 0.05))
+
+
+def test_stop_does_not_clean_detached_process_from_another_step(tmp_path: Path) -> None:
+    manager = _manager(tmp_path)
+    records: list[tuple[ProcessRecord, Path]] = []
+    for process_id in ("step-1", "step-2"):
+        child_pid_path = tmp_path / (process_id + ".pid")
+        script = (
+            "import pathlib, subprocess, sys, time; "
+            "child = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(30)'], "
+            "start_new_session=True); "
+            "pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+            "time.sleep(30)"
+        )
+        record = manager.start(
+            "run-1",
+            process_id,
+            "test.python",
+            [sys.executable, "-c", script, str(child_pid_path)],
+        )
+        _wait_for(child_pid_path.exists)
+        records.append((record, child_pid_path))
+    try:
+        first_child_pid = int(records[0][1].read_text(encoding="utf-8"))
+        second_child_pid = int(records[1][1].read_text(encoding="utf-8"))
+        manager.stop("run-1", "step-1", GracePeriods(0.05, 0.05, 0.05))
+        _wait_for(lambda: not _pid_exists(first_child_pid))
+        assert _pid_exists(second_child_pid)
+    finally:
+        for record, _ in records:
+            if _pid_exists(record.pid):
+                manager.stop("run-1", record.process_id, GracePeriods(0.05, 0.05, 0.05))
+
+
+def test_process_group_and_detached_descendants_share_one_grace_timeline(tmp_path: Path) -> None:
+    manager = _manager(tmp_path)
+    child_pid_path = tmp_path / "detached-child.pid"
+    ignore_signals = (
+        "import signal,time; "
+        "signal.signal(signal.SIGINT, signal.SIG_IGN); "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        "time.sleep(30)"
+    )
+    script = (
+        "import pathlib, signal, subprocess, sys, time; "
+        "signal.signal(signal.SIGINT, signal.SIG_IGN); "
+        "signal.signal(signal.SIGTERM, signal.SIG_IGN); "
+        f"child = subprocess.Popen([sys.executable, '-c', {ignore_signals!r}], start_new_session=True); "
+        "pathlib.Path(sys.argv[1]).write_text(str(child.pid)); "
+        "time.sleep(30)"
+    )
+    manager.start(
+        "run-1",
+        "step-1",
+        "test.python",
+        [sys.executable, "-c", script, str(child_pid_path)],
+    )
+    _wait_for(child_pid_path.exists)
+
+    started_at = time.monotonic()
+    manager.stop("run-1", "step-1", GracePeriods(0.15, 0.15, 0.15))
+    elapsed = time.monotonic() - started_at
+
+    assert elapsed < 0.8
+
+
 def test_log_cursor_reads_only_new_bytes(tmp_path: Path) -> None:
     manager = _manager(tmp_path)
     manager.start(
@@ -199,6 +330,10 @@ def test_log_cursor_reads_only_new_bytes(tmp_path: Path) -> None:
     assert third.data == ""
     assert third.cursor == second.cursor
     assert third.eof is True
+
+
+def _pid_exists(pid: int) -> bool:
+    return Path("/proc", str(pid)).exists()
 
 
 def test_child_environment_always_enables_platform_mode_and_local_no_proxy(tmp_path: Path) -> None:

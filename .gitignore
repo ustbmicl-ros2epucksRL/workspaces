@@ -5,3 +5,10 @@ __pycache__/
 
 # Local implementation worktrees
 .worktrees/
+
+# Local MASAR platform runtime credentials
+/masar-simulation-platform/.runtime/
+
+# Local MASAR platform test and visual-review artifacts
+/masar-simulation-platform/test-results/
+/masar-simulation-platform/frontend/.superpowers/

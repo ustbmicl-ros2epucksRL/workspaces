@@ -6,10 +6,12 @@ x-platform-environment: &platform-environment
 
 services:
   api:
-    profiles: [dev-api]
     build:
       context: ..
       dockerfile: deploy/api/Dockerfile
+    # Development bind mounts retain the checkout's host permissions. Run the
+    # API as root so owner-only source files remain importable on every host.
+    user: "0:0"
     network_mode: host
     environment:
       <<: *platform-environment
@@ -18,8 +20,17 @@ services:
       MASAR_PLATFORM_DATA_DIR: /var/lib/masar-platform/runs
       MASAR_PLATFORM_SCENARIO_DIR: /opt/masar-platform/scenarios
       MASAR_PLATFORM_VISUAL_STACK_READY: "true"
+      PYTHONPATH: /opt/masar-platform/backend
     volumes:
       - platform-runs:/var/lib/masar-platform/runs
+      - ../backend:/opt/masar-platform/backend:ro
+      - ../scenarios:/opt/masar-platform/scenarios:ro
+      - ../.runtime/agent.secret:/run/masar-platform/agent.secret:ro
+    depends_on:
+      ros1-runtime:
+        condition: service_healthy
+      ros2-runtime:
+        condition: service_healthy
     healthcheck:
       test:
         - CMD
@@ -29,6 +40,88 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+      start_period: 5s
+    restart: unless-stopped
+
+  ros1-runtime:
+    image: talent18/masar_ros1_srv-g:v2@sha256:3639f637a9be46d61b96bac90bcd0be75a73cfec0a7126915e416d75346a9a59
+    container_name: masar_ros1_srv-g
+    init: true
+    network_mode: host
+    ipc: host
+    gpus: all
+    group_add:
+      - video
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      <<: *platform-environment
+      DISPLAY: ${MASAR_HOST_DISPLAY:-${DISPLAY:-:0}}
+      XAUTHORITY: /tmp/.docker.xauth
+      NVIDIA_DRIVER_CAPABILITIES: all
+    volumes:
+      - ${MASAR_WORKSPACE_ROOT:-../..}:/root/workspace:rw
+      - ${MASAR_XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.docker.xauth:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../.runtime/agent.secret:/run/masar-platform/agent.secret:ro
+    command:
+      - /root/workspace/masar-simulation-platform/deploy/agent-bootstrap.sh
+      - ros1
+      - --secret-path
+      - /run/masar-platform/agent.secret
+      - --runs-dir
+      - /root/workspace/masar-simulation-platform/runs
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18101/healthz', timeout=2).read()"
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+    restart: unless-stopped
+
+  ros2-runtime:
+    image: talent18/masar_ros2_bridge-w:v2@sha256:5550e15e39fa60749b67724a991645a714148ad9853d9e87483b5154d2431c6c
+    container_name: masar_ros2_bridge-w
+    init: true
+    network_mode: host
+    ipc: host
+    gpus: all
+    group_add:
+      - video
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      <<: *platform-environment
+      DISPLAY: ${MASAR_HOST_DISPLAY:-${DISPLAY:-:0}}
+      XAUTHORITY: /tmp/.docker.xauth
+      NVIDIA_DRIVER_CAPABILITIES: all
+      ROS_DOMAIN_ID: ${MASAR_ROS2_DOMAIN_ID:-42}
+      ROS_LOCALHOST_ONLY: ${MASAR_ROS2_LOCALHOST_ONLY:-0}
+    volumes:
+      - ${MASAR_WORKSPACE_ROOT:-../..}:/root/workspace:rw
+      - ${MASAR_XAUTHORITY:-${HOME}/.Xauthority}:/tmp/.docker.xauth:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ../.runtime/agent.secret:/run/masar-platform/agent.secret:ro
+    command:
+      - /root/workspace/masar-simulation-platform/deploy/agent-bootstrap.sh
+      - ros2
+      - --secret-path
+      - /run/masar-platform/agent.secret
+      - --runs-dir
+      - /root/workspace/masar-simulation-platform/runs
+    healthcheck:
+      test:
+        - CMD
+        - python3
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:18102/healthz', timeout=2).read()"
+      interval: 5s
+      timeout: 3s
+      retries: 12
       start_period: 5s
     restart: unless-stopped
 
@@ -42,6 +135,14 @@ services:
       ROS_MASTER_URI: http://127.0.0.1:11311
       ROS_HOSTNAME: 127.0.0.1
       MASAR_ROS1_TOPICS_GLOB: "[*]"
+    depends_on:
+      ros1-runtime:
+        condition: service_healthy
+    volumes:
+      - ../../masar_ws:/root/workspace/masar_ws:ro
+      - ./sidecars/run-ros1-sidecar:/usr/local/bin/run-ros1-sidecar:ro
+      - ./sidecars/sidecar-health:/usr/local/bin/sidecar-health:ro
+      - ./sidecars/ros1-supervisord.conf:/etc/supervisor/supervisord.conf:ro
     healthcheck:
       test: [CMD, /usr/local/bin/sidecar-health, "18111", "18121"]
       interval: 10s
@@ -58,9 +159,17 @@ services:
     ipc: host
     environment:
       <<: *platform-environment
-      ROS_DOMAIN_ID: ${MASAR_ROS2_DOMAIN_ID:-0}
+      ROS_DOMAIN_ID: ${MASAR_ROS2_DOMAIN_ID:-42}
       ROS_LOCALHOST_ONLY: ${MASAR_ROS2_LOCALHOST_ONLY:-0}
       MASAR_ROS2_TOPICS_GLOB: "'[*]'"
+    depends_on:
+      ros2-runtime:
+        condition: service_healthy
+    volumes:
+      - ../../ROS2swarm_w:/root/workspace/ROS2swarm_w:ro
+      - ./sidecars/run-ros2-sidecar:/usr/local/bin/run-ros2-sidecar:ro
+      - ./sidecars/sidecar-health:/usr/local/bin/sidecar-health:ro
+      - ./sidecars/ros2-supervisord.conf:/etc/supervisor/supervisord.conf:ro
     healthcheck:
       test: [CMD, /usr/local/bin/sidecar-health, "18112", "18122"]
       interval: 10s
@@ -73,6 +182,7 @@ services:
     build:
       context: ..
       dockerfile: deploy/webots-guard/Dockerfile
+    entrypoint: ["/usr/local/bin/webots-port-guard"]
     network_mode: host
     cap_add:
       - NET_ADMIN
@@ -82,6 +192,8 @@ services:
     environment:
       <<: *platform-environment
       MASAR_WEBOTS_STREAM_PORT: "18141"
+    volumes:
+      - ./webots-guard/webots-port-guard:/usr/local/bin/webots-port-guard:ro
     healthcheck:
       test: [CMD, /usr/local/bin/webots-port-guard, --healthcheck]
       interval: 5s
@@ -102,6 +214,11 @@ services:
       <<: *platform-environment
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
+      - ./display/display_manager.py:/usr/local/bin/display_manager.py:ro
+      - ./display/xstartup-gazebo:/usr/local/bin/xstartup-gazebo:ro
+      - ./display/xstartup-rviz:/usr/local/bin/xstartup-rviz:ro
+      - ./display/xstartup-webots:/usr/local/bin/xstartup-webots:ro
+      - ./novnc/supervisord.conf:/etc/supervisor/conf.d/masar-display.conf:ro
     tmpfs:
       - /run/masar-platform-displays
       - /tmp
@@ -118,12 +235,12 @@ services:
     network_mode: host
     environment:
       <<: *platform-environment
-    depends_on:
-      webots-guard:
-        condition: service_healthy
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - ../frontend/dist:/srv/frontend:ro
+    depends_on:
+      webots-guard:
+        condition: service_healthy
     healthcheck:
       test: [CMD, wget, -qO-, http://127.0.0.1:18090/gateway-healthz]
       interval: 10s

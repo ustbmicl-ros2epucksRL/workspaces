@@ -4,13 +4,26 @@
 为E-puck和TurtleBot3 Burger机器人创建Webots控制器和相关节点
 """
 import os
+from launch.actions import TimerAction
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 from webots_ros2_driver.webots_controller import WebotsController
 from webots_ros2_driver.wait_for_controller_connection import WaitForControllerConnection
+from launch_webots.startup_policy import controller_start_delay_seconds
 
 
-def create_epuck_nodes(robot_index: int, use_sim_time: bool = True):
+def _staggered_action(action, robot_index: int):
+    delay = controller_start_delay_seconds(robot_index)
+    if delay <= 0:
+        return action
+    return TimerAction(period=delay, actions=[action])
+
+
+def create_epuck_nodes(
+    robot_index: int,
+    use_sim_time: bool = True,
+    webots_port: str = '1234',
+):
     """
     创建E-puck机器人的所有节点
     
@@ -51,33 +64,26 @@ def create_epuck_nodes(robot_index: int, use_sim_time: bool = True):
     
     actions = []
     
-    # 差分驱动控制器节点
-    diffdrive_controller_spawner = Node(
+    # 同一 controller_manager 的加载调用必须串行。两个独立 spawner 在负载较高时
+    # 会同时超时重试，形成“实际已加载、客户端仍重试”的重复加载竞态。
+    controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
         namespace=robot_namespace,
         output='screen',
         prefix=controller_manager_prefix,
-        arguments=['diffdrive_controller'] + controller_manager_timeout,
-        parameters=[{'use_sim_time': use_sim_time}],
-    )
-
-    # 关节状态广播器节点
-    joint_state_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        namespace=robot_namespace,
-        output='screen',
-        prefix=controller_manager_prefix,
-        arguments=['joint_state_broadcaster'] + controller_manager_timeout,
+        arguments=['diffdrive_controller', 'joint_state_broadcaster']
+        + controller_manager_timeout
+        + ['--service-call-timeout', '50', '--switch-timeout', '50', '--activate-as-group'],
         parameters=[{'use_sim_time': use_sim_time}],
     )
     
-    ros_control_spawners = [diffdrive_controller_spawner, joint_state_broadcaster_spawner]
+    ros_control_spawners = [_staggered_action(controller_spawner, robot_index)]
 
     # Webots控制器节点
     epuck_controller = WebotsController(
         robot_name=robot_name,
+        port=webots_port,
         namespace=robot_namespace,
         parameters=[
             {
@@ -112,7 +118,11 @@ def create_epuck_nodes(robot_index: int, use_sim_time: bool = True):
     return actions
 
 
-def create_burger_nodes(robot_index: int, use_sim_time: bool = True):
+def create_burger_nodes(
+    robot_index: int,
+    use_sim_time: bool = True,
+    webots_port: str = '1234',
+):
     """
     创建TurtleBot3 Burger机器人的所有节点
     
@@ -163,33 +173,25 @@ def create_burger_nodes(robot_index: int, use_sim_time: bool = True):
     )
     actions.append(footprint_publisher)
     
-    # 差分驱动控制器节点
-    diffdrive_controller_spawner = Node(
+    # 同一 controller_manager 的加载调用必须串行，原因见 create_epuck_nodes。
+    controller_spawner = Node(
         package='controller_manager',
         executable='spawner',
         namespace=robot_namespace,
         output='screen',
         prefix=controller_manager_prefix,
-        arguments=['diffdrive_controller'] + controller_manager_timeout,
-        parameters=[{'use_sim_time': use_sim_time}],
-    )
-
-    # 关节状态广播器节点
-    joint_state_broadcaster_spawner = Node(
-        package='controller_manager',
-        executable='spawner',
-        namespace=robot_namespace,
-        output='screen',
-        prefix=controller_manager_prefix,
-        arguments=['joint_state_broadcaster'] + controller_manager_timeout,
+        arguments=['diffdrive_controller', 'joint_state_broadcaster']
+        + controller_manager_timeout
+        + ['--service-call-timeout', '50', '--switch-timeout', '50', '--activate-as-group'],
         parameters=[{'use_sim_time': use_sim_time}],
     )
     
-    ros_control_spawners = [diffdrive_controller_spawner, joint_state_broadcaster_spawner]
+    ros_control_spawners = [_staggered_action(controller_spawner, robot_index)]
 
     # Webots控制器节点
     burger_controller = WebotsController(
         robot_name=robot_name,
+        port=webots_port,
         namespace=robot_namespace,
         parameters=[
             {

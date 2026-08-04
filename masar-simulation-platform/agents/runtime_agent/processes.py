@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple
 _IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 _ENVIRONMENT_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 _LOCAL_NO_PROXY_ENTRIES = ("127.0.0.1", "localhost", "::1")
+_RUN_ID_ENVIRONMENT = "MASAR_PLATFORM_RUN_ID"
+_PROCESS_ID_ENVIRONMENT = "MASAR_PLATFORM_PROCESS_ID"
 
 
 class ProcessManagerError(RuntimeError):
@@ -116,7 +118,7 @@ def _recorder_regex(patterns: Sequence[str]) -> str:
 
 
 DEFAULT_COMMAND_POLICIES: Mapping[str, CommandPolicy] = {
-    "ros2.swarm": CommandPolicy("ros2", "ros2"),
+    "ros2.swarm": CommandPolicy("ros2", "vglrun"),
     "ros1.response_deform": CommandPolicy("ros1", "./run_response_deform_demo.sh"),
     "ros1.response_controller": CommandPolicy("ros1", "./run_response_controller_demo.sh"),
     "ros1.exploration_gazebo": CommandPolicy("ros1", "./launch_robosar_g.sh"),
@@ -133,27 +135,53 @@ DEFAULT_COMMAND_POLICIES: Mapping[str, CommandPolicy] = {
 
 _EXPLORATION_TOPIC_PATTERNS = (
     "/sim_map",
+    "/information_map",
     "/frontier_filter/filtered_frontiers",
+    "/task_allocation",
     "/task_allocation_image",
     "/percent_completed",
     "/robosar_agent_bringup_node/all_agent_status",
     "/robosar_sim/emergency_objects",
     "/robosar_sim/emergency_events",
+    "/robosar_agent_bringup_node/<agent>/feedback/scan",
+    "/robosar_agent_bringup_node/<agent>/camera/image_raw",
+    "/robosar_agent_bringup_node/<agent>/odom_data_euler",
+    "/robosar_agent_bringup_node/<agent>/cmd_vel",
 )
 _RESPONSE_TOPIC_PATTERNS = (
+    "/gazebo/model_states",
+    "/tb_i/scan",
+    "/tb_i/imu",
     "/tb_i/odom",
     "/tb_i/cmd_vel",
+    "/tb_i/camera/color/image_raw",
+    "/emergency/tasks",
+    "/response_group/active_task",
     "/response_group/status",
     "/response_group/behavior_mode",
+    "/response_group/motion_enabled",
     "/response_group/task_result",
 )
 _SWARM_TOPIC_PATTERNS = (
     "/<robot>/scan",
     "/<robot>/odom",
     "/<robot>/cmd_vel",
+    "/<robot>/imu",
     "/<robot>/camera",
+    "/<robot>/camera/image_color",
+    "/<robot>/ps0",
+    "/<robot>/ps1",
+    "/<robot>/ps2",
+    "/<robot>/ps3",
+    "/<robot>/ps4",
+    "/<robot>/ps5",
+    "/<robot>/ps6",
+    "/<robot>/ps7",
     "/<robot>/battery",
     "/<robot>/safety",
+    "/<robot>/opinion",
+    "/<robot>/dispersion_distance",
+    "/majority_broadcast",
     "/global_info",
 )
 RECORDER_REGEXES = {
@@ -214,6 +242,8 @@ class ProcessManager:
             child_environment = os.environ.copy()
             child_environment.update(normalized_environment)
             child_environment["MASAR_PLATFORM_MODE"] = "1"
+            child_environment[_RUN_ID_ENVIRONMENT] = run_id
+            child_environment[_PROCESS_ID_ENVIRONMENT] = process_id
             child_environment["NO_PROXY"] = _merge_no_proxy(child_environment.get("NO_PROXY", ""))
             child_environment["no_proxy"] = _merge_no_proxy(child_environment.get("no_proxy", ""))
             with stdout_path.open("ab", buffering=0) as stdout_stream:
@@ -296,18 +326,34 @@ class ProcessManager:
                 (signal.SIGTERM, "SIGTERM", grace.sigterm),
                 (signal.SIGKILL, "SIGKILL", grace.sigkill),
             ):
-                if not _pid_active(record.pid):
+                group_active = _pid_active(record.pid)
+                tagged_pids = _tagged_pids(record.run_id, record.process_id)
+                if not group_active and not tagged_pids:
                     break
-                self._assert_owned(record)
-                os.killpg(record.pgid, signal_value)
+                if group_active:
+                    self._assert_owned(record)
+                    os.killpg(record.pgid, signal_value)
+                for pid in tagged_pids:
+                    if pid == record.pid:
+                        continue
+                    if group_active:
+                        try:
+                            if os.getpgid(pid) == record.pgid:
+                                continue
+                        except ProcessLookupError:
+                            continue
+                    try:
+                        os.kill(pid, signal_value)
+                    except ProcessLookupError:
+                        continue
                 signals.append(signal_name)
                 record = replace(record, signals_sent=tuple(signals))
                 self._write_record(record)
-                if self._wait_inactive(record, wait_seconds):
+                if self._wait_owned_inactive(record, wait_seconds):
                     break
 
-            if _pid_active(record.pid):
-                raise ProcessManagerError("owned process group did not stop within the grace periods")
+            if _pid_active(record.pid) or _tagged_pids(record.run_id, record.process_id):
+                raise ProcessManagerError("owned processes did not stop within the grace periods")
             child = self._children.get((run_id, process_id))
             return_code = child.poll() if child is not None else record.return_code
             stopped = replace(
@@ -381,15 +427,10 @@ class ProcessManager:
         if actual_pgid != record.pgid or record.pid == os.getpid() or record.pgid == os.getpgrp():
             raise ProcessOwnershipError("recorded pid/pgid ownership cannot be proven")
 
-    def _wait_inactive(self, record: ProcessRecord, wait_seconds: float) -> bool:
+    def _wait_owned_inactive(self, record: ProcessRecord, wait_seconds: float) -> bool:
         deadline = time.monotonic() + wait_seconds
-        child = self._children.get((record.run_id, record.process_id))
         while True:
-            if child is not None:
-                return_code = child.poll()
-                if return_code is not None:
-                    return True
-            if not _pid_active(record.pid):
+            if not _pid_active(record.pid) and not _tagged_pids(record.run_id, record.process_id):
                 return True
             if time.monotonic() >= deadline:
                 return False
@@ -494,8 +535,25 @@ def _pid_active(pid: int) -> bool:
     try:
         state = stat_path.read_text(encoding="utf-8").split()[2]
         return state != "Z"
-    except (FileNotFoundError, IndexError, PermissionError):
+    except (OSError, IndexError):
         return False
+
+
+def _tagged_pids(run_id: str, process_id: str) -> list[int]:
+    expected_run = (_RUN_ID_ENVIRONMENT + "=" + run_id).encode("utf-8")
+    expected_process = (_PROCESS_ID_ENVIRONMENT + "=" + process_id).encode("utf-8")
+    pids: list[int] = []
+    for environ_path in Path("/proc").glob("[0-9]*/environ"):
+        try:
+            pid = int(environ_path.parent.name)
+            if pid == os.getpid():
+                continue
+            values = environ_path.read_bytes().split(b"\0")
+        except (OSError, ValueError):
+            continue
+        if expected_run in values and expected_process in values and _pid_active(pid):
+            pids.append(pid)
+    return pids
 
 
 def _utc_now() -> str:

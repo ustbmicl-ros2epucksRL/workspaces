@@ -16,8 +16,17 @@ const scenarios = [
     module: "control",
     simulator: "gazebo",
     display_profile: "control",
-    panels: ["simulation", "sensors", "mission", "health", "logs"],
+    panels: ["simulation", "sensors", "health", "logs"],
     commands: ["mission.start", "mission.stop", "response.return_home"]
+  },
+  {
+    scenario_id: "control.gazebo.response-controller",
+    workspace: "group_behavior",
+    module: "control",
+    simulator: "gazebo",
+    display_profile: "control",
+    panels: ["simulation", "sensors", "health", "logs"],
+    commands: ["mission.start", "mission.stop"]
   },
   {
     scenario_id: "exploration.gazebo.tepper",
@@ -52,24 +61,48 @@ function detail(scenarioId: string) {
   const scenario = scenarios.find((item) => item.scenario_id === scenarioId) ?? scenarios[2];
   return {
     ...scenario,
-    runtime: { ros1_master_uri: "http://127.0.0.1:11311", ros2_domain_id: 0 },
+    runtime: { ros1_master_uri: "http://127.0.0.1:11311", ros2_domain_id: 42 },
     parameters:
       scenario.module === "swarm"
         ? {
+            webots_world: {
+              type: "string",
+              default: "command_world.wbt",
+              enum: ["command_world.wbt"]
+            },
+            robot: {
+              type: "string",
+              default: "burger",
+              enum: ["e_puck", "burger"]
+            },
             pattern: {
               type: "string",
               default: "roundflocking_pattern",
-              enum: ["aggregation_pattern", "dispersion_pattern", "roundflocking_pattern"]
+              enum: ["aggregation_pattern", "dispersion_pattern", "discussed_dispersion_pattern", "roundflocking_pattern"]
             },
             number_robots: { type: "integer", default: 5, minimum: 1, maximum: 20 }
           }
-        : {},
+        : scenario.scenario_id === "control.gazebo.response-controller"
+          ? {
+              mode: {
+                type: "string",
+                default: "roundflocking-heuristic",
+                enum: [
+                  "roundflocking-checkpoint",
+                  "roundflocking-heuristic",
+                  "transport",
+                  "transport-checkpoint",
+                  "transport-heuristic"
+                ]
+              }
+            }
+          : {},
     data_profile: scenario.module === "swarm" ? "swarm_sensor" : scenario.module,
     artifact_profile: scenario.module === "rescue" ? "rescue_default" : "exploration_default",
     display_plan: {
       simulation:
         scenario.simulator === "webots"
-          ? { transport: "webots", path: "/webots/", display: null, required: true }
+          ? { transport: "novnc", path: "/display/webots/", display: ":103", required: true }
           : { transport: "novnc", path: "/display/gazebo/", display: ":101", required: true },
       rviz: scenario.panels.includes("rviz")
         ? {
@@ -95,7 +128,11 @@ export async function installMockApi(
     activeRun?: boolean;
     restorableRun?: boolean;
     runScenario?: string;
+    runState?: string;
+    runParameters?: Record<string, unknown>;
+    events?: Array<Record<string, unknown>>;
     dataSources?: Array<Record<string, unknown>>;
+    processLogs?: Record<string, string>;
   } = {}
 ) {
   const context = page.context();
@@ -129,12 +166,12 @@ export async function installMockApi(
           ? {
               run_id: "run-layout-test",
               scenario_id: options.runScenario ?? "exploration.gazebo.tepper",
-              state: "RUNNING",
+              state: options.runState ?? "RUNNING",
               reason_code: null,
               created_at: "2026-08-01T10:00:00Z",
               updated_at: "2026-08-01T10:00:03Z",
               ended_at: null,
-              parameters: {}
+              parameters: options.runParameters ?? {}
             }
           : null
       });
@@ -163,9 +200,41 @@ export async function installMockApi(
         ]
       });
     }
-    if (path.endsWith("/events")) return json(route, { events: [] });
+    if (path.endsWith("/robots")) {
+      const scenarioId = options.runScenario ?? "exploration.gazebo.tepper";
+      const count = scenarioId === "swarm.webots.ros2swarm"
+        ? Number(options.runParameters?.number_robots ?? 5)
+        : 5;
+      const exploration = scenarioId.startsWith("exploration.") || scenarioId.startsWith("rescue.");
+      return json(route, {
+        robots: Array.from({ length: count }, (_, index) => ({
+          robot_id: exploration ? `agent_${index}` : `robot_${index}`,
+          label: exploration ? `搜索机器人 ${index}` : `机器人 ${index}`,
+          model: exploration ? "robosar_search" : options.runParameters?.robot ?? null,
+          topic_prefix: exploration
+            ? `/robosar_agent_bringup_node/agent_${index}`
+            : `/robot_${index}`,
+          expected: true
+        }))
+      });
+    }
+    if (path.endsWith("/logs")) {
+      const process = url.searchParams.get("process") ?? "";
+      const stream = url.searchParams.get("stream") ?? "stdout";
+      const data = options.processLogs?.[`${process}:${stream}`] ?? "";
+      const after = Number(url.searchParams.get("after") ?? 0);
+      return json(route, {
+        run_id: "run-layout-test",
+        process_id: process,
+        stream,
+        data: data.slice(after),
+        cursor: data.length,
+        eof: true
+      });
+    }
+    if (path.endsWith("/events")) return json(route, { events: options.events ?? [] });
     if (route.request().method() === "POST" && path === "/api/v1/runs") {
-      return json(route, { run_id: "run-new", state: "CREATED" }, 202);
+      return json(route, { run_id: "run-new", state: "PREFLIGHT" }, 202);
     }
     return json(route, { error: { code: "NOT_FOUND", message: path, details: {} } }, 404);
   });

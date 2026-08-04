@@ -169,6 +169,14 @@ docker compose -f deploy/compose.yaml restart display webots-guard
 实际发现且类型匹配的数据。总体轨迹使用 Webots `/global_info` 或 Gazebo
 `/gazebo/model_states` 的统一世界坐标，不拼接各机器人的局部 odom。
 
+完整搜救的传感器选择器将同号的 `agent_N` 与 `tb_N` 分别显示为“探索机器人”
+和“响应机器人”。探索 Khepera 显示相机、`feedback/scan`、Odometry 和 cmd_vel；
+响应 Burger 显示 D435 彩色相机、`scan`、IMU、Odometry 和 cmd_vel。两组都没有
+红外距离字段。Gazebo Burger 的四路 D435 彩色话题均可选择，但浏览器只连接当前
+机器人的一条 MJPEG 流，切换时释放旧流。D435 深度与双红外渲染默认停用，Gazebo
+GUI 也不重复显示相机视锥，以保证仿真和当前彩色画面流畅。八路红外仅用于真实
+发布 `ps0..ps7` 的 Webots e-puck 群行为场景。
+
 ## 7. Run 与平台停止
 
 一次“启动环境”创建一个 Run。该模块的仿真、RViz、录包和业务进程都属于同一

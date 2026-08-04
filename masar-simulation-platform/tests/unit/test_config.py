@@ -21,6 +21,7 @@ def _clear_platform_env(monkeypatch: pytest.MonkeyPatch) -> None:
         "ROS2_VIDEO_PORT",
         "ROS1_NOVNC_PORT",
         "ROS2_NOVNC_PORT",
+        "WEBOTS_NOVNC_PORT",
         "WEBOTS_STREAM_PORT",
         "DATA_DIR",
         "SECRET_PATH",
@@ -47,6 +48,7 @@ def test_default_loopback_ports_and_paths(monkeypatch: pytest.MonkeyPatch) -> No
         "ros2_video_port": 18122,
         "ros1_novnc_port": 18131,
         "ros2_novnc_port": 18132,
+        "webots_novnc_port": 18133,
         "webots_stream_port": 18141,
     }
 
@@ -79,6 +81,7 @@ def test_environment_values_override_ports_and_paths(monkeypatch: pytest.MonkeyP
     monkeypatch.setenv("MASAR_PLATFORM_ROS2_VIDEO_PORT", "19122")
     monkeypatch.setenv("MASAR_PLATFORM_ROS1_NOVNC_PORT", "19131")
     monkeypatch.setenv("MASAR_PLATFORM_ROS2_NOVNC_PORT", "19132")
+    monkeypatch.setenv("MASAR_PLATFORM_WEBOTS_NOVNC_PORT", "19133")
     monkeypatch.setenv("MASAR_PLATFORM_WEBOTS_STREAM_PORT", "19141")
     monkeypatch.setenv("MASAR_PLATFORM_DATA_DIR", str(tmp_path / "runs"))
     monkeypatch.setenv("MASAR_PLATFORM_SECRET_PATH", str(tmp_path / "agent.secret"))
@@ -100,6 +103,7 @@ def test_environment_values_override_ports_and_paths(monkeypatch: pytest.MonkeyP
     assert settings.ros2_video_port == 19122
     assert settings.ros1_novnc_port == 19131
     assert settings.ros2_novnc_port == 19132
+    assert settings.webots_novnc_port == 19133
     assert settings.webots_stream_port == 19141
     assert settings.data_dir == tmp_path / "runs"
     assert settings.secret_path == tmp_path / "agent.secret"

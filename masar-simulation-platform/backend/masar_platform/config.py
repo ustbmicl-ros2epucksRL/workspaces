@@ -92,6 +92,7 @@ class Settings:
     ros2_video_port: int = 18_122
     ros1_novnc_port: int = 18_131
     ros2_novnc_port: int = 18_132
+    webots_novnc_port: int = 18_133
     webots_stream_port: int = 18_141
     data_dir: Path = field(default_factory=lambda: _DEFAULT_DATA_DIR)
     secret_path: Path = _DEFAULT_SECRET_PATH
@@ -112,6 +113,7 @@ class Settings:
             "ros2_video_port",
             "ros1_novnc_port",
             "ros2_novnc_port",
+            "webots_novnc_port",
             "webots_stream_port",
         ):
             object.__setattr__(
@@ -161,6 +163,9 @@ class Settings:
             ros2_video_port=_positive_int("ros2_video_port", _env(values, "ROS2_VIDEO_PORT", "18122"), port=True),
             ros1_novnc_port=_positive_int("ros1_novnc_port", _env(values, "ROS1_NOVNC_PORT", "18131"), port=True),
             ros2_novnc_port=_positive_int("ros2_novnc_port", _env(values, "ROS2_NOVNC_PORT", "18132"), port=True),
+            webots_novnc_port=_positive_int(
+                "webots_novnc_port", _env(values, "WEBOTS_NOVNC_PORT", "18133"), port=True
+            ),
             webots_stream_port=_positive_int(
                 "webots_stream_port", _env(values, "WEBOTS_STREAM_PORT", "18141"), port=True
             ),

@@ -27,11 +27,12 @@ def test_platform_webots_endpoint_rejects_public_bind_and_invalid_path() -> None
         WebotsStreamConfig(public_path="webots")
 
 
-def test_caddy_webots_route_strips_prefix_and_preserves_websocket_upgrade() -> None:
+def test_caddy_webots_novnc_route_preserves_websocket_upgrade() -> None:
     caddyfile = (ROOT / "deploy/caddy/Caddyfile").read_text(encoding="utf-8")
 
-    assert "handle_path /webots/*" in caddyfile
-    assert "reverse_proxy 127.0.0.1:18141" in caddyfile
+    assert "handle_path /display/webots/*" in caddyfile
+    assert "reverse_proxy 127.0.0.1:18133" in caddyfile
+    assert "reverse_proxy 127.0.0.1:18141" not in caddyfile
     assert "header_up Upgrade {http.request.header.Upgrade}" in caddyfile
     assert "header_up Connection {http.request.header.Connection}" in caddyfile
 

@@ -1,7 +1,7 @@
 # MASAR 统一仿真验证与可视化平台设计
 
 状态：运行闭环与 Compose 托管 E1-E4 全部验收通过
-版本：0.5-compose-managed
+文档/部署契约版本：0.5-compose-managed（Python 包版本见 `pyproject.toml`，当前为 0.1.0）
 最后更新：2026-08-04
 实施范围：`ROS2swarm_w` 与 `masar_ws`，本期不接入 `multi-agent-neat`
 
@@ -11,7 +11,7 @@
 
 1. 将现有合法启动组合整理成场景目录。
 2. 通过单一 Compose 项目托管两个业务 runtime，并执行受限编排和健康检查。
-3. 在一个浏览器工作台中同时显示仿真、RViz、地图、传感器、任务状态和日志。
+3. 在一个浏览器工作台中同时显示仿真、RViz、任务分配与建图、传感器、任务状态和日志。
 4. 保存每次运行的配置、事件、日志、结果摘要和 rosbag。
 5. 为后续历史回放和多实验对比保留稳定的数据契约。
 
@@ -24,7 +24,7 @@
 | 使用者与并发 | 单用户；全平台同一时间最多一个活动实验 |
 | 现有工程 | 尽量不改；必要改动只能增加默认关闭的平台参数 |
 | 原 Qt GUI | 保留，原单容器运行方式继续可用；平台另提供 Web 控制界面 |
-| 主界面 | 仿真、RViz、地图、传感器等面板同时可见，不做互斥页签 |
+| 主界面 | 仿真、RViz、任务分配与建图、传感器等面板同时可见，不做互斥页签 |
 | 一级模块 | 群行为与控制验证、探索组独立运行、完整搜救系统 |
 | 群行为模块 | 不要求 RViz；不得展示未由项目定义的通用行为指标 |
 | 观测语义 | 只显示运行时真实存在且类型匹配的数据；缺失显示“未提供” |
@@ -32,7 +32,7 @@
 | 历史能力 | MVP 归档运行资料和 rosbag；回放与多实验对比后续实现 |
 | 对外入口 | 绑定 `127.0.0.1:18090`；本机直接访问，远程服务器通过 SSH 隧道访问 |
 | 部署入口 | `make docker-start`；8 个常驻服务由一个 Compose 项目管理 |
-| 开发模式 | 不区分生产/开发 Compose；依赖在镜像，可变源码和配置从仓库只读挂载 |
+| 开发模式 | 不区分生产/开发 Compose；依赖在镜像，平台源码/配置大多只读挂载，整个 ROS workspace 读写挂载以复用构建结果 |
 
 ### 2.1 Workspace 与文档边界
 
@@ -48,7 +48,7 @@
 
 ## 3. 已验证现状
 
-原始环境验证日期为 2026-07-31；下表已按 2026-08-03 当前 Compose 契约更新。
+原始环境验证日期为 2026-07-31；下表已按 2026-08-04 当前 Compose 契约更新。
 
 ### 3.1 容器与基础环境
 
@@ -57,14 +57,14 @@
 | `masar_ros1_srv-g` / `ros1-runtime` | `talent18/masar_ros1_srv-g:v2@sha256:3639f637...`，ROS1 Noetic | host | `${MASAR_WORKSPACE_ROOT}:/root/workspace` | Compose 托管 |
 | `masar_ros2_bridge-w` / `ros2-runtime` | `talent18/masar_ros2_bridge-w:v2@sha256:5550e15e...`，ROS2 Humble，Webots R2025a | host | `${MASAR_WORKSPACE_ROOT}:/root/workspace` | Compose 托管 |
 
-已使用隔离 ROS master 验证两个容器之间的 ROS1/ROS2 `dynamic_bridge` 通信。当前没有启动业务仿真、RViz 或业务 ROS 节点。
+两个容器之间的 ROS1/ROS2 `dynamic_bridge`、真实业务仿真、RViz 和六个场景均已完成分阶段验收。常驻 Compose 服务空闲时不启动业务 ROS 节点；创建 Run 后才由 Runtime Agent 启动该场景的进程组。
 
 两个业务 runtime 不承担浏览器数据面。`rosbridge_server`、`web_video_server` 和
 `tf2_web_republisher` 由独立 ROS1/ROS2 sidecar 提供，不在业务容器中临时安装。
 
 ### 3.2 现有运行入口
 
-`masar_ws/README.md:19-137` 已说明以下稳定入口：
+`masar_ws/README.md` 已说明以下稳定入口：
 
 | 入口 | 当前用途 | 平台模块 |
 |---|---|---|
@@ -75,7 +75,7 @@
 | `ROS2swarm_w/start_robosar_webots.sh` + `masar_ws/launch_robosar_w.sh` | Webots 双容器探索组搜救闭环 | 探索组独立运行 |
 | `masar_ws/run_tepper_response_demo.sh` | Gazebo/Tepper 探索组与响应组完整系统 | 完整搜救系统 |
 
-现有资料明确说明 Webots 双容器的权威边界：ROS2 侧负责 Webots、`robot_N` 和 bridge；ROS1 侧负责 `/sim_map`、SLAM、任务生成、任务分配、导航、控制和 GUI，见 `masar_ws/README.md:50-74`。
+现有资料明确说明 Webots 双容器的权威边界：ROS2 侧负责 Webots、`robot_N` 和 bridge；ROS1 侧负责 `/sim_map`、SLAM、任务生成、任务分配、导航、控制和原生 GUI。平台运行时禁用该 Run 内的原生 Qt GUI，由 Web 工作台控制。
 
 ### 3.3 当前可观测数据
 
@@ -83,14 +83,13 @@
 
 | 数据域 | 现有来源 | 用途 |
 |---|---|---|
-| 地图 | `/sim_map`、地图更新与 TF | 原生二维/三维地图面板、RViz |
+| 地图 | `/sim_map`、地图更新与 TF | RViz 交互观测、readiness 与录包；当前 React `MapPanel` 不重复渲染 OccupancyGrid |
 | 探索进度 | `/percent_completed` | `0..1` 地图覆盖比例，只用于探索/完整搜救的建图面板 |
 | 任务分配 | `/task_allocation_image`、`/task_allocation` | Qt 分配图与最近一次新分配批次（“本轮分配”） |
-| 前沿 | `/frontier_filter/filtered_frontiers` | 地图叠加 |
+| 前沿 | `/frontier_filter/filtered_frontiers` | 任务分配与建图面板的候选前沿计数及场景 readiness |
 | 应急对象 | `/robosar_sim/emergency_objects`、`/robosar_sim/emergency_events` | 发现对象与任务生成 |
-| 应急任务 | `/emergency/tasks`、`/emergency/active_task` | 任务队列与状态时间线 |
+| 应急任务 | `/emergency/tasks`、`/response_group/active_task` | 任务队列与当前响应任务 |
 | 响应组 | `/response_group/status`、`/response_group/behavior_mode`、`/response_group/task_result` | 完整搜救状态 |
-| 响应组几何 | `/response_group/center_path`、`/response_group/formation_slots` | 路径与编队叠加 |
 | 机器人遥测 | `/robot_N/scan`、`/robot_N/odom`、`/robot_N/cmd_vel` 或 ROS1 对应映射 | 激光、单机器人局部里程计、控制命令 |
 | 仿真世界位姿 | Webots `/global_info`；Gazebo `/gazebo/model_states` | 在同一世界坐标系中绘制多机器人当前位置与历史轨迹 |
 
@@ -112,7 +111,7 @@
 
 1. Webots 或 Gazebo 仿真画面。
 2. 运行时可用的机器人位置/轨迹面板。
-3. 固定传感器面板。
+3. 按机器人选择的传感器面板。
 4. 机器人与话题连接状态。
 5. 话题事件和进程日志。
 
@@ -125,7 +124,9 @@
 - `LaserScan` 显示扫描形状、有效量程和当前消息频率。
 - `Odometry` 显示位置、朝向和线/角速度。
 - `cmd_vel` 显示当前命令及消息新鲜度。
-- 安全状态、电池和相机仅在当前机器人确实发布对应话题时出现。
+- 相机、IMU、红外、安全状态和电池等可选字段仅在明确型号支持或当前机器人确实
+  发布对应话题时出现。Gazebo 探索 Khepera 不显示红外/IMU；响应 Burger 不显示
+  红外，但使用真实 `/tb_i/scan` 与 `/tb_i/imu`；八路红外只属于 Webots e-puck。
 - 多机器人总体轨迹只接受仿真器统一世界位姿：Webots 使用 `/global_info`，Gazebo 使用 `/gazebo/model_states`。各机器人的局部 `odom` 只在传感器面板显示，不作为总体轨迹的回退来源。
 - 不存在的数据源显示“未提供”，不得生成示例数值冒充实时值。
 
@@ -143,7 +144,8 @@
 1. Gazebo 或 Webots 仿真。
 2. RViz。
 3. 任务分配与建图：Qt 任务分配图、地图覆盖率、候选前沿和本轮分配。
-4. 按机器人选择的相机、LaserScan、IMU 和 Odometry 等实际传感器。
+4. 按机器人选择实际存在的相机、LaserScan、IMU 和 Odometry；Gazebo Khepera
+   没有红外/IMU 时不渲染对应字段。
 5. 探索任务态势：在线探索机器人，以及火源、受害者、待推送障碍的快照计数、位置和探测机器人。
 6. 机器人/话题健康、事件与节点日志。
 
@@ -173,9 +175,9 @@ MVP 的合法入口为 `run_tepper_response_demo.sh`，即 Gazebo/Tepper 中探�
 | 顶栏：模块 / 场景 / 运行状态 / 计时 / 启动 / 停止 / HOME / 归档             |
 +----------------+-----------------------------------------+---------------------+
 | 实验配置       | 仿真                                    | 场景/任务状态       |
-| 场景参数       | Webots W3D 或 Gazebo noVNC              | 机器人与话题健康度  |
+| 场景参数       | Webots 或 Gazebo noVNC                  | 机器人与话题健康度  |
 | 记录选项       +----------------------+------------------+ 当前任务/响应组     |
-| 预检结果       | RViz noVNC           | 原生地图         |                     |
+| 预检结果       | RViz noVNC           | 任务分配与建图   |                     |
 |                +----------------------+------------------+                     |
 |                | 相机与传感器                            |                     |
 +----------------+-----------------------------------------+---------------------+
@@ -183,7 +185,7 @@ MVP 的合法入口为 `run_tepper_response_demo.sh`，即 Gazebo/Tepper 中探�
 +--------------------------------------------------------------------------------+
 ```
 
-群行为模块隐藏 RViz 和任务时间线后采用上下布局：仿真在上方横跨中央工作区，轨迹与位姿、传感器观测在下方等宽并排。小屏幕再按仿真、轨迹、传感器顺序转为单列。
+群行为模块隐藏 RViz 和任务时间线后采用上下布局：仿真在上方横跨中央工作区，机器人运行轨迹、传感器观测在下方等宽并排。小屏幕再按仿真、轨迹、传感器顺序转为单列。
 
 ### 5.2 面板交互
 
@@ -192,10 +194,10 @@ MVP 的合法入口为 `run_tepper_response_demo.sh`，即 Gazebo/Tepper 中探�
 - 多相机、多激光等高带宽同类话题只在对应面板内部选择。
 - 弹出窗口与主窗口共享同一个 `run_id` 和数据连接，不创建第二次 ROS 订阅编排。
 - 布局保存在浏览器本地；MVP 不做多用户布局同步。
-- 小屏幕按“仿真、地图/RViz、传感器、状态、日志”的顺序纵向排列，不相互覆盖。
+- 小屏幕按“仿真、任务分配与建图/RViz、传感器、状态、日志”的顺序纵向排列，不相互覆盖。
 - 桌面右侧状态栏在高视口中自动填满纵向空间；高度不足时显示纵向滚动，任务态势中的搜救对象列表可单独滚动，不以裁剪文本换取固定高度。
 
-`.superpowers/visual-review/layout-v3.html` 只保留为群行为模块的早期视觉稿，不代表探索组或完整搜救布局。生产 React 工作台已按三个一级模块分别实现：三段任务轨道承担模块选择与运行阶段语义；探索/救援默认同屏显示仿真、RViz、地图和传感器；群行为的仿真在上方横跨两列，轨迹与传感器在下方并排。空地图、相机和响应字段不绘制示例值，所有等待/缺失/陈旧状态直接来自 API 数据。
+`.superpowers/visual-review/layout-v3.html` 只保留为群行为模块的早期视觉稿，不代表探索组或完整搜救布局。生产 React 工作台已按三个一级模块分别实现：三段任务轨道承担模块选择与运行阶段语义；探索/救援默认同屏显示仿真、RViz、任务分配与建图和传感器；群行为的仿真在上方横跨两列，轨迹与传感器在下方并排。空任务分配图、相机和响应字段不绘制示例值，所有等待/缺失/陈旧状态直接来自 API 数据。
 
 构建后的工作台由 Caddy 根路径提供，且排在 `/api`、ROS、Webots、视频和 noVNC 路由之后。桌面布局在 1440x900 保证核心面板同时可见；390px 小屏转为单列，不隐藏核心面板。面板调整尺寸、最大化、恢复和弹出都复用同一 `run_id`，不触发新的运行创建。
 
@@ -258,7 +260,7 @@ ROS1 和 ROS2 分别使用与发行版匹配、按 digest 锁定基础镜像的 
 每个 sidecar 可按场景启用：
 
 - `rosbridge_server`：浏览器 ROS WebSocket 协议。
-- `tf2_web_republisher`：按需下采样 TF。
+- `tf2_web_republisher`：保留为显式帧兼容服务；当前生产 React 面板不请求 TF，地图/TF 由 RViz 观测。
 - `web_video_server`：相机图像到浏览器友好格式。
 
 sidecar 只绑定 loopback，最终由 Caddy 在 `127.0.0.1:18090` 提供同源路径。Noetic 版本没有区分发布与订阅 glob 的参数，因此镜像构建时移除 advertise、publish 和服务端能力，只保留订阅、分片以及精确限制到 `rosapi/topics`（兼容带/不带前导斜杠）的 `CallService` 数据发现能力；Humble 使用空 `topics_pub_glob`、按场景限制的 `topics_sub_glob` 和同样的精确发现服务列表。ROS1 使用官方 rosbridge launch 以同时提供 rosapi；已有 ROS master 时复用它，没有 master 时该 sidecar 会创建仅供平台数据面的本机 master。Caddy 与两个 sidecar 均有健康检查，且所有 Compose 服务固定设置 `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`。
@@ -284,7 +286,7 @@ Webots W3D path-prefix 和鼠标交互的早期验收作为技术评估记录保
 |---|---|---|---|
 | [rosbridge_suite](https://github.com/RobotWebTools/rosbridge_suite) | ROS1/ROS2 到浏览器的 WebSocket 网关 | 默认分支为 `ros2`；协议成熟，ROS1/ROS2 前端接口统一 | 不是安全边界；只能 loopback + 反向代理，限制消息大小和允许话题 |
 | [roslibjs](https://github.com/RobotWebTools/roslibjs) | topic/service/param 客户端和连接管理 | npm `roslib` 当前核对为 2.1.0，BSD-2-Clause | 封装成平台 connection/topic adapter，不允许组件各自建连接 |
-| [tf2_web_republisher](https://github.com/RobotWebTools/tf2_web_republisher) | 按固定帧和目标帧提供精简 TF | 避免浏览器订阅完整 `/tf` 与 `/tf_static` | ROS1/ROS2 sidecar 分别部署；缓存和频率由场景配置 |
+| [tf2_web_republisher](https://github.com/RobotWebTools/tf2_web_republisher) | 为后续显式帧面板保留精简 TF 能力 | 避免浏览器订阅完整 `/tf` 与 `/tf_static` | ROS1/ROS2 sidecar 已部署；当前生产面板未接入 `TfClient` |
 | [web_video_server](https://github.com/RobotWebTools/web_video_server) | 相机图像浏览器显示 | 避免在前端手写 ROS Image 编解码 | 同时最多激活一个主视频源；原生 MJPEG `<img>` 只报告可信的 load/error 连接状态，不伪造浏览器无法观测的逐帧时间 |
 | [noVNC](https://github.com/novnc/noVNC) | Gazebo、RViz、必要时 Qt 的远程桌面 | 支持鼠标键盘和缩放，适合保留原生 GUI | 每个面板使用独立虚拟显示；浏览器默认只查看，控制按场景授权 |
 
@@ -325,18 +327,18 @@ RoboticsAcademy 为 GPL-3.0 项目。本平台不复制其源代码；只借鉴�
 ```yaml
 data_sources:
   - graph: ros2
-    pattern: /robot_*/scan
-    type: sensor_msgs/msg/LaserScan
+    topic_pattern: /<robot>/scan
+    message_types: [sensor_msgs/msg/LaserScan]
     capability: laser
-    required: false
+    required: true
   - graph: ros2
-    pattern: /robot_*/odom
-    type: nav_msgs/msg/Odometry
+    topic_pattern: /<robot>/odom
+    message_types: [nav_msgs/msg/Odometry]
     capability: odometry
     required: true
   - graph: ros1
-    topic: /percent_completed
-    type: std_msgs/Float32
+    topic_pattern: /percent_completed
+    message_types: [std_msgs/Float32]
     capability: exploration_progress
     required: false
 ```
@@ -360,14 +362,14 @@ ROS Web sidecar 必须加载对应业务消息 overlay，而不只连接 ROS gra
 | 消息类型不匹配 | `TYPE_MISMATCH`，不解析载荷 |
 | 网关断开 | `DISCONNECTED`，面板停止更新并尝试有界重连 |
 
-不得把“未提供”或“已发现 publisher 但尚未收到消息”渲染为 0，也不得把旧值持续显示为实时值。应急对象计数在首个真实快照前为 `—`，收到真实空快照后才为 `0`。低频、latched 的任务分配图使用 `web_video_server /snapshot`：Run 活动时首帧前每 1.5 秒重试，成功后每 3 秒刷新；机器人相机继续使用 MJPEG stream。
+不得把“未提供”或“已发现 publisher 但尚未收到消息”渲染为 0，也不得把旧值持续显示为实时值。应急对象计数在首个真实快照前为 `—`，收到真实空快照后才为 `0`。低频、latched 的任务分配图使用 `web_video_server /snapshot`：Run 活动时首帧前每 1.5 秒重试，成功后每 3 秒刷新。刷新使用候选 `Image` 预解码，只有成功帧能够提交给可见元素；STOP/HOME 后 publisher 消失或临时刷新失败时保留最后成功帧。普通机器人相机与 Gazebo Burger D435 均使用当前选择机器人的单路 MJPEG stream，并在默认选中源尚无首帧且 `naturalWidth === 0` 时每 1.5 秒有界重连。四台 Burger 均保留彩色传感器与可选话题，但前端切换时释放旧流，不进行四路 snapshot 预热。D435 深度和双红外传感器默认不激活且不进入 data profile；Gazebo 内部相机视锥可视化关闭，避免在 noVNC 主视图重复渲染。完整搜救按 `agent_N`/`tb_N` 分组选择传感器，响应组 profile 明确允许 `/tb_i/scan` 与 `/tb_i/imu`；不存在的红外源不产生字段。传感器型号表只负责无话题时的缺失说明，实际发现的话题优先。
 
 ### 8.3 浏览器带宽控制
 
 - 激光与里程计使用最后值队列，默认 UI 更新上限 10 Hz。
-- TF republisher 只请求当前面板所需帧。
-- 相机面板一次只选择一个高带宽视频源。
-- PointCloud2 默认关闭，启用时设置点数和刷新率上限。
+- 当前生产面板不请求 TF；未来接入时只能通过现有显式帧适配器请求所需帧。
+- 相机面板一次只选择一个 MJPEG 高带宽视频源；普通相机与 D435 使用同一生命周期，不维护后台多路缓存。
+- PointCloud2 当前不在 data profile 中，前端不订阅或渲染。
 - 日志按游标分页，浏览器不保留无限增长的 DOM。
 
 ## 9. 控制与安全
@@ -475,7 +477,7 @@ Ports 面板只转发 `18090`。
 | Webots 软件渲染或 W3D 生命周期异常 | 仿真卡顿、停止后无法重启 | noVNC + VirtualGL 固定 GPU 路径；连续两轮启停和 renderer/实时率验收；W3D 仅保留默认关闭的兼容入口 |
 | Gazebo 长时间运行中的原生进程崩溃 | 任务在长时间探索后意外结束 | 平台按 Run 所有权检测、归档并清理；短验收基线记录 RTF 和 CPU，原生 `free(): invalid pointer` 作为 `masar_ws` 上游稳定性问题单独定位，不用宽泛重启掩盖 |
 | Gazebo/RViz 共享 DISPLAY | 无法形成两个独立面板 | 平台以 `--no-rviz` 启动主脚本，在第二虚拟显示单独启动 RViz |
-| rosbridge 高带宽数据压垮浏览器 | 卡顿或内存增长 | throttle、queue length 1、按面板订阅、PointCloud 默认关闭 |
+| rosbridge 高带宽数据压垮浏览器 | 卡顿或内存增长 | throttle、queue length 1、按面板订阅、当前 profile 不接入 PointCloud2 |
 | ROS2 一次性群控命令只发现部分订阅者 | 部分机器人仍停在未启动状态 | Agent 先读取当前 `/swarm_command` 订阅数，再以 volatile/reliable QoS 等待全部当前订阅后发布；无法证明投递条件时命令失败 |
 | 停止实验误杀其他节点 | 原系统受影响 | run_id 进程组所有权；禁止模糊 pkill；停止前后记录 PID 树 |
 | 用户同时使用 Qt 与 Web 控制 | 命令竞争 | 平台运行默认只保留一个控制面；原生运行仍保留 Qt |

@@ -13,6 +13,7 @@ dependencies = [
   "pydantic==2.10.5",
   "PyYAML==6.0.2",
   "httpx==0.28.1",
+  "wsproto==1.2.0",
 ]
 
 [project.optional-dependencies]

@@ -1,6 +1,9 @@
 # RoboSAR × Webots 双容器桥接说明（当前项目口径）
 
-本文描述当前项目中 ROS1 RoboSAR 与 ROS2 Webots 的真实桥接方式。这里的容器名和路径默认以 `4a6000` 设备上的现有部署为准；迁移到其他设备时，应通过镜像或重新构建环境恢复，而不是直接假设本机已有同名容器。
+本文描述当前项目中 ROS1 RoboSAR 与 ROS2 Webots 的真实桥接方式。两个业务项目可以
+使用 Docker Hub 的运行环境镜像分别启动，源码和构建结果通过 workspace 挂载进入容器；
+统一平台只是把这两个容器和本项目入口脚本纳入一次 Run 的可复现编排。本文中的容器
+内路径不代表宿主机固定路径。
 
 ## 1. 目标与边界
 
@@ -8,12 +11,12 @@
 
 - ROS2 容器：`masar_ros2_bridge-w`
   - 运行环境：ROS2 Humble + Webots + `ros1_bridge`
-  - 工作区：通常为 `/ROS2swarm_w`，对应本仓库的 `ROS2swarm_w`
+  - 工作区：`/root/workspace/ROS2swarm_w`
   - 入口脚本：`start_robosar_webots.sh`
   - 主要职责：启动 Webots，生成 `robot_N` 机器人节点，运行 `robosar_bridge_adapter`，启动 `ros1_bridge dynamic_bridge --bridge-all-topics`
 - ROS1 容器：`masar_ros1_srv-g`
   - 运行环境：ROS1 Noetic
-  - 工作区：通常为 `/masar` 或 catkin workspace，对应本仓库的 `masar_ws`
+  - 工作区：`/root/workspace/masar_ws`
   - 入口脚本：`launch_robosar_w.sh`
   - 主要职责：启动 RoboSAR 主任务流，包括 SLAM、任务生成、任务分配、导航、控制、多机器人 GUI
 
@@ -26,38 +29,43 @@
 
 ## 2. 部署与迁移口径
 
-当前容器环境是在 `4a6000` 上已经配置好的运行环境。早期文档中的裸命令：
+平台部署入口位于 `masar-simulation-platform`：
 
 ```bash
-docker run ... osrf/ros:humble-desktop-full
+cd <workspace>/masar-simulation-platform
+make docker-start
 ```
 
-已经不能代表当前 ROS2 侧完整环境，因为它不包含当前 Webots、bridge、工作区依赖、VNC/GPU 对齐脚本和项目内构建结果。不要再把这条旧命令作为可复现部署步骤。
+Compose 使用以下公开且按 digest 固定的业务镜像：
 
-如果需要把环境迁移到其他设备，建议在 `4a6000` 上把当前容器提交为镜像并推送到 Docker Hub：
-
-```bash
-docker commit masar_ros2_bridge-w <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
-docker push <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
-
-docker commit masar_ros1_srv-g <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
-docker push <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
+```text
+talent18/masar_ros1_srv-g:v2@sha256:3639f637a9be46d61b96bac90bcd0be75a73cfec0a7126915e416d75346a9a59
+talent18/masar_ros2_bridge-w:v2@sha256:5550e15e39fa60749b67724a991645a714148ad9853d9e87483b5154d2431c6c
 ```
 
-迁移到新设备时再用 `docker pull` 拉取镜像，并按目标设备的 GPU、X11/VNC、网络和工作区挂载策略启动容器。Webots 与 ROS1/ROS2 桥接建议继续使用 host network，否则需要额外处理 ROS master、DDS 发现和 GUI 显示。
+镜像只提供 ROS/Webots/Gazebo/bridge 等运行环境。无论独立运行还是由 Compose 编排，
+都应将 workspace 读写挂载到 `/root/workspace`，源码和构建 overlay 不固化进镜像。首次启动若缺少
+`masar_ws/devel/setup.bash` 或 `ROS2swarm_w/install/setup.bash`，同一个
+`make docker-start` 会在对应容器内自动执行 `catkin_make` 或 `colcon build`；后续
+复用挂载目录中的结果。宿主 workspace 路径由当前 checkout 自动推导，只有目录
+不是标准同级布局时才设置 `MASAR_WORKSPACE_ROOT`。
 
-注意：`docker commit` 只保存容器文件系统，不会保存通过 volume 绑定挂载进容器的宿主目录；迁移时仍需要同步本工作区代码和需要保留的结果文件。
+完整前提、端口和远程访问方式见
+[平台运维手册](../../masar-simulation-platform/docs/OPERATIONS.md)。不再使用手工
+`docker commit` 或 Compose 外预先存在的业务容器作为部署前提。
 
 ## 3. 启动顺序
 
-推荐固定启动顺序：先 ROS2 Webots + bridge，再 ROS1 RoboSAR。
+平台固定启动顺序为先 ROS2 Webots + bridge，再 ROS1 RoboSAR，并在停止 Run 时按
+相反顺序结束该次运行的全部进程。以下命令只用于进入两个业务容器后的独立调试；
+平台存在活动 Run 时不要重复执行。
 
 ### 3.1 ROS2 侧
 
 在 `masar_ros2_bridge-w` 容器中：
 
 ```bash
-cd /ROS2swarm_w
+cd /root/workspace/ROS2swarm_w
 ./start_robosar_webots.sh
 ```
 
@@ -94,7 +102,7 @@ cd /ROS2swarm_w
 在 `masar_ros1_srv-g` 容器中：
 
 ```bash
-cd /masar
+cd /root/workspace/masar_ws
 ./launch_robosar_w.sh
 ```
 
@@ -112,7 +120,11 @@ cd /masar
 4. 启动 `robosar_agent_bringup`。
 5. 启动 `robosar_sim_bringup robosar_sim_w.launch`，其中包含 `/sim_map` map server、`AprilTagSim.py`、`bootstrap_map_tf.py` 和可选 RViz。
 6. 启动 `slam_toolbox robosar_mapping_sim_w.launch`。
-7. 启动 `robosar_task_generator`、`robosar_navigation`、`robosar_controller`、`mission_commander.py` 和 `robosar_gui.py`。
+7. 启动 `robosar_task_generator`、`robosar_navigation`、`robosar_controller`、`mission_commander.py`；直接运行时还启动原 Qt `robosar_gui.py`。
+
+统一平台为子进程设置 `MASAR_PLATFORM_MODE=1`，因此不会启动原 Qt GUI，也不会让
+脚本创建脱离 Runtime Agent 的子会话或执行原生全局清理。该差异只作用于平台
+Run；容器内直接运行脚本时保留原行为。
 
 这样启动的原因是：ROS1 侧节点需要在 `/use_sim_time=true` 且 `/clock` 已可用的条件下进入运行，否则容易出现 TF extrapolation、epoch 时间戳和 scan 队列积压问题。
 
@@ -262,6 +274,8 @@ rosparam get /use_sim_time
 - ROS2 侧发布 `map -> agent_N/odom`。
 - 固定传感器外参通过 `/tf` 周期性动态发布即可。
 - `robosar_bridge_adapter` 负责速度裁剪。
+- ROS1/ROS2 两个业务容器必须预先在 Compose 外手工创建并保持不重启。
+- 通过手工 `docker commit` 迁移当前运行环境。
 
 ## 10. 关键文件
 
@@ -272,5 +286,6 @@ rosparam get /use_sim_time
 - ROS1 Webots 场景上下文：`masar_ws/src/robosar/robosar_sim_bringup/launch/robosar_sim_w.launch`
 - ROS1 Webots SLAM launch：`masar_ws/src/robosar/robosar_SLAM_toolbox/slam_toolbox/launch/robosar_mapping_sim_w.launch`
 - ROS1 Webots SLAM 参数：`masar_ws/src/robosar/robosar_SLAM_toolbox/slam_toolbox/config/robosar_mapping_w.yaml`
+- 平台部署与操作：`masar-simulation-platform/docs/OPERATIONS.md`
 
 以上文件共同定义当前双容器系统的真实行为，应以它们为准。

@@ -3,15 +3,16 @@ import { PanelFrame } from "./PanelFrame";
 
 export function RvizPanel({ scenario, run }: { scenario: ScenarioDetail; run: RunRecord | null }) {
   const configured = scenario.display_plan.rviz !== null;
+  const live = run !== null && !["COMPLETED", "FAILED"].includes(run.state);
   const src = "/display/rviz/vnc.html?autoconnect=true&resize=scale&path=display%2Frviz%2Fwebsockify";
   return (
     <PanelFrame
       panelId="rviz"
       eyebrow="ROS VIEW"
       title="RViz 多机器人视图"
-      status={<span className={`live-mark ${run && configured ? "is-active" : ""}`}>{configured ? "独立显示 :102" : "未配置"}</span>}
+      status={<span className={`live-mark ${live && configured ? "is-active" : ""}`}>{configured ? (live ? "独立显示 :102" : "运行已结束") : "未配置"}</span>}
     >
-      {run && configured ? (
+      {live && configured ? (
         <iframe className="visual-frame" title="RViz 多机器人视图" src={src} />
       ) : (
         <div className="panel-empty panel-empty--map">

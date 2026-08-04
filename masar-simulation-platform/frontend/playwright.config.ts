@@ -2,6 +2,7 @@ import { defineConfig, devices } from "@playwright/test";
 
 process.env.NO_PROXY = "127.0.0.1,localhost,::1";
 process.env.no_proxy = "127.0.0.1,localhost,::1";
+const liveBaseUrl = process.env.MASAR_PLAYWRIGHT_LIVE_URL;
 
 export default defineConfig({
   testDir: "./tests",
@@ -10,7 +11,7 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {
-    baseURL: "http://127.0.0.1:13000",
+    baseURL: liveBaseUrl ?? "http://127.0.0.1:13000",
     trace: "retain-on-failure",
     screenshot: "only-on-failure"
   },
@@ -23,10 +24,12 @@ export default defineConfig({
       }
     }
   ],
-  webServer: {
-    command: "npm run dev -- --host 127.0.0.1",
-    url: "http://127.0.0.1:13000",
-    reuseExistingServer: false,
-    timeout: 30_000
-  }
+  webServer: liveBaseUrl
+    ? undefined
+    : {
+        command: "npm run dev -- --host 127.0.0.1",
+        url: "http://127.0.0.1:13000",
+        reuseExistingServer: false,
+        timeout: 30_000
+      }
 });

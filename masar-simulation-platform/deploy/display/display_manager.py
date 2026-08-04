@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Own the two fixed X11/noVNC display stacks without global process cleanup."""
+"""Own the three fixed X11/noVNC display stacks without global process cleanup."""
 
 from __future__ import annotations
 
@@ -49,6 +49,7 @@ DISPLAY_SPECS: Mapping[str, DisplaySpec] = MappingProxyType(
     {
         "gazebo": DisplaySpec("gazebo", ":101", 19131, 18131),
         "rviz": DisplaySpec("rviz", ":102", 19132, 18132),
+        "webots": DisplaySpec("webots", ":103", 19133, 18133),
     }
 )
 
@@ -158,7 +159,7 @@ class DisplayLifecycleManager:
     def state_path(self) -> Path:
         return self.state_dir / "state.json"
 
-    def start(self, run_id: str, names: Sequence[str] = ("gazebo", "rviz")) -> LifecycleState:
+    def start(self, run_id: str, names: Sequence[str] = ("gazebo", "rviz", "webots")) -> LifecycleState:
         _validate_identifier(run_id)
         requested = tuple(names)
         if not requested or len(requested) != len(set(requested)):
@@ -227,6 +228,11 @@ class DisplayLifecycleManager:
             raise
 
     def poll(self) -> LifecycleState:
+        state = self.inspect()
+        self._write_state(state)
+        return state
+
+    def inspect(self) -> LifecycleState:
         state = self._state or self.load()
         displays: dict[str, DisplayRecord] = {}
         has_error = False
@@ -244,8 +250,50 @@ class DisplayLifecycleManager:
             displays[name] = replace(display, status=display_status, components=tuple(components))
         status = "ERROR" if has_error else state.status
         self._state = LifecycleState(state.run_id, status, MappingProxyType(displays))
-        self._write_state(self._state)
         return self._state
+
+    def start_or_recover(
+        self,
+        run_id: str,
+        names: Sequence[str] = ("gazebo", "rviz", "webots"),
+    ) -> LifecycleState:
+        if not self.state_path.exists():
+            return self.start(run_id, names)
+
+        state = self.load()
+        if state.run_id != run_id:
+            raise DisplayConflict("display state belongs to another run")
+        if tuple(state.displays) != tuple(names):
+            raise DisplayConflict("display state does not match the requested stack")
+
+        active: dict[int, bool] = {}
+        for display in state.displays.values():
+            for component in display.components:
+                active[component.pid] = self._component_active(component)
+
+        all_running = (
+            state.status == "RUNNING"
+            and all(display.status == "RUNNING" for display in state.displays.values())
+            and all(active.values())
+        )
+        if all_running:
+            self._state = state
+            return state
+
+        if any(active.values()):
+            cleanup_displays: dict[str, DisplayRecord] = {}
+            for name, display in state.displays.items():
+                components = tuple(
+                    replace(component, status="RUNNING" if active[component.pid] else "EXITED")
+                    for component in display.components
+                )
+                cleanup_displays[name] = replace(display, status="ERROR", components=components)
+            self._state = LifecycleState(run_id, "ERROR", MappingProxyType(cleanup_displays))
+            self._stop_records(ShutdownGrace(0.1, 0.1, 0.2))
+
+        self.state_path.unlink(missing_ok=True)
+        self._state = None
+        return self.start(run_id, names)
 
     def stop(
         self,
@@ -263,6 +311,7 @@ class DisplayLifecycleManager:
             raise
         if state.run_id != run_id:
             raise DisplayOwnershipError("run_id does not own the display lifecycle")
+        self._state = state
         return self._stop_records(grace or ShutdownGrace())
 
     def load(self) -> LifecycleState:
@@ -492,7 +541,7 @@ def _serve(manager: DisplayLifecycleManager, run_id: str) -> int:
 
     signal.signal(signal.SIGINT, request_stop)
     signal.signal(signal.SIGTERM, request_stop)
-    manager.start(run_id)
+    manager.start_or_recover(run_id)
     try:
         while not stop_event.wait(0.5):
             manager.poll()
@@ -503,7 +552,7 @@ def _serve(manager: DisplayLifecycleManager, run_id: str) -> int:
 
 def _health(manager: DisplayLifecycleManager) -> int:
     try:
-        state = manager.poll()
+        state = manager.inspect()
     except (OSError, ValueError, DisplayLifecycleError):
         return 1
     if state.status != "RUNNING" or any(display.status != "RUNNING" for display in state.displays.values()):

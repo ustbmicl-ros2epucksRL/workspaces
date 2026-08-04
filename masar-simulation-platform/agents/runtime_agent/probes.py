@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 import http.client
 import ipaddress
 import os
@@ -26,6 +27,12 @@ _QOS_PROFILES = {
     "action_status_default",
 }
 _LOCAL_NO_PROXY = "127.0.0.1,localhost,::1"
+WEBOTS_DISPLAY = ":103"
+VIRTUALGL_DISPLAY = ":0"
+ROS1_BRIDGE_SETUP = Path("/root/ros-humble-ros1-bridge/install/setup.bash")
+ROS1_BRIDGE_EXECUTABLE = Path(
+    "/root/ros-humble-ros1-bridge/install/ros1_bridge/lib/ros1_bridge/dynamic_bridge"
+)
 
 
 class ProbeRequestError(ValueError):
@@ -45,7 +52,36 @@ class ProbeRunner:
         normalized_runtime = _runtime_environment(runtime)
         if not isinstance(probe_payloads, (list, tuple)) or not probe_payloads:
             raise ProbeRequestError("probes must be a non-empty array")
-        return [self.run(payload, normalized_runtime) for payload in probe_payloads]
+        normalized_probes = [_normalize_probe(payload) for payload in probe_payloads]
+        ros2_probes = [probe for probe in normalized_probes if probe["type"] == "ros2_topic"]
+        if ros2_probes:
+            if self.agent_kind != "ros2":
+                raise ProbeRequestError("ROS2 topic probes require the ROS2 Agent")
+            topic_types, received_topics, latency_ms = _observe_ros2_topics(
+                ros2_probes,
+                int(normalized_runtime["ROS_DOMAIN_ID"]),
+            )
+            ros2_results = {
+                id(probe): _ros2_probe_result(probe, topic_types, received_topics, latency_ms)
+                for probe in ros2_probes
+            }
+        else:
+            ros2_results = {}
+
+        non_ros2 = [probe for probe in normalized_probes if probe["type"] != "ros2_topic"]
+        if not non_ros2:
+            return [ros2_results[id(probe)] for probe in normalized_probes]
+        with ThreadPoolExecutor(max_workers=min(len(probe_payloads), 8)) as executor:
+            futures = {
+                id(probe): executor.submit(self.run, probe, normalized_runtime)
+                for probe in non_ros2
+            }
+            return [
+                ros2_results[id(probe)]
+                if probe["type"] == "ros2_topic"
+                else futures[id(probe)].result()
+                for probe in normalized_probes
+            ]
 
     def graph_snapshot(self, runtime: Mapping[str, Any]) -> Dict[str, Any]:
         environment = _runtime_environment(runtime)
@@ -68,6 +104,33 @@ class ProbeRunner:
             "topics_available": topics_available,
             "nodes": _nonempty_lines(nodes_output),
             "topics": _topic_snapshot(self.agent_kind, topics_output),
+        }
+
+    def webots_preflight(self, *, require_bridge: bool) -> Dict[str, Any]:
+        """Verify the one supported Webots GPU/display path before a Run starts."""
+
+        if self.agent_kind != "ros2":
+            raise ProbeRequestError("Webots platform preflight requires the ROS2 Agent")
+        renderer = _webots_renderer()
+        if "nvidia" not in renderer.lower() or "llvmpipe" in renderer.lower():
+            raise ProbeRequestError(
+                f"Webots requires an NVIDIA VirtualGL renderer; observed: {renderer or 'unknown'}"
+            )
+        bridge_setup: str | None = None
+        bridge_executable: str | None = None
+        if require_bridge:
+            if not ROS1_BRIDGE_SETUP.is_file():
+                raise ProbeRequestError(f"required ros1_bridge setup is missing: {ROS1_BRIDGE_SETUP}")
+            if not ROS1_BRIDGE_EXECUTABLE.is_file() or not os.access(ROS1_BRIDGE_EXECUTABLE, os.X_OK):
+                raise ProbeRequestError(f"required ros1_bridge executable is missing: {ROS1_BRIDGE_EXECUTABLE}")
+            bridge_setup = str(ROS1_BRIDGE_SETUP)
+            bridge_executable = str(ROS1_BRIDGE_EXECUTABLE)
+        return {
+            "ready": True,
+            "display": WEBOTS_DISPLAY,
+            "renderer": renderer,
+            "bridge_setup": bridge_setup,
+            "bridge_executable": bridge_executable,
         }
 
     def run(self, payload: Mapping[str, Any], runtime_environment: Mapping[str, str]) -> Dict[str, Any]:
@@ -168,29 +231,127 @@ class ProbeRunner:
         probe: Mapping[str, Any],
         runtime_environment: Mapping[str, str],
     ) -> Tuple[str, Optional[str], str]:
-        observed = _command_output(
-            ["ros2", "topic", "type", str(probe["name"])],
-            runtime_environment,
-            float(probe["max_age_seconds"]),
+        topic_types, received_topics, _latency_ms = _observe_ros2_topics(
+            [probe],
+            int(runtime_environment["ROS_DOMAIN_ID"]),
         )
-        if observed is None or observed.lower().startswith("unknown topic"):
-            return "NOT_FOUND", None, "ROS2 topic is absent from the selected domain"
-        expected = str(probe["message_type"])
-        if observed != expected:
-            return "TYPE_MISMATCH", observed, "ROS2 topic type does not match the manifest"
-        command = [
-            "ros2",
-            "topic",
-            "echo",
-            str(probe["name"]),
-            expected,
-            "--once",
-            "--qos-profile",
-            str(probe["qos_profile"]),
-        ]
-        if not _message_observed(command, runtime_environment, float(probe["max_age_seconds"])):
-            return "STALE", observed, "ROS2 topic produced no fresh message within max_age_seconds"
-        return "READY", observed, "ROS2 topic type and fresh message are valid"
+        result = _ros2_probe_result(probe, topic_types, received_topics, 0.0)
+        return result["status"], result["observed_type"], result["detail"]
+
+
+def _observe_ros2_topics(
+    probes: Sequence[Mapping[str, Any]],
+    domain_id: int,
+) -> Tuple[Dict[str, Tuple[str, ...]], set[str], float]:
+    """Observe one batch of ROS2 topics without spawning one CLI process per topic."""
+
+    try:
+        import rclpy
+        from rclpy.context import Context
+        from rclpy.executors import SingleThreadedExecutor
+        from rclpy import qos
+        from rclpy.signals import SignalHandlerOptions
+        from rosidl_runtime_py.utilities import get_message
+    except ImportError as exc:
+        raise ProbeRequestError("ROS2 readiness probes require rclpy") from exc
+
+    context = Context()
+    node = None
+    executor = None
+    received_topics: set[str] = set()
+    observed_types: Dict[str, Tuple[str, ...]] = {}
+    started = time.monotonic()
+    try:
+        rclpy.init(
+            context=context,
+            domain_id=domain_id,
+            signal_handler_options=SignalHandlerOptions.NO,
+        )
+        node = rclpy.create_node(
+            f"masar_readiness_{os.getpid()}_{time.monotonic_ns()}",
+            context=context,
+            enable_rosout=False,
+            start_parameter_services=False,
+        )
+        executor = SingleThreadedExecutor(context=context)
+        executor.add_node(node)
+        for probe in probes:
+            message_type = str(probe["message_type"])
+            type_parts = message_type.split("/")
+            import_type = message_type if len(type_parts) == 3 else f"{type_parts[0]}/msg/{type_parts[1]}"
+            try:
+                message_class = get_message(import_type)
+                qos_profile = getattr(qos, f"qos_profile_{probe['qos_profile']}")
+            except (AttributeError, LookupError, ValueError) as exc:
+                raise ProbeRequestError(
+                    f"ROS2 readiness cannot subscribe to {probe['name']} as {message_type}"
+                ) from exc
+            topic_name = str(probe["name"])
+            node.create_subscription(
+                message_class,
+                topic_name,
+                lambda _message, name=topic_name: received_topics.add(name),
+                qos_profile,
+            )
+
+        deadline = started + max(float(probe["max_age_seconds"]) for probe in probes)
+        expected_names = {str(probe["name"]) for probe in probes}
+        while time.monotonic() < deadline and received_topics != expected_names:
+            remaining = deadline - time.monotonic()
+            executor.spin_once(timeout_sec=min(0.1, max(0.0, remaining)))
+            for topic_name in expected_names:
+                publisher_types = {
+                    endpoint.topic_type
+                    for endpoint in node.get_publishers_info_by_topic(topic_name)
+                }
+                if publisher_types:
+                    observed_types[topic_name] = tuple(sorted(publisher_types))
+    finally:
+        if executor is not None:
+            if node is not None:
+                executor.remove_node(node)
+            executor.shutdown()
+        if node is not None:
+            node.destroy_node()
+        context.try_shutdown()
+
+    latency_ms = round((time.monotonic() - started) * 1000, 3)
+    return observed_types, received_topics, latency_ms
+
+
+def _ros2_probe_result(
+    probe: Mapping[str, Any],
+    topic_types: Mapping[str, Sequence[str]],
+    received_topics: set[str],
+    latency_ms: float,
+) -> Dict[str, Any]:
+    topic_name = str(probe["name"])
+    expected = str(probe["message_type"])
+    available_types = tuple(topic_types.get(topic_name, ()))
+    observed_type = expected if expected in available_types else (available_types[0] if available_types else None)
+    if not available_types:
+        status = "NOT_FOUND"
+        detail = "ROS2 topic is absent from the selected domain"
+    elif expected not in available_types:
+        status = "TYPE_MISMATCH"
+        detail = "ROS2 topic type does not match the manifest"
+    elif topic_name not in received_topics:
+        status = "STALE"
+        detail = "ROS2 topic produced no fresh message within max_age_seconds"
+    else:
+        status = "READY"
+        detail = "ROS2 topic type and fresh message are valid"
+    return {
+        "type": "ros2_topic",
+        "name": topic_name,
+        "required": probe["required"],
+        "ready": status == "READY",
+        "status": status,
+        "message_type": expected,
+        "observed_type": observed_type,
+        "latency_ms": latency_ms,
+        "detail": detail,
+    }
 
 
 def _normalize_probe(payload: Mapping[str, Any]) -> Dict[str, Any]:
@@ -353,6 +514,38 @@ def _graph_command(argv: List[str], environment: Mapping[str, str]) -> Optional[
     if completed.returncode != 0:
         return None
     return completed.stdout[: 1024 * 1024]
+
+
+def _webots_renderer() -> str:
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "DISPLAY": WEBOTS_DISPLAY,
+            "VGL_DISPLAY": VIRTUALGL_DISPLAY,
+            "NO_PROXY": _LOCAL_NO_PROXY,
+            "no_proxy": _LOCAL_NO_PROXY,
+        }
+    )
+    try:
+        completed = subprocess.run(
+            ["vglrun", "-d", VIRTUALGL_DISPLAY, "glxinfo", "-B"],
+            env=environment,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=15.0,
+            check=False,
+            universal_newlines=True,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise ProbeRequestError("VirtualGL renderer probe could not execute") from exc
+    if completed.returncode != 0:
+        detail = completed.stdout.strip()[-500:]
+        raise ProbeRequestError(f"VirtualGL renderer probe failed: {detail or 'no output'}")
+    for line in completed.stdout.splitlines():
+        if "OpenGL renderer string:" in line:
+            return line.split("OpenGL renderer string:", 1)[1].strip()
+    raise ProbeRequestError("VirtualGL renderer probe returned no OpenGL renderer")
 
 
 def _nonempty_lines(output: Optional[str]) -> List[str]:

@@ -3,17 +3,17 @@ import { installMockApi } from "./mockApi";
 
 test.skip(process.env.MASAR_LIVE_ROS !== "1", "requires live loopback ROS sidecars and test publishers");
 
-test("renders a real ROS1 OccupancyGrid through the same-origin gateway", async ({ page }) => {
+test("renders the ROS1 task-allocation image through the same-origin video gateway", async ({ page }) => {
   await installMockApi(page, {
     activeRun: true,
     runScenario: "exploration.gazebo.tepper",
     dataSources: [
       {
         graph: "ros1",
-        topic_pattern: "/sim_map",
-        message_types: ["nav_msgs/OccupancyGrid"],
-        capability: "map",
-        required: true,
+        topic_pattern: "/task_allocation_image",
+        message_types: ["sensor_msgs/Image"],
+        capability: "task_allocation_image",
+        required: false,
         availability: "UNKNOWN"
       }
     ]
@@ -21,11 +21,16 @@ test("renders a real ROS1 OccupancyGrid through the same-origin gateway", async 
   await page.goto("http://127.0.0.1:18090/?workspace=exploration");
 
   await expect(page.getByTestId("panel-map").getByText("在线")).toBeVisible({ timeout: 15_000 });
-  const canvas = page.getByTestId("map-canvas").locator("canvas");
-  await expect(canvas).toBeVisible();
-  expect(await canvas.evaluate((element) => (element as HTMLCanvasElement).toDataURL().length)).toBeGreaterThan(100);
+  const allocationImage = page.getByTestId("task-allocation-image");
+  await expect(allocationImage).toBeVisible();
+  await expect
+    .poll(
+      () => allocationImage.evaluate((image: HTMLImageElement) => image.naturalWidth),
+      { message: "task allocation stream did not render a real frame", timeout: 15_000 }
+    )
+    .toBeGreaterThan(0);
   if (process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR) {
-    await page.screenshot({ path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros1-map.png`, fullPage: true });
+    await page.screenshot({ path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros1-allocation.png`, fullPage: true });
   }
 });
 
@@ -55,13 +60,12 @@ test("renders ROS2 odometry and bounded LaserScan values", async ({ page }) => {
   await page.goto("http://127.0.0.1:18090/?workspace=group_behavior&scenario=swarm.webots.ros2swarm");
 
   await expect(page.getByText(/最近 0\.40 m/)).toBeVisible({ timeout: 15_000 });
-  const trajectory = page.getByTestId("trajectory-canvas").locator("canvas");
+  const trajectory = page.getByTestId("trajectory-plot");
   await expect(trajectory).toBeVisible();
-  expect(await trajectory.evaluate((element) => {
-    const canvas = element as HTMLCanvasElement;
-    const pixels = canvas.getContext("2d")!.getImageData(0, 0, canvas.width, canvas.height).data;
-    return pixels.some((value, index) => index % 4 === 3 && value > 0);
-  })).toBe(true);
+  const paths = page.locator('[data-testid^="trajectory-path-"]');
+  await expect(paths).toHaveCount(1, { timeout: 15_000 });
+  const points = (await paths.first().getAttribute("points"))?.trim().split(/\s+/) ?? [];
+  expect(points.length).toBeGreaterThan(1);
   await expect(page.getByTestId("panel-health").getByText("在线").first()).toBeVisible();
   if (process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR) {
     await page.screenshot({ path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros2-swarm.png`, fullPage: true });
@@ -69,7 +73,7 @@ test("renders ROS2 odometry and bounded LaserScan values", async ({ page }) => {
       path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros2-trajectory.png`
     });
     await trajectory.screenshot({
-      path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros2-trajectory-canvas.png`
+      path: `${process.env.MASAR_LIVE_ROS_SCREENSHOT_DIR}/ros2-trajectory-plot.png`
     });
   }
 });

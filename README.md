@@ -1,5 +1,9 @@
 # 多智能体群行为与搜救仿真工作区
 
+本 README 是整个 workspace 的导航页，覆盖训练环境、群行为仿真、搜救系统、统一平台
+和参考工程。各子项目仍保留自己的依赖、脚本和独立运行方式；需要统一操作与观测时，
+再由 `masar-simulation-platform` 组合 `ROS2swarm_w` 与 `masar_ws`。
+
 本工作区把“群行为策略学习”和“机器人仿真验证”放在同一个工程视角下组织：
 
 - `multi-agent-neat` 负责在 VMAS 向量化多智能体环境中训练和评估群行为策略，重点是 Pure-NEAT 与 EA-RL warmup 等学习算法。
@@ -18,23 +22,46 @@
 | [VectorizedMultiAgentSimulator](VectorizedMultiAgentSimulator/README.md) | VMAS 开源环境                  | PyTorch 向量化 2D 多智能体仿真器，为 `multi-agent-neat` 提供 `flocking`、`transport` 等训练/评估环境            |
 | [ROS2swarm_w](ROS2swarm_w/README.md)                                     | ROS2 + Webots 群行为验证        | Webots 场景、`robot_N` 节点、e-puck/Burger 支持、ROS2swarm 行为策略、NEAT/VMAS 策略加载、RoboSAR Webots 桥接适配 |
 | [masar_ws](masar_ws/README.md)                                           | ROS1 RoboSAR 搜救系统          | 多机器人 SLAM、任务生成、任务分配、导航控制、GUI、Gazebo 搜救闭环、Webots 桥接闭环、应急响应组与 DEFORM 集成                     |
-| [masar-simulation-platform](masar-simulation-platform/PLATFORM_DESIGN.md) | 统一仿真验证与可视化平台 | React 工作台、运行编排 API、Gazebo/RViz noVNC、Webots streaming、ROS Web sidecar 和运行归档 |
+| [masar-simulation-platform](masar-simulation-platform/README.md) | 统一仿真验证与可视化平台 | React 工作台、运行编排 API、Gazebo/Webots/RViz noVNC、ROS Web sidecar 和运行归档 |
 | [DEFORM](DEFORM/)                                                        | 可变编队导航参考项目                 | ROS1 Noetic 下的多机器人可变编队规划与局部避障参考实现                                                         |
 
-## 统一平台预览
+## 统一平台快速开始
 
-当前统一前端、场景目录 API、Gazebo/RViz 显示 sidecar 和 Caddy 单入口已经可以运行。服务器端启动/更新预览：
+`masar-simulation-platform` 已完成 ROS1/ROS2 业务容器、Web 数据面、仿真显示、运行
+编排和前端入口的 Compose 收口。三个项目保持同级目录即可，宿主机绝对路径不固定：
 
-```bash
-cd /home/zjc/workspace/masar-simulation-platform/frontend
-npm ci
-npm run build
-
-cd /home/zjc/workspace/masar-simulation-platform/deploy
-docker compose --profile dev-api up -d --build api display webots-guard caddy
+```text
+<workspace>/
+├── masar-simulation-platform/
+├── masar_ws/
+└── ROS2swarm_w/
 ```
 
-SSH 配置保持 `LocalForward 18089 127.0.0.1:18090` 后，在本地浏览器打开 `http://127.0.0.1:18089/`。`dev-api` 在未挂载 Runtime Agent secret 时可安全查看真实的三模块/六场景目录，但不能启动 ROS 业务进程；完整场景联调将在平台 Agent 与 Robot Web Tools 适配阶段接通。
+目标设备具备 Docker Compose v2、NVIDIA 驱动与 Container Toolkit、X11、`/dev/dri`
+和可读 `.Xauthority` 后，执行一个命令：
+
+```bash
+cd <workspace>/masar-simulation-platform
+make docker-start
+```
+
+首次执行会复用或拉取公开的 ROS1/ROS2 v2 运行环境镜像，并在缺少 overlay 时自动
+运行 `catkin_make` 和 `colcon build`。启动完成后访问 `http://127.0.0.1:18090`。
+远程服务器只需配置一条 SSH 转发，浏览器地址保持不变：
+
+```sshconfig
+LocalForward 18090 127.0.0.1:18090
+```
+
+平台提供六个受限场景，归入群行为与控制验证、探索组独立运行、完整搜救三个模块。
+一次 Run 包含该场景的全部业务、仿真、RViz 和录制进程；页面停止会关闭整个 Run，
+但保留 8 个常驻 Compose 服务供下一次运行。关闭整个平台使用 `make docker-stop`。
+
+完整命令、首次构建、远程访问与排障见
+[平台使用与运维手册](masar-simulation-platform/docs/OPERATIONS.md)。
+
+这是统一平台的启动入口，不是整个 workspace 的唯一运行方式。训练项目和两个 ROS
+业务项目都可以按各自 README 独立运行；平台不会替代它们原有的脚本或 Qt GUI。
 
 
 ## 总体关系
@@ -46,12 +73,15 @@ flowchart LR
   ROS2[ROS2swarm_w<br/>ROS2 Humble + Webots]
   ROS1[masar_ws<br/>ROS1 Noetic RoboSAR]
   DEFORM[DEFORM / robosar_deform_vendor<br/>应急组可变编队导航]
+  PLATFORM[masar-simulation-platform<br/>统一控制与观测入口]
 
   VMAS --> NEAT
   NEAT -->|策略 checkpoint / genome| ROS2
   NEAT -->|checkpoint 控制器语义| ROS1
   ROS2 <-->|ros1_bridge dynamic_bridge| ROS1
   DEFORM --> ROS1
+  PLATFORM --> ROS2
+  PLATFORM --> ROS1
 ```
 
 
@@ -60,28 +90,17 @@ flowchart LR
 
 ## 运行环境
 
-当前容器环境部署在 `4a6000` 这台设备上。下面的容器名和本地 conda 环境名是这台设备上的运行口径；换到其他设备时，不应假设这些名称和依赖已经存在。
+| 子系统 | 当前推荐环境 | 说明 |
+|---|---|---|
+| `masar-simulation-platform` | Docker Compose v2 + NVIDIA/X11 | 单一入口管理 8 个常驻服务；宿主机不要求安装 ROS、Node.js 或平台 Python 依赖 |
+| `ROS2swarm_w` | `talent18/masar_ros2_bridge-w:v2` | 镜像提供 ROS2 Humble、Webots 和桥接依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
+| `masar_ws` | `talent18/masar_ros1_srv-g:v2` | 镜像提供 ROS1 Noetic、Gazebo 和系统依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
+| `multi-agent-neat` | 项目自身 Python/PyTorch 环境 | 训练流程尚未接入统一平台，按其独立 README 创建环境 |
+| `VectorizedMultiAgentSimulator` | Python + PyTorch | `multi-agent-neat` 使用的 VMAS 环境源码依赖 |
 
-
-| 子系统                             | 推荐环境                                                                                      | 说明                                                                                                                      |
-| ------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `multi-agent-neat`              | `NEAT-ROBO` conda 环境（这里的 `NEAT-ROBO` 是 `4a6000` zjc用户下的本地 conda 环境名；其他设备上请替换为重新创建后的实际环境。） | `4a6000` 当前用户环境中的本地 conda 环境，用于训练、benchmark、结果分析和 VMAS rollout 导出；迁移到其他设备时需要按依赖重新创建                                     |
-| `VectorizedMultiAgentSimulator` | Python + PyTorch                                                                          | 作为 VMAS 环境源码依赖，可按上游 README 安装                                                                                           |
-| `ROS2swarm_w`                   | `4a6000` 上的 `masar_ros2_bridge-w` 容器，ROS2 Humble + Webots + `ros1_bridge`                 | 容器内通常对应 `/ROS2swarm_w`，负责 Webots、`robot_N` 节点和 ROS1/ROS2 桥接；旧的裸 `docker run osrf/ros:humble-desktop-full` 命令已不能代表当前完整环境 |
-| `masar_ws`                      | `4a6000` 上的 `masar_ros1_srv-g` 容器，ROS1 Noetic                                             | 容器内通常对应 `/masar` 或 catkin workspace，负责 RoboSAR 主链路、Gazebo/Webots 搜救闭环和应急组                                               |
-
-
-如果需要迁移 ROS 容器环境，建议优先把 `4a6000` 上已配置好的容器提交为镜像并推送到 Docker Hub，再在新设备上拉取使用。示例命令如下，镜像名按实际 Docker Hub 账号调整：
-
-```bash
-docker commit masar_ros2_bridge-w <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
-docker push <dockerhub-user>/masar_ros2_bridge-w:humble-webots-bridge
-
-docker commit masar_ros1_srv-g <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
-docker push <dockerhub-user>/masar_ros1_srv-g:noetic-robosar
-```
-
-注意：`docker commit` 只保存容器文件系统，不会保存通过 volume 绑定挂载进容器的宿主目录；迁移时/迁移后需要同步本工作区代码和需要保留的结果文件。
+两个 ROS 镜像只提供运行环境和系统依赖，当前工作区以读写挂载进入容器，因此修改
+`masar_ws` 或 `ROS2swarm_w` 源码不需要重新制作业务镜像。首次平台启动会自动生成
+缺失的 `masar_ws/devel` 与 `ROS2swarm_w/install`，后续直接复用宿主目录中的结果。
 
 ## 双容器 Webots 桥接
 
@@ -94,15 +113,17 @@ Webots 搜救闭环采用 ROS1/ROS2 双容器架构：
 | ROS1 侧 | `masar_ws`    | 启动 RoboSAR 原有任务流，包括 SLAM、任务生成、任务分配、导航、控制、多机器人 GUI                                                                            |
 
 
-推荐启动顺序：
+统一平台会按场景 manifest 自动保证“ROS2 Webots 先就绪、ROS1 RoboSAR 后启动”，
+并在停止时逆序关闭。只有调试原项目独立入口时才需要手工进入两个 Compose runtime：
 
 ```bash
-# 1. 在 masar_ros2_bridge-w / ROS2swarm_w 中启动 Webots 与 bridge
-cd ROS2swarm_w
+# 确认平台没有活动 Run 后，分别打开两个终端
+docker exec -it masar_ros2_bridge-w bash
+cd /root/workspace/ROS2swarm_w
 ./start_robosar_webots.sh
 
-# 2. 在 masar_ros1_srv-g / masar_ws 中启动 RoboSAR Webots 侧任务流
-cd masar_ws
+docker exec -it masar_ros1_srv-g bash
+cd /root/workspace/masar_ws
 ./launch_robosar_w.sh
 ```
 
@@ -129,7 +150,7 @@ cd masar_ws
 - Pure-NEAT warm-start 后的 EA-RL，当前 dashboard 选择口径为 `rec + layerwise + 50 gen`。
 - heuristic 与 BenchMARL baseline。
 
-常用入口：
+常用入口（训练环境按 `multi-agent-neat` 自身 README 创建）：
 
 ```bash
 cd multi-agent-neat
@@ -160,14 +181,15 @@ python benchmark/analysis/ea_rl_warmup_dashboard.py \
 
 策略演示视频已放在 [ROS2swarm_w/videos/movement_patterns/basic](ROS2swarm_w/videos/movement_patterns/basic/)：
 
-- [navigation_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/navigation_pattern_neat.mp4)
-- [roundflocking_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/roundflocking_pattern_neat.mp4)
-- [transport_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/transport_pattern_neat.mp4)
-- [minimalist_flocking_pattern.mp4](ROS2swarm_w/videos/movement_patterns/basic/minimalist_flocking_pattern.mp4)
+- [navigation_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/e_puck/navigation_pattern_neat.mp4)
+- [roundflocking_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/e_puck/roundflocking_pattern_neat.mp4)
+- [transport_pattern_neat.mp4](ROS2swarm_w/videos/movement_patterns/basic/e_puck/transport_pattern_neat.mp4)
+- [minimalist_flocking_pattern.mp4](ROS2swarm_w/videos/movement_patterns/basic/e_puck/minimalist_flocking_pattern.mp4)
 
 ### 3. RoboSAR 搜救系统与应急响应
 
-`masar_ws` 保留 RoboSAR 原有未知环境搜救主链路：
+`masar_ws` 保留 RoboSAR 原有未知环境搜救主链路。以下脚本可在 ROS1 容器内独立
+运行；统一平台调用的是同一组入口脚本：
 
 ```text
 SLAM / 地图
@@ -201,7 +223,7 @@ cd masar_ws
 
 应急组当前目标是让搜索组发现 victim/fire/box 等应急对象后，生成应急任务；4 台 TurtleBot 响应组接单后通过 DEFORM 风格可变编队导航到 staging pose，再切换到任务控制器。详细设计见 [masar_ws/docs/ROBOSAR_DEFORM_INTEGRATION_DESIGN.md](masar_ws/docs/ROBOSAR_DEFORM_INTEGRATION_DESIGN.md)。
 
-未知环境下搜救策略已有部分演示视频放在 [masar_ws/videos](masar_ws/videos/)；当前索引见 [masar_ws/videos/README.md](masar_ws/videos/README.md)：
+未知环境下搜救策略已有部分演示视频放在 [masar_ws/videos](masar_ws/videos/)：
 
 - [launch_robosar_g.mp4](masar_ws/videos/launch_robosar_g.mp4)：ROS1 + Gazebo/Tepper 搜救主系统启动与运行演示。
 - [launch_robosar_w.mp4](masar_ws/videos/launch_robosar_w.mp4)：ROS1 + Webots 桥接搜救闭环启动与运行演示。
@@ -233,16 +255,16 @@ cd masar_ws
 `ROS2swarm_w/videos` 中已有 Webots 物理仿真录屏，覆盖规则策略与学习策略：
 
 ```text
-movement_patterns/basic/aggregation_pattern.mp4
-movement_patterns/basic/dispersion_pattern.mp4
-movement_patterns/basic/navigation_pattern.mp4
-movement_patterns/basic/navigation_pattern_neat.mp4
-movement_patterns/basic/roundflocking_pattern.mp4
-movement_patterns/basic/roundflocking_pattern_neat.mp4
-movement_patterns/basic/transport_pattern.mp4
-movement_patterns/basic/transport_pattern_neat.mp4
-movement_patterns/combined/discussed_dispersion_pattern.mp4
-voting_patterns/majority_rule_pattern.mp4
+movement_patterns/basic/e_puck/aggregation_pattern.mp4
+movement_patterns/basic/e_puck/dispersion_pattern.mp4
+movement_patterns/basic/e_puck/navigation_pattern.mp4
+movement_patterns/basic/e_puck/navigation_pattern_neat.mp4
+movement_patterns/basic/e_puck/roundflocking_pattern.mp4
+movement_patterns/basic/e_puck/roundflocking_pattern_neat.mp4
+movement_patterns/basic/e_puck/transport_pattern.mp4
+movement_patterns/basic/e_puck/transport_pattern_neat.mp4
+movement_patterns/combined/e_puck/discussed_dispersion_pattern.mp4
+voting_patterns/e_puck/majority_rule_pattern.mp4
 ```
 
 完整列表见 [ROS2swarm_w/videos](ROS2swarm_w/videos/)。
@@ -258,7 +280,8 @@ voting_patterns/majority_rule_pattern.mp4
 
 ## 开发与验证提示
 
-ROS2/Webots 侧可先做 dry-run 检查命令和环境变量：
+直接调试 ROS 脚本前，先确认平台当前没有活动 Run。ROS2/Webots 侧可做 dry-run
+检查命令和环境变量：
 
 ```bash
 cd ROS2swarm_w

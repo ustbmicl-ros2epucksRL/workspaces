@@ -14,6 +14,7 @@ from .profiles import get_display_profile
 LOCAL_NO_PROXY = "127.0.0.1,localhost,::1"
 GAZEBO_DISPLAY = ":101"
 RVIZ_DISPLAY = ":102"
+WEBOTS_DISPLAY = ":103"
 RVIZ_PROCESS_ID = "display_rviz"
 RVIZ_COMMAND_REF = "display.ros1.rviz"
 RVIZ_CONFIG = "/root/workspace/masar_ws/src/robosar/robosar_sim_bringup/rviz/multi_robot.rviz"
@@ -72,7 +73,7 @@ def display_plan(manifest: ScenarioManifest) -> ScenarioDisplayPlan:
     """Return the exact browser transports and optional RViz process."""
 
     if manifest.simulator == "webots":
-        simulation = SimulationDisplay("webots", "/webots/", None)
+        simulation = SimulationDisplay("novnc", "/display/webots/", WEBOTS_DISPLAY)
     else:
         simulation = SimulationDisplay("novnc", "/display/gazebo/", GAZEBO_DISPLAY)
 
@@ -105,6 +106,7 @@ def check_display_prerequisites(
     *,
     gazebo_port: int = 18_131,
     rviz_port: int = 18_132,
+    webots_port: int = 18_133,
     probe: Callable[[int], bool] | None = None,
 ) -> tuple[bool, str]:
     """Check only the persistent transports required before a run starts."""
@@ -113,7 +115,9 @@ def check_display_prerequisites(
         return False, "visual gateways are disabled until Tasks 5-7 are accepted"
     plan = display_plan(manifest)
     required_ports: list[tuple[str, int]] = []
-    if plan.simulation.transport == "novnc":
+    if manifest.simulator == "webots":
+        required_ports.append(("webots", webots_port))
+    elif plan.simulation.transport == "novnc":
         required_ports.append(("gazebo", gazebo_port))
     if plan.rviz is not None:
         required_ports.append(("rviz", rviz_port))
@@ -121,8 +125,6 @@ def check_display_prerequisites(
     unavailable = [name for name, port in required_ports if not check(port)]
     if unavailable:
         return False, f"display gateway unavailable: {', '.join(unavailable)}"
-    if not required_ports:
-        return True, "Webots stream is started and checked as part of the scenario"
     return True, "display gateway ready: " + ", ".join(name for name, _port in required_ports)
 
 
@@ -146,6 +148,7 @@ __all__ = [
     "RVIZ_CONFIG",
     "RVIZ_DISPLAY",
     "RVIZ_PROCESS_ID",
+    "WEBOTS_DISPLAY",
     "RvizDisplay",
     "ScenarioDisplayPlan",
     "SimulationDisplay",

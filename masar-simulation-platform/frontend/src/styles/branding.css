@@ -1,0 +1,52 @@
+.masthead {
+  grid-template-columns: 224px minmax(520px, 1fr) 156px 184px;
+}
+
+.system-presence {
+  justify-content: center;
+  padding-right: 12px;
+  padding-left: 12px;
+  text-align: center;
+}
+
+.mission-track button {
+  grid-template-columns: 20px max-content;
+  justify-content: center;
+}
+
+.school-brand {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-left: var(--hairline);
+}
+
+.school-brand img {
+  display: block;
+  width: 100%;
+  max-width: 160px;
+  max-height: 42px;
+  object-fit: contain;
+}
+
+@media (max-width: 1120px) {
+  .masthead {
+    grid-template-columns: 188px minmax(480px, 1fr);
+  }
+
+  .school-brand {
+    display: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .masthead {
+    grid-template-columns: 76px minmax(0, 1fr);
+  }
+
+  .mission-track button {
+    grid-template-columns: 16px max-content;
+  }
+}

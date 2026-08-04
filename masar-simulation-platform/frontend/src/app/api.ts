@@ -1,7 +1,6 @@
 export type WorkspaceId = "group_behavior" | "exploration" | "rescue";
 export type RunState =
-  | "CREATED"
-  | "VALIDATING"
+  | "PREFLIGHT"
   | "STARTING"
   | "RUNNING"
   | "STOPPING"
@@ -9,6 +8,7 @@ export type RunState =
   | "FAILED";
 export type DataAvailability =
   | "UNAVAILABLE"
+  | "DISCOVERED"
   | "WAITING"
   | "ONLINE"
   | "STALE"
@@ -100,12 +100,29 @@ export interface DataSource {
   observed_hz?: number;
 }
 
+export interface RobotInventoryItem {
+  robot_id: string;
+  label: string;
+  model: string | null;
+  topic_prefix: string;
+  expected: boolean;
+}
+
 export interface RunEvent {
   sequence: number;
   kind: string;
   severity: string;
-  timestamp: string;
+  wall_time: string;
   payload: Record<string, unknown>;
+}
+
+export interface ProcessLogChunk {
+  run_id: string;
+  process_id: string;
+  stream: "stdout" | "stderr";
+  data: string;
+  cursor: number;
+  eof: boolean;
 }
 
 export class ApiError extends Error {
@@ -127,15 +144,25 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...init?.headers
     }
   });
-  const payload = (await response.json()) as T & {
-    error?: { code?: string; message?: string };
-  };
+  const body = await response.text();
+  let payload: (T & { error?: { code?: string; message?: string } }) | null = null;
+  if (body) {
+    try {
+      payload = JSON.parse(body) as T & { error?: { code?: string; message?: string } };
+    } catch {
+      throw new ApiError(response.status, "INVALID_RESPONSE", "控制面返回了无法解析的数据");
+    }
+  }
   if (!response.ok) {
+    const serviceUnavailable = [502, 503, 504].includes(response.status) && !payload?.error;
     throw new ApiError(
       response.status,
-      payload.error?.code ?? "REQUEST_FAILED",
-      payload.error?.message ?? `请求失败 (${response.status})`
+      payload?.error?.code ?? (serviceUnavailable ? "SERVICE_UNAVAILABLE" : "REQUEST_FAILED"),
+      payload?.error?.message ?? (serviceUnavailable ? "控制面服务暂时不可用" : `请求失败 (${response.status})`)
     );
+  }
+  if (payload === null) {
+    throw new ApiError(response.status, "INVALID_RESPONSE", "控制面返回了空响应");
   }
   return payload;
 }
@@ -179,12 +206,28 @@ export const api = {
       )
     ).data_sources;
   },
+  async robots(runId: string): Promise<RobotInventoryItem[]> {
+    return (
+      await request<{ robots: RobotInventoryItem[] }>(
+        `/runs/${encodeURIComponent(runId)}/robots`
+      )
+    ).robots;
+  },
   async events(runId: string, after: number): Promise<RunEvent[]> {
     return (
       await request<{ events: RunEvent[] }>(
         `/runs/${encodeURIComponent(runId)}/events?after=${after}`
       )
     ).events;
+  },
+  logs(
+    runId: string,
+    processId: string,
+    stream: "stdout" | "stderr",
+    after: number
+  ): Promise<ProcessLogChunk> {
+    const query = new URLSearchParams({ process: processId, stream, after: String(after) });
+    return request(`/runs/${encodeURIComponent(runId)}/logs?${query.toString()}`);
   },
   command(runId: string, command: string): Promise<Record<string, unknown>> {
     const routes: Record<string, string> = {

@@ -54,9 +54,9 @@ def test_scenario_display_plans_separate_group_behavior_and_rescue() -> None:
     rescue = display_plan(catalog.get("rescue.gazebo.tepper-response"))
 
     assert swarm.simulation.as_dict() == {
-        "transport": "webots",
-        "path": "/webots/",
-        "display": None,
+        "transport": "novnc",
+        "path": "/display/webots/",
+        "display": ":103",
         "required": True,
     }
     assert swarm.rviz is None
@@ -70,7 +70,7 @@ def test_scenario_display_plans_separate_group_behavior_and_rescue() -> None:
         "-d",
         "/root/workspace/masar_ws/src/robosar/robosar_sim_bringup/rviz/multi_robot.rviz",
     )
-    assert webots_exploration.simulation.path == "/webots/"
+    assert webots_exploration.simulation.path == "/display/webots/"
     assert webots_exploration.rviz == exploration.rviz
     assert rescue.rviz == exploration.rviz
 
@@ -97,13 +97,13 @@ def test_resolved_manifest_records_gui_environment_and_exact_rviz_command(tmp_pa
             "DISPLAY": ":102",
             "MASAR_PLATFORM_MODE": "1",
             "NO_PROXY": "127.0.0.1,localhost,::1",
-            "ROS_DOMAIN_ID": "0",
+            "ROS_DOMAIN_ID": "42",
             "ROS_MASTER_URI": "http://127.0.0.1:11311",
             "no_proxy": "127.0.0.1,localhost,::1",
         },
         "required": False,
     }
-    assert "DISPLAY" not in webots.resolved_manifest["steps"][0]["environment"]
+    assert webots.resolved_manifest["steps"][0]["environment"]["DISPLAY"] == ":103"
 
 
 def test_runtime_agent_allows_only_the_fixed_rviz_display_command() -> None:
@@ -151,13 +151,14 @@ def test_preflight_checks_only_persistent_displays_required_by_the_scenario() ->
 
     swarm = check_display_prerequisites(catalog.get("swarm.webots.ros2swarm"), True, probe=probe)
     assert swarm[0] is True
-    assert observed == []
+    assert observed == [18133]
+    observed.clear()
 
     check_display_prerequisites(catalog.get("control.gazebo.response-deform"), True, probe=probe)
     assert observed == [18131]
     observed.clear()
     check_display_prerequisites(catalog.get("exploration.webots.robosar"), True, probe=probe)
-    assert observed == [18132]
+    assert observed == [18133, 18132]
     observed.clear()
     check_display_prerequisites(catalog.get("rescue.gazebo.tepper-response"), True, probe=probe)
     assert observed == [18131, 18132]
@@ -290,6 +291,70 @@ def test_one_panel_failure_is_recorded_without_stopping_the_other(tmp_path: Path
         )
 
 
+def test_healthcheck_inspects_state_without_writing_it(tmp_path: Path, monkeypatch) -> None:
+    module = _load_display_manager()
+    owner = module.DisplayLifecycleManager(
+        state_dir=tmp_path / "state",
+        x11_dir=tmp_path / "x11",
+        command_factory=lambda spec: _fake_commands(module, spec),
+        readiness_check=lambda _spec: True,
+    )
+
+    try:
+        owner.start("run-health-read-only", ("gazebo",))
+        before = owner.state_path.read_bytes()
+        observer = module.DisplayLifecycleManager(
+            state_dir=tmp_path / "state",
+            x11_dir=tmp_path / "x11",
+        )
+        monkeypatch.setattr(module, "_tcp_ready", lambda _port: True)
+        monkeypatch.setattr(
+            observer,
+            "_write_state",
+            lambda _state: pytest.fail("healthcheck must not write lifecycle state"),
+        )
+
+        assert module._health(observer) == 0
+        assert owner.state_path.read_bytes() == before
+    finally:
+        owner.stop(
+            "run-health-read-only",
+            module.ShutdownGrace(sigint=0, sigterm=0, sigkill=0.1),
+            missing_ok=True,
+        )
+
+
+def test_restarted_manager_adopts_a_valid_owned_stack(tmp_path: Path) -> None:
+    module = _load_display_manager()
+    owner = module.DisplayLifecycleManager(
+        state_dir=tmp_path / "state",
+        x11_dir=tmp_path / "x11",
+        command_factory=lambda spec: _fake_commands(module, spec),
+        readiness_check=lambda _spec: True,
+    )
+
+    state = owner.start("run-recover", ("gazebo",))
+    expected_pids = tuple(component.pid for component in state.displays["gazebo"].components)
+    restarted = module.DisplayLifecycleManager(
+        state_dir=tmp_path / "state",
+        x11_dir=tmp_path / "x11",
+        command_factory=lambda _spec: pytest.fail("a valid display stack must not be respawned"),
+    )
+
+    try:
+        recovered = restarted.start_or_recover("run-recover", ("gazebo",))
+
+        assert tuple(component.pid for component in recovered.displays["gazebo"].components) == expected_pids
+        assert recovered.status == "RUNNING"
+    finally:
+        cleanup_manager = restarted if restarted._state is not None else owner
+        cleanup_manager.stop(
+            "run-recover",
+            module.ShutdownGrace(sigint=0, sigterm=0, sigkill=0.1),
+            missing_ok=True,
+        )
+
+
 def test_novnc_compose_and_caddy_contracts_are_loopback_only() -> None:
     compose = yaml.safe_load((ROOT / "deploy" / "compose.yaml").read_text(encoding="utf-8"))
     service = compose["services"]["display"]
@@ -299,7 +364,7 @@ def test_novnc_compose_and_caddy_contracts_are_loopback_only() -> None:
     assert service["network_mode"] == "host"
     assert service["environment"]["NO_PROXY"] == "127.0.0.1,localhost,::1"
     assert service["environment"]["no_proxy"] == "127.0.0.1,localhost,::1"
-    assert service["volumes"] == ["/tmp/.X11-unix:/tmp/.X11-unix"]
+    assert "/tmp/.X11-unix:/tmp/.X11-unix" in service["volumes"]
     assert "ports" not in service
     assert compose["services"]["api"]["environment"]["MASAR_PLATFORM_VISUAL_STACK_READY"] == "true"
     assert "0.0.0.0" not in dockerfile
@@ -307,8 +372,11 @@ def test_novnc_compose_and_caddy_contracts_are_loopback_only() -> None:
     assert "e81894751365afc19fe64fc9d0e5c6fc52655c36" in dockerfile
     assert "reverse_proxy 127.0.0.1:18131" in caddy
     assert "reverse_proxy 127.0.0.1:18132" in caddy
+    assert "reverse_proxy 127.0.0.1:18133" in caddy
+    assert "COPY deploy/display/xstartup-webots /usr/local/bin/xstartup-webots" in dockerfile
 
     module = _load_display_manager()
+    assert module.DISPLAY_SPECS["webots"] == module.DisplaySpec("webots", ":103", 19133, 18133)
     for spec in module.DISPLAY_SPECS.values():
         commands = {command.name: command for command in module.production_commands(spec)}
         assert "-rfbportv6" in commands["x11vnc"].argv

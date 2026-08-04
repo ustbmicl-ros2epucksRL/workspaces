@@ -8,14 +8,11 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b --pretty false",
     "test:e2e": "playwright test",
-    "test:unit": "vitest run tests/ros-adapters.unit.spec.ts"
+    "test:unit": "vitest run tests/*.unit.spec.ts"
   },
   "dependencies": {
-    "easeljs": "1.0.2",
-    "eventemitter2": "6.4.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",
-    "ros2d": "0.10.0",
     "roslib": "2.1.0"
   },
   "devDependencies": {

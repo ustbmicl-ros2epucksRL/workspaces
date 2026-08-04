@@ -5,13 +5,19 @@
 > 适用范围：当前主项目 `/root/workspace/ROS2swarm_w` 的 `src/`、`tests/` 和 `docs/`。  
 > 架构参考：[ROS2swarm/ROS2swarm](https://github.com/ROS2swarm/ROS2swarm/tree/master)。
 
+> **文档性质：历史实施前计划快照。** 本文记录 2026-07-19 开始实现前的基线、方案和
+> 交付顺序，第 1.1 节中的“当前”特指该日期，不代表仓库现状。无硬件软件闭环已经完成；
+> 现行实现、启动、标定与剩余实物验收边界以
+> [`EPUCK2_REAL_DEPLOYMENT_GUIDE.md`](EPUCK2_REAL_DEPLOYMENT_GUIDE.md) 为准。本文不作为
+> 当前操作手册，也不据此判断功能仍未实现。
+
 > 2026-07-19 状态更新：用户已确认实物为 **e-puck2**，机器人端运行 ROS 2，扩展 360 度 Lidar，机器人和任务物体由顶部二维码定位。本文的硬件型号不确定性已据此收敛；最终实施和上机步骤见 `EPUCK2_REAL_DEPLOYMENT_GUIDE.md`。
 
 ## 1. 结论先行
 
-### 1.1 当前是否已经有实物部署代码？
+### 1.1 2026-07-19 初始基线是否已有实物部署代码？
 
-**有一部分通用实机骨架，但没有完整的 e-puck 实物部署闭环。** 当前主项目已经具备：
+**当时有一部分通用实机骨架，但没有完整的 e-puck 实物部署闭环。** 当时主项目已经具备：
 
 - `geometry_msgs/Twist` 到 `/robot_N/cmd_vel` 的行为输出接口；
 - `/drive_command -> HardwareProtectionLayer -> /cmd_vel` 的通用安全层结构；
@@ -21,7 +27,7 @@
 - Transport、RoundFlocking、Navigation 的 PT/NEAT 控制节点、checkpoint 和输入适配器；
 - 当前模型需要的 `/global_info` JSON 数据契约。
 
-但当前主项目**没有**下列真实 e-puck 所需的完整实现：
+但该初始基线**没有**下列真实 e-puck 所需的完整实现：
 
 - 真实 e-puck2/Pi-puck 的 I2C、串口或无线底盘驱动集成；
 - 真实激光雷达型号对应的启动、串口权限、TF 和诊断配置；
@@ -31,7 +37,7 @@
 - 底盘驱动层的失联自动停车和独立命令 watchdog；
 - 无硬件条件下可重复运行的“模拟 e-puck 驱动 + 模拟定位 + 策略 + 安全”的端到端测试 launch。
 
-`src/launch_webots/launch_webots/epuck_node.py` 不能当作真实 e-puck 驱动。它订阅 Webots 产生的 `odom` 和距离传感器，再拼成仿真的 `LaserScan`；它不访问真实 I2C、USB、蓝牙或 e-puck 无线协议。
+当时已有的 `src/launch_webots/launch_webots/epuck_node.py` 不能当作真实 e-puck 驱动。它订阅 Webots 产生的 `odom` 和距离传感器，再拼成仿真的 `LaserScan`；它不访问真实 I2C、USB、蓝牙或 e-puck 无线协议。
 
 ### 1.2 是否可以没有实物先完成一版高质量代码？
 

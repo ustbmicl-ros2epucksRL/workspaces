@@ -82,27 +82,58 @@ _SWARM_TOPICS = (
     TopicSpec("/<robot>/scan", _ROS2_LASER, "laser", required=True),
     TopicSpec("/<robot>/odom", _ROS2_ODOM, "odometry", required=True),
     TopicSpec("/<robot>/cmd_vel", _ROS2_TWIST, "command_velocity"),
+    TopicSpec("/<robot>/imu", ("sensor_msgs/msg/Imu",), "imu"),
     TopicSpec("/<robot>/camera", ("sensor_msgs/msg/Image", "sensor_msgs/msg/CompressedImage"), "camera"),
+    TopicSpec("/<robot>/camera/image_color", ("sensor_msgs/msg/Image",), "camera"),
+    *(TopicSpec(f"/<robot>/ps{index}", ("sensor_msgs/msg/Range",), "infrared") for index in range(8)),
     TopicSpec("/<robot>/battery", ("sensor_msgs/msg/BatteryState",), "battery"),
     TopicSpec("/<robot>/safety", ("std_msgs/msg/Bool", "std_msgs/msg/String"), "safety"),
+    TopicSpec(
+        "/<robot>/opinion",
+        ("communication_interfaces/msg/OpinionMessage",),
+        "discussion_opinion",
+    ),
+    TopicSpec(
+        "/<robot>/dispersion_distance",
+        ("communication_interfaces/msg/DoubleMessage",),
+        "dispersion_distance",
+    ),
+    TopicSpec(
+        "/majority_broadcast",
+        ("communication_interfaces/msg/OpinionMessage",),
+        "discussion_broadcast",
+    ),
     TopicSpec("/global_info", ("std_msgs/msg/String",), "global_info"),
 )
 
 _RESPONSE_TOPICS = (
+    TopicSpec(
+        "/gazebo/model_states",
+        ("gazebo_msgs/ModelStates",),
+        "gazebo_model_states",
+    ),
+    TopicSpec("/tb_i/scan", ("sensor_msgs/LaserScan",), "laser"),
+    TopicSpec("/tb_i/imu", ("sensor_msgs/Imu",), "imu"),
     TopicSpec("/tb_i/odom", _ROS1_ODOM, "odometry", required=True),
     TopicSpec("/tb_i/cmd_vel", _ROS1_TWIST, "command_velocity"),
+    TopicSpec("/tb_i/camera/color/image_raw", ("sensor_msgs/Image",), "camera"),
+    TopicSpec("/emergency/tasks", ("robosar_messages/EmergencyTaskArray",), "response_tasks"),
+    TopicSpec("/response_group/active_task", ("robosar_messages/EmergencyTask",), "response_active_task"),
     TopicSpec("/response_group/status", ("robosar_messages/ResponseGroupStatus",), "response_status"),
     TopicSpec("/response_group/behavior_mode", ("std_msgs/String",), "behavior_mode"),
+    TopicSpec("/response_group/motion_enabled", ("std_msgs/Bool",), "response_motion_enabled"),
     TopicSpec("/response_group/task_result", ("robosar_messages/EmergencyTask",), "task_result"),
 )
 
 _EXPLORATION_TOPICS = (
     TopicSpec("/sim_map", ("nav_msgs/OccupancyGrid",), "map", required=True),
+    TopicSpec("/information_map", ("nav_msgs/OccupancyGrid",), "information_map"),
     TopicSpec(
         "/frontier_filter/filtered_frontiers",
         ("robosar_messages/PointArray",),
         "frontiers",
     ),
+    TopicSpec("/task_allocation", ("robosar_messages/task_allocation",), "task_allocation"),
     TopicSpec("/task_allocation_image", ("sensor_msgs/Image",), "task_allocation_image"),
     TopicSpec("/percent_completed", ("std_msgs/Float32",), "exploration_progress"),
     TopicSpec(
@@ -119,6 +150,26 @@ _EXPLORATION_TOPICS = (
         "/robosar_sim/emergency_events",
         ("robosar_messages/EmergencyObject",),
         "emergency_events",
+    ),
+    TopicSpec(
+        "/robosar_agent_bringup_node/<agent>/feedback/scan",
+        ("sensor_msgs/LaserScan",),
+        "laser",
+    ),
+    TopicSpec(
+        "/robosar_agent_bringup_node/<agent>/camera/image_raw",
+        ("sensor_msgs/Image",),
+        "camera",
+    ),
+    TopicSpec(
+        "/robosar_agent_bringup_node/<agent>/odom_data_euler",
+        _ROS1_ODOM,
+        "odometry",
+    ),
+    TopicSpec(
+        "/robosar_agent_bringup_node/<agent>/cmd_vel",
+        ("geometry_msgs/Twist",),
+        "command_velocity",
     ),
 )
 
@@ -156,7 +207,7 @@ TOPIC_PROFILES: Mapping[str, TopicProfile] = MappingProxyType(
 DISPLAY_PROFILES: Mapping[str, DisplayProfile] = MappingProxyType(
     {
         "swarm": DisplayProfile("swarm", ("simulation", "sensors", "health", "logs")),
-        "control": DisplayProfile("control", ("simulation", "sensors", "mission", "health", "logs")),
+        "control": DisplayProfile("control", ("simulation", "sensors", "health", "logs")),
         "exploration": DisplayProfile(
             "exploration", ("simulation", "rviz", "map", "sensors", "mission", "health", "logs")
         ),

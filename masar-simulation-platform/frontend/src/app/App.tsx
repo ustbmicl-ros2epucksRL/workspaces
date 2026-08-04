@@ -10,6 +10,7 @@ import { ResponsePanel } from "../panels/ResponsePanel";
 import { RvizPanel } from "../panels/RvizPanel";
 import { SensorPanel } from "../panels/SensorPanel";
 import { SimulationPanel } from "../panels/SimulationPanel";
+import { TrajectoryPanel } from "../panels/TrajectoryPanel";
 import { useRosDataSources } from "../ros/RosDataRuntime";
 
 const workspaceMeta: Record<
@@ -82,6 +83,11 @@ export function App() {
     (scenario) => scenario.workspace === state.selectedWorkspace
   );
   const running = state.run !== null && !["COMPLETED", "FAILED"].includes(state.run.state);
+  const panelDataSources = running ? dataSources : [];
+  const expectedRobotCount = running
+    ? state.robots.length || integerParameter(state.run?.parameters.number_robots ?? state.parameters.number_robots)
+    : 0;
+  const robotType = stringParameter(state.parameters.robot);
 
   return (
     <div className="app-shell">
@@ -103,6 +109,7 @@ export function App() {
                 key={workspace}
                 className={selected ? "is-selected" : ""}
                 aria-current={selected ? "page" : undefined}
+                disabled={running}
                 onClick={() => void runStore.selectWorkspace(workspace)}
               >
                 <i aria-hidden="true" />
@@ -113,8 +120,14 @@ export function App() {
           })}
         </nav>
         <div className="system-presence">
-          <i className={state.error ? "is-error" : ""} aria-hidden="true" />
-          <span>{state.error ? "控制面异常" : "控制面在线"}</span>
+          <i className={state.controlPlaneStatus === "offline" ? "is-error" : ""} aria-hidden="true" />
+          <span>
+            {state.controlPlaneStatus === "checking"
+              ? "控制面连接中"
+              : state.controlPlaneStatus === "offline"
+                ? "控制面异常"
+                : "控制面在线"}
+          </span>
         </div>
       </header>
 
@@ -135,6 +148,7 @@ export function App() {
             <span>运行场景</span>
             <select
               value={state.selectedScenarioId ?? ""}
+              disabled={running}
               onChange={(event) => void runStore.selectScenario(event.target.value)}
             >
               {workspaceScenarios.map((scenario) => (
@@ -144,7 +158,7 @@ export function App() {
               ))}
             </select>
           </label>
-          {state.scenario ? <ParameterEditor scenario={state.scenario} values={state.parameters} /> : null}
+          {state.scenario ? <ParameterEditor scenario={state.scenario} values={state.parameters} locked={state.run !== null} /> : null}
           <div className="runtime-contract">
             <span>运行图身份</span>
             <dl>
@@ -161,21 +175,47 @@ export function App() {
             {state.scenario.panels.includes("rviz") ? (
               <RvizPanel scenario={state.scenario} run={state.run} />
             ) : (
-              <MapPanel sources={dataSources} trajectoryOnly />
+              <TrajectoryPanel
+                runId={state.run?.run_id ?? null}
+                sources={panelDataSources}
+                expectedRobotCount={expectedRobotCount}
+                running={running}
+              />
             )}
-            {state.scenario.panels.includes("map") ? <MapPanel sources={dataSources} /> : null}
-            <SensorPanel sources={dataSources} running={running} />
+            {state.scenario.panels.includes("map") ? (
+              <MapPanel runId={state.run?.run_id ?? null} sources={panelDataSources} running={running} />
+            ) : null}
+            <SensorPanel
+              runId={state.run?.run_id ?? null}
+              sources={panelDataSources}
+              running={running}
+              expectedRobotCount={expectedRobotCount}
+              robotType={robotType}
+            />
           </section>
         ) : null}
 
         <aside className="status-rail">
-          {state.selectedWorkspace !== "group_behavior" || state.scenario?.module === "control" ? (
-            <MissionPanel run={state.run} events={state.events} workspace={state.selectedWorkspace} />
+          {state.scenario?.panels.includes("mission") ? (
+            <MissionPanel
+              runId={state.run?.run_id ?? null}
+              sources={panelDataSources}
+              running={running}
+              workspace={state.selectedWorkspace}
+              expectedRobotCount={expectedRobotCount}
+            />
           ) : null}
-          {state.selectedWorkspace === "rescue" ? <ResponsePanel sources={dataSources} /> : null}
-          <HealthPanel sources={dataSources} running={running} />
+          {state.scenario?.panels.includes("response") ? (
+            <ResponsePanel runId={state.run?.run_id ?? null} sources={panelDataSources} running={running} />
+          ) : null}
+          <HealthPanel
+            runId={state.run?.run_id ?? null}
+            sources={panelDataSources}
+            running={running}
+            expectedRobotCount={expectedRobotCount}
+          />
           <EventLogPanel events={state.events} />
-          <ProcessLogPanel running={running} />
+          <ProcessLogPanel runId={state.run?.run_id ?? null} events={state.events} running={running} />
         </aside>
       </main>
 
@@ -183,6 +223,9 @@ export function App() {
         <div className="error-strip" role="alert">
           <strong>无法完成操作</strong>
           <span>{state.error}</span>
+          {state.controlPlaneStatus === "offline" ? (
+            <button type="button" onClick={() => runStore.reconnect()}>重新连接</button>
+          ) : null}
         </div>
       ) : null}
     </div>
@@ -191,6 +234,7 @@ export function App() {
 
 function CommandToolbar({ scenario, running }: { scenario: ScenarioDetail | null; running: boolean }) {
   const run = useRunStore((state) => state.run);
+  const commandsEnabled = run?.state === "RUNNING";
   return (
     <div className="command-toolbar" data-testid="command-toolbar">
       <div className="run-presence">
@@ -214,16 +258,16 @@ function CommandToolbar({ scenario, running }: { scenario: ScenarioDetail | null
         ) : (
           <>
             {scenario?.commands.includes("mission.start") ? (
-              <button type="button" onClick={() => void runStore.issueCommand("mission.start")}>开始任务</button>
+              <button type="button" disabled={!commandsEnabled} onClick={() => void runStore.issueCommand("mission.start")}>开始任务</button>
             ) : null}
             {scenario?.commands.includes("mission.stop") ? (
-              <button type="button" onClick={() => void runStore.issueCommand("mission.stop")}>停止任务</button>
+              <button type="button" disabled={!commandsEnabled} onClick={() => void runStore.issueCommand("mission.stop")}>停止任务</button>
             ) : null}
             {scenario?.commands.includes("mission.home") ? (
-              <button type="button" onClick={() => void runStore.issueCommand("mission.home")}>探索组 HOME</button>
+              <button type="button" disabled={!commandsEnabled} onClick={() => void runStore.issueCommand("mission.home")}>探索组 HOME</button>
             ) : null}
             {scenario?.commands.includes("response.return_home") ? (
-              <button type="button" onClick={() => void runStore.issueCommand("response.return_home")}>响应组返航</button>
+              <button type="button" disabled={!commandsEnabled} onClick={() => void runStore.issueCommand("response.return_home")}>响应组返航</button>
             ) : null}
             <button className="command-danger" type="button" disabled={!running} onClick={() => void runStore.stopRun()}>
               停止运行
@@ -239,7 +283,15 @@ function CommandToolbar({ scenario, running }: { scenario: ScenarioDetail | null
   );
 }
 
-function ParameterEditor({ scenario, values }: { scenario: ScenarioDetail; values: Record<string, unknown> }) {
+function ParameterEditor({
+  scenario,
+  values,
+  locked
+}: {
+  scenario: ScenarioDetail;
+  values: Record<string, unknown>;
+  locked: boolean;
+}) {
   const entries = Object.entries(scenario.parameters);
   if (!entries.length) {
     return (
@@ -249,12 +301,14 @@ function ParameterEditor({ scenario, values }: { scenario: ScenarioDetail; value
       </div>
     );
   }
-  const preferred = entries.filter(([name]) => name in parameterLabels).slice(0, 6);
+  const preferred = entries
+    .filter(([name, definition]) => name in parameterLabels && definition.enum?.length !== 1)
+    .slice(0, 6);
   return (
     <div className="parameter-list">
       <div className="section-label"><span>场景参数</span><small>{preferred.length} 项可调</small></div>
       {preferred.map(([name, definition]) => (
-        <ParameterField key={name} name={name} definition={definition} value={values[name]} />
+        <ParameterField key={name} name={name} definition={definition} value={values[name]} locked={locked} />
       ))}
     </div>
   );
@@ -263,11 +317,13 @@ function ParameterEditor({ scenario, values }: { scenario: ScenarioDetail; value
 function ParameterField({
   name,
   definition,
-  value
+  value,
+  locked
 }: {
   name: string;
   definition: ParameterDefinition;
   value: unknown;
+  locked: boolean;
 }) {
   const label = parameterLabels[name] ?? name;
   if (definition.type === "boolean") {
@@ -277,6 +333,7 @@ function ParameterField({
         <input
           type="checkbox"
           checked={Boolean(value)}
+          disabled={locked}
           onChange={(event) => runStore.setParameter(name, event.target.checked)}
         />
       </label>
@@ -286,9 +343,9 @@ function ParameterField({
     return (
       <label className="field-block field-block--compact">
         <span>{label}</span>
-        <select value={String(value ?? "")} onChange={(event) => runStore.setParameter(name, event.target.value)}>
+        <select disabled={locked} value={String(value ?? "")} onChange={(event) => runStore.setParameter(name, event.target.value)}>
           {definition.enum.map((option) => (
-            <option key={String(option)} value={String(option)}>{humanizeOption(String(option))}</option>
+            <option key={String(option)} value={String(option)}>{formatParameterOption(name, String(option))}</option>
           ))}
         </select>
       </label>
@@ -301,6 +358,7 @@ function ParameterField({
         type="number"
         min={definition.minimum}
         max={definition.maximum}
+        disabled={locked}
         value={String(value ?? "")}
         onChange={(event) => runStore.setParameter(name, Number(event.target.value))}
       />
@@ -312,25 +370,75 @@ function humanizeOption(value: string): string {
   return value.replace(/_pattern(?:_neat)?$/, "").replaceAll("_", " · ");
 }
 
+function formatParameterOption(name: string, value: string): string {
+  if (name === "mode" && value === "transport") return "transport-synchronized_slots";
+  return name === "robot" ? value : humanizeOption(value);
+}
+
 function renderPanel(
   panelId: string,
   scenario: ScenarioDetail,
   state: ReturnType<typeof runStore.getState>
 ) {
   const running = state.run !== null && !["COMPLETED", "FAILED"].includes(state.run.state);
+  const panelSources = running ? state.dataSources : [];
+  const expectedRobotCount = running
+    ? state.robots.length || integerParameter(state.run?.parameters.number_robots ?? state.parameters.number_robots)
+    : 0;
+  const robotType = stringParameter(state.parameters.robot);
   switch (panelId) {
     case "simulation": return <SimulationPanel scenario={scenario} run={state.run} />;
     case "rviz": return <RvizPanel scenario={scenario} run={state.run} />;
-    case "map": return <MapPanel sources={state.dataSources} />;
-    case "trajectory": return <MapPanel sources={state.dataSources} trajectoryOnly />;
-    case "sensors": return <SensorPanel sources={state.dataSources} running={running} />;
-    case "mission": return <MissionPanel run={state.run} events={state.events} workspace={state.selectedWorkspace} />;
-    case "response": return <ResponsePanel sources={state.dataSources} />;
-    case "health": return <HealthPanel sources={state.dataSources} running={running} />;
+    case "map": return <MapPanel runId={state.run?.run_id ?? null} sources={panelSources} running={running} />;
+    case "trajectory": return (
+      <TrajectoryPanel
+        runId={state.run?.run_id ?? null}
+        sources={panelSources}
+        expectedRobotCount={expectedRobotCount}
+        running={running}
+      />
+    );
+    case "sensors": return (
+      <SensorPanel
+        runId={state.run?.run_id ?? null}
+        sources={panelSources}
+        running={running}
+        expectedRobotCount={expectedRobotCount}
+        robotType={robotType}
+      />
+    );
+    case "mission": return (
+      <MissionPanel
+        runId={state.run?.run_id ?? null}
+        sources={panelSources}
+        running={running}
+        workspace={state.selectedWorkspace}
+        expectedRobotCount={expectedRobotCount}
+      />
+    );
+    case "response": return (
+      <ResponsePanel runId={state.run?.run_id ?? null} sources={panelSources} running={running} />
+    );
+    case "health": return (
+      <HealthPanel
+        runId={state.run?.run_id ?? null}
+        sources={panelSources}
+        running={running}
+        expectedRobotCount={expectedRobotCount}
+      />
+    );
     case "events": return <EventLogPanel events={state.events} />;
-    case "logs": return <ProcessLogPanel running={running} />;
+    case "logs": return <ProcessLogPanel runId={state.run?.run_id ?? null} events={state.events} running={running} />;
     default: return <SimulationPanel scenario={scenario} run={state.run} />;
   }
+}
+
+function integerParameter(value: unknown): number {
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : 0;
+}
+
+function stringParameter(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
 }
 
 function LoadingScreen() {

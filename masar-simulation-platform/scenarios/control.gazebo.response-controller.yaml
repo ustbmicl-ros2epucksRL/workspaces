@@ -4,13 +4,13 @@ module: control
 simulator: gazebo
 runtime:
   ros1_master_uri: http://127.0.0.1:11311
-  ros2_domain_id: 0
+  ros2_domain_id: 42
 display_profile: control
 parameters:
   mode:
     type: string
-    default: roundflocking
-    enum: [roundflocking, roundflocking-checkpoint, roundflocking-heuristic, transport, transport-checkpoint, transport-heuristic]
+    default: roundflocking-heuristic
+    enum: [roundflocking-checkpoint, roundflocking-heuristic, transport, transport-checkpoint, transport-heuristic]
     description: Existing controller demo task selector.
 steps:
   - id: response_controller
@@ -22,12 +22,15 @@ steps:
         - type: ros1_topic
           name: /clock
           message_type: rosgraph_msgs/Clock
+          max_age_seconds: 5
         - type: ros1_topic
           name: /tb_0/odom
           message_type: nav_msgs/Odometry
+          max_age_seconds: 5
         - type: ros1_topic
           name: /response_group/behavior_mode
           message_type: std_msgs/String
+          max_age_seconds: 5
     start_timeout_seconds: 120
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [response_controller]

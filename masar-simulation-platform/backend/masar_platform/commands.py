@@ -93,38 +93,49 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
     {
         "ros2.swarm": CommandRef(
             agent="ros2",
-            executable="ros2",
+            executable="vglrun",
             fixed_args=(
+                "-d",
+                ":0",
+                "ros2",
                 "launch",
                 "launch_webots",
                 "create_enviroment.launch.py",
-                "webots_stream:=true",
-                "webots_port:=18141",
+                "webots_stream:=false",
             ),
             launch_parameters=_SWARM_PARAMETERS,
+            fixed_environment=(("VGL_DISPLAY", ":0"),),
         ),
         "ros1.response_deform": CommandRef(
             agent="ros1",
             executable="./run_response_deform_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun", "--shared-master"),
+            fixed_args=("--no-rviz", "--vglrun", "--shared-master"),
+            fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),),
         ),
         "ros1.response_controller": CommandRef(
             agent="ros1",
             executable="./run_response_controller_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun", "--shared-master"),
+            fixed_args=("--no-rviz", "--vglrun", "--shared-master"),
             positional_parameters=("mode",),
             fixed_args_after_parameters=True,
+            fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),),
         ),
         "ros1.exploration_gazebo": CommandRef(
             agent="ros1",
             executable="./launch_robosar_g.sh",
-            fixed_args=("--no-rviz", "--no-vglrun"),
+            fixed_args=("--no-rviz", "--vglrun"),
+            fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),),
         ),
         "ros2.exploration_webots": CommandRef(
             agent="ros2",
             executable="./start_robosar_webots.sh",
-            fixed_args=("--no-vglrun",),
-            fixed_environment=(("WEBOTS_STREAM", "true"), ("WEBOTS_PORT", "18141")),
+            fixed_args=("--vglrun",),
+            fixed_environment=(
+                ("ROBOSAR_VGLRUN_DEVICE", ":0"),
+                ("ROS2SWARM_VNC_DISPLAY", ":103"),
+                ("WEBOTS_STREAM", "false"),
+                ("WEBOTS_PORT", "1234"),
+            ),
         ),
         "ros1.exploration_webots": CommandRef(
             agent="ros1",
@@ -134,11 +145,13 @@ COMMAND_REFS: Mapping[str, CommandRef] = MappingProxyType(
         "ros1.tepper_response": CommandRef(
             agent="ros1",
             executable="./run_tepper_response_demo.sh",
-            fixed_args=("--no-rviz", "--no-vglrun", "--no-gui", "--shared-master"),
+            fixed_args=("--no-rviz", "--vglrun", "--no-gui", "--shared-master"),
+            fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),),
         ),
     }
 )
 
+# Bare roundflocking remains valid only for direct legacy script calls; manifests expose distinct modes.
 _CONTROLLER_MODES = frozenset(
     {
         "roundflocking",
@@ -217,6 +230,8 @@ def command_environment(
         environment["ROS_DOMAIN_ID"] = str(manifest.runtime.ros2_domain_id)
         if manifest.simulator == "gazebo":
             environment["DISPLAY"] = ":101"
+        if manifest.simulator == "webots":
+            environment["DISPLAY"] = ":103"
         if command_ref == "ros2.exploration_webots":
             environment["ROS1_MASTER_IP"] = "127.0.0.1"
     normalized = tuple(environment.items())

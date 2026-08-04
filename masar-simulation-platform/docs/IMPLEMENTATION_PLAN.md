@@ -9,9 +9,9 @@
 
 **Goal:** Build a single-user Web workbench that launches and observes the six approved MASAR simulation scenarios without changing the default behavior of `ROS2swarm_w` or `masar_ws`.
 
-**Architecture:** One Compose project owns two ROS business runtimes and six platform services. Each runtime Agent is its container's main process. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, TF and video; Webots/Gazebo/RViz use independent noVNC desktops behind one Caddy loopback origin. A React/TypeScript workbench renders synchronized simulation, trajectory, mapping/task, sensor, state and log panels.
+**Architecture:** One Compose project owns two ROS business runtimes and six platform services. Each runtime Agent is its container's main process. Versioned YAML manifests map to static command templates; ROS1/ROS2 Web Tools sidecars provide rosbridge, video and a retained TF compatibility service; Webots/Gazebo/RViz use independent noVNC desktops behind one Caddy loopback origin. A React/TypeScript workbench renders synchronized simulation, trajectory, task-allocation/mapping, sensor, state and log panels. Current production panels do not consume `TfClient` or PointCloud2.
 
-**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.13.1, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Playwright 1.62.1, `roslib` 2.1.0, Docker Compose and Caddy. The old ROS2D/EaselJS and ros3djs chains are not production dependencies.
+**Tech Stack:** Python 3.10, FastAPI 0.115.6, Uvicorn 0.34.0, Pydantic 2.10.5, PyYAML 6.0.2, SQLite WAL, Node.js 22.23.2 in the pinned build image, React 19.0.0, Vite 6.4.3, TypeScript 5.7.2, Vitest 4.1.10, Playwright 1.62.1, `roslib` 2.1.0, Docker Compose and Caddy. The old ROS2D/EaselJS and ros3djs chains are not production dependencies.
 
 ---
 
@@ -57,16 +57,15 @@
 | `deploy/ros2-web/Dockerfile` | Humble rosbridge/TF/video sidecar image |
 | `deploy/caddy/Caddyfile` | Same-origin HTTP, WebSocket and stream routes |
 | `deploy/sidecars/*-supervisord.conf` | Exact sidecar process supervision and health behavior |
-| `deploy/display/display_manager.py` | Xvfb/noVNC Gazebo and RViz display lifecycle |
+| `deploy/display/display_manager.py` | Xvfb/noVNC lifecycle for Gazebo, RViz and Webots |
 | `frontend/package.json` | Locked frontend dependencies and scripts |
 | `frontend/src/app/` | Router, run state store and top-level workbench |
-| `frontend/src/panels/` | Simulation, RViz, map, sensor, mission, health and log panels |
-| `frontend/src/ros/` | roslibjs connections, topic registry, TF and video adapters |
+| `frontend/src/panels/` | Simulation, RViz, trajectory, task-allocation/mapping, sensor, mission, response, health and log panels |
+| `frontend/src/ros/` | roslibjs connections, topic registry, robot/source selection, video and world-trajectory adapters; `TfClient` is retained and unit-tested but not wired to a production panel |
 | `frontend/src/styles/` | Fixed-height toolbar and responsive CSS grid |
 | `tests/unit/` | Pure backend, catalog, state, command and artifact tests |
 | `tests/contract/` | API, Agent, event and manifest contract tests |
-| `tests/integration/` | Sidecar, ROS graph and process ownership tests |
-| `tests/e2e/` | Six scenario smoke tests and failure injection |
+| `tests/integration/` | Sidecar, display, ROS graph, six-scenario smoke and failure-injection tests |
 | `frontend/tests/` | Playwright layout, panel and reconnect tests |
 | `runs/.gitkeep` | Runtime directory marker; run files are ignored |
 
@@ -101,13 +100,13 @@ Profiles are explicit, not inferred from arbitrary topic names:
 
 | Profile | Allowed sources and type checks | UI rate cap |
 |---|---|---:|
-| `swarm_sensor` | `/<robot>/scan` `sensor_msgs/msg/LaserScan`; `/<robot>/odom` `nav_msgs/msg/Odometry`; `/<robot>/cmd_vel` `geometry_msgs/msg/Twist`; optional camera `sensor_msgs/msg/Image`, battery and safety, `/global_info` `std_msgs/msg/String` | 10 Hz |
-| `response_demo` | `/gazebo/model_states` `gazebo_msgs/ModelStates`, `/tb_i/odom`, `/tb_i/cmd_vel`, `/response_group/status` `robosar_messages/ResponseGroupStatus`, `/response_group/behavior_mode` `std_msgs/String`, `/response_group/task_result` `EmergencyTask` | 10 Hz |
-| `exploration` | `/sim_map` `nav_msgs/OccupancyGrid`; `/frontier_filter/filtered_frontiers`; `/task_allocation_image` `sensor_msgs/Image`; `/percent_completed` `std_msgs/Float32`; agent status; emergency objects/events | 10 Hz |
+| `swarm_sensor` | `/<robot>/scan` and `/<robot>/odom` required; optional cmd_vel, IMU, camera, `ps0..ps7`, battery, safety, discussion state and `/global_info` | 10 Hz |
+| `response_demo` | `/gazebo/model_states`; `/tb_i/{scan,imu,odom,cmd_vel}`; D435 color image; `/emergency/tasks`; active task, response status, behavior mode, motion gate and task result | 10 Hz |
+| `exploration` | `/sim_map` required; `/information_map`; task image/allocation/frontier/progress; agent camera, `feedback/scan`, odometry and cmd_vel; agent status; emergency objects/events | 10 Hz |
 | `exploration_webots` | ROS1 exploration profile is authoritative; ROS2 raw `/<robot>/scan`, `odom`, `cmd_vel` is optional sensor data | 10 Hz |
 | `rescue` | Union of `exploration` and `response_demo` with duplicate topic deduplication | 10 Hz |
 
-The recorder profiles use the same topic table with a maximum byte rate of 2 MB/s for sensor profiles and 8 MB/s for rescue. Unknown topics are rejected.
+The recorder profiles use the same topic table with a maximum byte rate of 2 MB/s for sensor profiles and 8 MB/s for rescue. Unknown topics are rejected. PointCloud2, `/response_group/center_path` and `/response_group/formation_slots` are not part of the current topic profiles.
 
 ## 3. Task 0: Scaffold and Tooling
 
@@ -164,13 +163,13 @@ The recorder profiles use the same topic table with a maximum byte rate of 2 MB/
 
   ```python
   COMMAND_REFS = {
-      "ros2.swarm": CommandRef(agent="ros2", executable="ros2", fixed_args=("launch", "launch_webots", "create_enviroment.launch.py")),
-      "ros1.response_deform": CommandRef(agent="ros1", executable="./run_response_deform_demo.sh", fixed_args=("--no-rviz", "--no-vglrun")),
-      "ros1.response_controller": CommandRef(agent="ros1", executable="./run_response_controller_demo.sh", fixed_args=("--no-rviz", "--no-vglrun")),
-      "ros1.exploration_gazebo": CommandRef(agent="ros1", executable="./launch_robosar_g.sh", fixed_args=("--no-rviz", "--no-vglrun")),
-      "ros2.exploration_webots": CommandRef(agent="ros2", executable="./start_robosar_webots.sh", fixed_args=("--no-vglrun",)),
+      "ros2.swarm": CommandRef(agent="ros2", executable="vglrun", fixed_args=("-d", ":0", "ros2", "launch", "launch_webots", "create_enviroment.launch.py")),
+      "ros1.response_deform": CommandRef(agent="ros1", executable="./run_response_deform_demo.sh", fixed_args=("--no-rviz", "--vglrun", "--shared-master"), fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),)),
+      "ros1.response_controller": CommandRef(agent="ros1", executable="./run_response_controller_demo.sh", fixed_args=("--no-rviz", "--vglrun", "--shared-master"), fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),)),
+      "ros1.exploration_gazebo": CommandRef(agent="ros1", executable="./launch_robosar_g.sh", fixed_args=("--no-rviz", "--vglrun"), fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),)),
+      "ros2.exploration_webots": CommandRef(agent="ros2", executable="./start_robosar_webots.sh", fixed_args=("--vglrun",)),
       "ros1.exploration_webots": CommandRef(agent="ros1", executable="./launch_robosar_w.sh", fixed_args=("--no-rviz", "--no-vglrun")),
-      "ros1.tepper_response": CommandRef(agent="ros1", executable="./run_tepper_response_demo.sh", fixed_args=("--no-rviz", "--no-vglrun")),
+      "ros1.tepper_response": CommandRef(agent="ros1", executable="./run_tepper_response_demo.sh", fixed_args=("--no-rviz", "--vglrun", "--no-gui", "--shared-master"), fixed_environment=(("ROBOSAR_VGLRUN_DEVICE", ":0"),)),
   }
   ```
 
@@ -631,6 +630,15 @@ Real dogfooding found lifecycle, rendering and data-panel gaps after Tasks 0-10.
 - [x] Provide the ROS1 Web sidecar with the existing `masar_ws/devel` message overlay. Failed acceptance Run `run-37e0e2076e0a4402aca51349e0467bf6` proved the browser sent subscriptions for latched `/task_allocation` and `/frontier_filter/filtered_frontiers`, while rosbridge delivered only standard-message `/percent_completed`; `rospack` and Python imports inside ros1-web confirmed `robosar_messages` was absent. The deployed fix mounts `masar_ws` read-only at its canonical path and requires/sources `devel/setup.bash` before every sidecar program. Container imports and a temporary real-browser custom `task_allocation` smoke passed; the temporary publisher/topic disappeared and neither business container restarted.
 - [x] Gazebo acceptance: two complete fresh cycles passed. In each cycle mission commands before `RUNNING` returned `409 RUN_NOT_ACTIVE`; after `RUNNING`, the browser observed a real allocation frame, coverage/frontier/latest-batch metrics, five selectable robot sensor views, online robots and emergency snapshots. Runs `run-1e6dc13688634b0bb9bae467ffdb8ceb` and `run-4ba8c33b877149a8acf8e1da26caef8b` both stopped as `COMPLETED/USER_STOP`, passed all 13 archive checksums and left no Run-owned process or Run-only port without restarting either business container.
 - [x] Webots acceptance: Runs `run-919530af7fae462893dfc5ebfff3bd7a` and `run-61aa650ac5814725bb95fcc1f950b284` passed the same two-cycle gate with required startup order `ROS2swarm_w/start_robosar_webots.sh` then `masar_ws/launch_robosar_w.sh`, reverse RViz/ROS1/ROS2 stop order, nonblank Webots and RViz noVNC canvases, late-source recovery and no residual Run process. Both Runs ended `COMPLETED/USER_STOP`, each verified 16 archived files and neither business container restarted. Stage C passed on 2026-08-03.
+- [x] 2026-08-04 media-lifecycle follow-up: retry a default selected-robot MJPEG source while it is connected but has not committed a first frame; predecode periodic allocation snapshots and replace the visible frame only after success, so exploration STOP/HOME retains the last allocation image; let an actually discovered camera override the Burger model fallback.
+- [x] 2026-08-04 Gazebo GPU and D435 closure: require `--vglrun` plus `ROBOSAR_VGLRUN_DEVICE=:0` for all four platform Gazebo command refs. Keep all four Burger color sensors active, disable unused depth and dual-infrared continuous rendering, and disable Gazebo's duplicate camera-frustum visualization. The response baseline improved from `llvmpipe` GUI `0.54 FPS` and color about `0.15 Hz` to NVIDIA GUI about `62.5 FPS`; with unused streams inactive, a selected color topic reached `29.96 Hz`. Remove the four-camera snapshot cache and use one selected MJPEG stream with a 1.5-second first-frame retry; remove inactive raw depth from the response profile. RED/GREEN coverage protects the command environment, selected-only stream and profile contract.
+- [x] 2026-08-04 multi-group sensor closure: add the real Burger `/tb_i/scan` and
+  `/tb_i/imu` sources to response/rescue profiles and rosbag allow-lists; remove the inactive
+  raw-depth recorder entry. Keep `agent_N` and `tb_N` as separate selector identities, and
+  render IMU/红外等 optional fields only when the selected model supports them or an exact
+  topic was discovered. Real Stage D Run `run-3ca10d47f14d4a80a67047b9a2c62f11`
+  verified 5 exploration plus 4 response choices, both Scan paths, response IMU and no
+  infrared field for either Gazebo group.
 
 ### 19.4 Stage D: Complete rescue and documentation closure
 

@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "scenarios": {
+    "swarm.webots.ros2swarm": {
+      "command_refs": ["ros2.swarm"],
+      "readiness": [["/clock", "/robot_0/odom"]],
+      "panels": ["simulation", "sensors", "health", "logs"],
+      "start_trace": ["start:ros2:swarm_simulation"],
+      "stop_trace": ["stop:ros2:swarm_simulation"]
+    },
+    "control.gazebo.response-deform": {
+      "command_refs": ["ros1.response_deform"],
+      "readiness": [["/clock", "/tb_0/odom", "/response_group/status"]],
+      "panels": ["simulation", "sensors", "health", "logs"],
+      "start_trace": ["start:ros1:response_demo"],
+      "stop_trace": ["stop:ros1:response_demo"]
+    },
+    "control.gazebo.response-controller": {
+      "command_refs": ["ros1.response_controller"],
+      "readiness": [["/clock", "/tb_0/odom", "/response_group/behavior_mode"]],
+      "panels": ["simulation", "sensors", "health", "logs"],
+      "start_trace": ["start:ros1:response_controller"],
+      "stop_trace": ["stop:ros1:response_controller"]
+    },
+    "exploration.gazebo.tepper": {
+      "command_refs": ["ros1.exploration_gazebo"],
+      "readiness": [["/clock", "/sim_map", "/frontier_filter/filtered_frontiers"]],
+      "panels": ["simulation", "rviz", "map", "sensors", "mission", "health", "logs"],
+      "start_trace": ["start:ros1:exploration_gazebo", "start:ros1:display_rviz"],
+      "stop_trace": ["stop:ros1:display_rviz", "stop:ros1:exploration_gazebo"]
+    },
+    "exploration.webots.robosar": {
+      "command_refs": ["ros2.exploration_webots", "ros1.exploration_webots"],
+      "readiness": [["/clock", "/robot_0/odom"], ["/sim_map", "/frontier_filter/filtered_frontiers"]],
+      "panels": ["simulation", "rviz", "map", "sensors", "mission", "health", "logs"],
+      "start_trace": ["start:ros2:ros2_webots_bridge", "start:ros1:ros1_robosar", "start:ros1:display_rviz"],
+      "stop_trace": ["stop:ros1:display_rviz", "stop:ros1:ros1_robosar", "stop:ros2:ros2_webots_bridge"]
+    },
+    "rescue.gazebo.tepper-response": {
+      "command_refs": ["ros1.tepper_response"],
+      "readiness": [["/clock", "/sim_map", "/response_group/status"]],
+      "panels": ["simulation", "rviz", "map", "sensors", "mission", "response", "health", "logs"],
+      "start_trace": ["start:ros1:tepper_response", "start:ros1:display_rviz"],
+      "stop_trace": ["stop:ros1:display_rviz", "stop:ros1:tepper_response"]
+    }
+  }
+}

@@ -55,9 +55,20 @@ source_workspace_setup() {
   # colcon-generated setup.bash reads COLCON_TRACE without guarding unset vars.
   source "$WORKSPACE_DIR/install/setup.bash"
 
+  if platform_mode_enabled; then
+    source "$ROS1_BRIDGE_SETUP"
+  fi
+
   if (( had_nounset )); then
     set -u
   fi
+}
+
+platform_mode_enabled() {
+  case "${MASAR_PLATFORM_MODE:-0}" in
+    1|true|yes|on) return 0 ;;
+    *) return 1 ;;
+  esac
 }
 
 resolve_use_vglrun() {
@@ -82,6 +93,8 @@ resolve_use_vglrun() {
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 WORKSPACE_DIR="${WORKSPACE_DIR:-${SCRIPT_DIR}}"
+ROS1_BRIDGE_SETUP="${ROS1_BRIDGE_SETUP:-/root/ros-humble-ros1-bridge/install/setup.bash}"
+ROS1_BRIDGE_EXECUTABLE="${ROS1_BRIDGE_EXECUTABLE:-/root/ros-humble-ros1-bridge/install/ros1_bridge/lib/ros1_bridge/dynamic_bridge}"
 
 # 宿主机重启后 TurboVNC 的 DISPLAY/xauth 可能变化；自动对齐容器内 VNC + GPU 环境。
 if [[ -f "${SCRIPT_DIR}/run_vnc_gpu.sh" ]]; then
@@ -162,6 +175,17 @@ validate_webots_stream_options() {
 }
 
 validate_webots_stream_options
+
+if platform_mode_enabled && [[ "$DRY_RUN" != "1" ]]; then
+  [[ -f "$ROS1_BRIDGE_SETUP" ]] || {
+    echo "[start_robosar_webots][error] ros1_bridge setup missing: $ROS1_BRIDGE_SETUP" >&2
+    exit 1
+  }
+  [[ -x "$ROS1_BRIDGE_EXECUTABLE" ]] || {
+    echo "[start_robosar_webots][error] ros1_bridge executable missing: $ROS1_BRIDGE_EXECUTABLE" >&2
+    exit 1
+  }
+fi
 
 resolve_static_map_path() {
   local requested_map="$1"
@@ -281,7 +305,11 @@ if resolve_use_vglrun "$USE_VGLRUN"; then
   webots_launch_cmd=(vglrun -d "$VGLRUN_DEVICE" "${webots_launch_cmd[@]}")
 fi
 
-bridge_cmd=(ros2 run ros1_bridge dynamic_bridge --bridge-all-topics)
+if platform_mode_enabled; then
+  bridge_cmd=("$ROS1_BRIDGE_EXECUTABLE" --bridge-all-topics)
+else
+  bridge_cmd=(ros2 run ros1_bridge dynamic_bridge --bridge-all-topics)
+fi
 
 if [[ "$DRY_RUN" == "1" ]]; then
   echo "[start_robosar_webots][dry-run] workdir: $WORKSPACE_DIR"
@@ -290,6 +318,9 @@ if [[ "$DRY_RUN" == "1" ]]; then
   fi
   echo "[start_robosar_webots][dry-run] build: $(quote_args "${build_cmd[@]}")"
   echo "[start_robosar_webots][dry-run] source: source ./install/setup.bash"
+  if platform_mode_enabled; then
+    echo "[start_robosar_webots][dry-run] bridge-source: source ${ROS1_BRIDGE_SETUP}"
+  fi
   echo "[start_robosar_webots][dry-run] webots: $(quote_args "${webots_launch_cmd[@]}")"
   echo "[start_robosar_webots][dry-run] env: export ROS_MASTER_URI=http://${ROS1_MASTER_IP}:11311"
   echo "[start_robosar_webots][dry-run] bridge: $(quote_args "${bridge_cmd[@]}")"

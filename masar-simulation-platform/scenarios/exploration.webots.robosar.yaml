@@ -4,7 +4,7 @@ module: exploration
 simulator: webots
 runtime:
   ros1_master_uri: http://127.0.0.1:11311
-  ros2_domain_id: 0
+  ros2_domain_id: 42
 display_profile: exploration
 parameters: {}
 steps:
@@ -17,9 +17,11 @@ steps:
         - type: ros2_topic
           name: /clock
           message_type: rosgraph_msgs/msg/Clock
+          max_age_seconds: 5
         - type: ros2_topic
           name: /robot_0/odom
           message_type: nav_msgs/msg/Odometry
+          max_age_seconds: 5
           qos_profile: sensor_data
     start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
@@ -32,9 +34,11 @@ steps:
         - type: ros1_topic
           name: /sim_map
           message_type: nav_msgs/OccupancyGrid
+          max_age_seconds: 5
         - type: ros1_topic
-          name: /percent_completed
-          message_type: std_msgs/Float32
+          name: /frontier_filter/filtered_frontiers
+          message_type: robosar_messages/PointArray
+          max_age_seconds: 5
     start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}
 stop_order: [ros1_robosar, ros2_webots_bridge]

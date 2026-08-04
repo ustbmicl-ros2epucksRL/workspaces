@@ -6,14 +6,20 @@ import json
 import math
 import time
 
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import (
-    QoSDurabilityPolicy,
-    QoSProfile,
-    QoSReliabilityPolicy,
-)
-from std_msgs.msg import String
+try:
+    import rclpy
+    from rclpy.node import Node
+    from rclpy.qos import (
+        QoSDurabilityPolicy,
+        QoSProfile,
+        QoSReliabilityPolicy,
+    )
+    from std_msgs.msg import String
+except ModuleNotFoundError as exc:
+    if exc.name != 'rclpy':
+        raise
+    rclpy = None
+    Node = object
 
 
 def navigation_distances(payload, robot_count):
@@ -40,6 +46,8 @@ class NavigationSuccessEvaluator(Node):
     """Collect the latest navigation distances from the supervisor topic."""
 
     def __init__(self, robot_count):
+        if rclpy is None:
+            raise RuntimeError('ROS2 Humble with rclpy is required to run the evaluator')
         super().__init__('navigation_success_evaluator')
         self.robot_count = robot_count
         self.distances = {}
@@ -90,6 +98,8 @@ def parse_args():
 
 
 def main():
+    if rclpy is None:
+        raise SystemExit('ROS2 Humble with rclpy is required to run the evaluator')
     args = parse_args()
     rclpy.init()
     evaluator = NavigationSuccessEvaluator(args.robot_count)

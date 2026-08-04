@@ -38,11 +38,13 @@ RUN curl --http1.1 --retry 5 --retry-all-errors --connect-timeout 10 --max-time 
 COPY deploy/display/display_manager.py /usr/local/bin/display_manager.py
 COPY deploy/display/xstartup-gazebo /usr/local/bin/xstartup-gazebo
 COPY deploy/display/xstartup-rviz /usr/local/bin/xstartup-rviz
+COPY deploy/display/xstartup-webots /usr/local/bin/xstartup-webots
 COPY deploy/novnc/supervisord.conf /etc/supervisor/conf.d/masar-display.conf
 
 RUN chmod 0755 \
         /usr/local/bin/display_manager.py \
         /usr/local/bin/xstartup-gazebo \
-        /usr/local/bin/xstartup-rviz
+        /usr/local/bin/xstartup-rviz \
+        /usr/local/bin/xstartup-webots
 
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/masar-display.conf"]

@@ -10,12 +10,12 @@ parameters:
   webots_world:
     type: string
     default: command_world.wbt
-    enum: [command_world.wbt, obstacle_world.wbt, robosar_apartment.wbt, robosar_apartment_small.wbt, robosar_apartment_smallv1.wbt]
-    description: Existing Webots world template.
+    enum: [command_world.wbt]
+    description: Fixed Webots world for group behavior validation.
   pattern:
     type: string
     default: roundflocking_pattern
-    enum: [aggregation_pattern, attraction_pattern, dispersion_pattern, navigation_pattern, roundflocking_pattern, transport_pattern, drive_pattern, navigation_pattern_neat, roundflocking_pattern_neat, transport_pattern_neat]
+    enum: [aggregation_pattern, attraction_pattern, dispersion_pattern, discussed_dispersion_pattern, navigation_pattern, roundflocking_pattern, transport_pattern, drive_pattern, navigation_pattern_neat, roundflocking_pattern_neat, transport_pattern_neat]
     description: Existing ROS2swarm behavior launch.
   number_robots:
     type: integer
@@ -98,14 +98,14 @@ steps:
     depends_on: []
     readiness:
       all:
-        - type: tcp
-          name: 127.0.0.1:18141
         - type: ros2_topic
           name: /clock
           message_type: rosgraph_msgs/msg/Clock
+          max_age_seconds: 5
         - type: ros2_topic
           name: /robot_0/odom
           message_type: nav_msgs/msg/Odometry
+          max_age_seconds: 5
           qos_profile: sensor_data
     start_timeout_seconds: 180
     grace_seconds: {sigint: 10, sigterm: 5, sigkill: 5}

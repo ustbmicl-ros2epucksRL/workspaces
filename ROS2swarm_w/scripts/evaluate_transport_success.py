@@ -6,14 +6,20 @@ import json
 import math
 import time
 
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import (
-    QoSDurabilityPolicy,
-    QoSProfile,
-    QoSReliabilityPolicy,
-)
-from std_msgs.msg import String
+try:
+    import rclpy
+    from rclpy.node import Node
+    from rclpy.qos import (
+        QoSDurabilityPolicy,
+        QoSProfile,
+        QoSReliabilityPolicy,
+    )
+    from std_msgs.msg import String
+except ModuleNotFoundError as exc:
+    if exc.name != 'rclpy':
+        raise
+    rclpy = None
+    Node = object
 
 
 def transport_distance(payload, box_name='transport_box', target_name='target_zone'):
@@ -34,6 +40,8 @@ class TransportSuccessEvaluator(Node):
     """Collect the latest transport object distance from the supervisor topic."""
 
     def __init__(self, box_name, target_name):
+        if rclpy is None:
+            raise RuntimeError('ROS2 Humble with rclpy is required to run the evaluator')
         super().__init__('transport_success_evaluator')
         self.box_name = box_name
         self.target_name = target_name
@@ -85,6 +93,8 @@ def parse_args():
 
 
 def main():
+    if rclpy is None:
+        raise SystemExit('ROS2 Humble with rclpy is required to run the evaluator')
     args = parse_args()
     rclpy.init()
     evaluator = TransportSuccessEvaluator(args.box_name, args.target_name)

@@ -41,7 +41,9 @@ class FrontierAssignmentCommander(TaskCommander):
         self.utility_range = rospy.get_param("~utility_range", 1.5)
         timer = rospy.Timer(rospy.Duration(self.reassign_period), self.timer_flag_callback)
         self.rate = rospy.Rate(0.5)
-        self.image_pub = rospy.Publisher("task_allocation_image", Image, queue_size=10)
+        self.image_pub = rospy.Publisher(
+            "task_allocation_image", Image, queue_size=10, latch=True
+        )
         rospy.Subscriber(
             "/robosar_agent_bringup_node/status", Bool, self.status_callback
         )

@@ -26,11 +26,11 @@ Our accompanying video is now available on [**Bilibili**](https://www.bilibili.c
 
 ### 1.2 Related paper
 
-Jin Li, Yang Xu, Xiufang Shi, Liang Li, **"DEFORM: Adaptive Formation Reconfiguration of Multi-robot System in Confined Environments"**, In *IEEE Robotics and Automation Letters(RA-L)*, 2025. [IEEE](https://ieeexplore.ieee.org/document/10933518), [Paper](./RA_L_DEFORM.pdf), [Thesis (Chinese)](./These.pdf).
+Jin Li, Yang Xu, Xiufang Shi, Liang Li, **"DEFORM: Adaptive Formation Reconfiguration of Multi-robot System in Confined Environments"**, In *IEEE Robotics and Automation Letters(RA-L)*, 2025. [IEEE](https://ieeexplore.ieee.org/document/10933518), [Paper](./RA_L_DEFORM.pdf), [Thesis (Chinese)](./Thesis.pdf).
 
 ### 2 Prerequisites
 
-2.1 **Ubuntu** and **ROS**: Ubuntu 20.04. ROS Noteic. ROS Installation additional ROS package:
+2.1 **Ubuntu** and **ROS**: Ubuntu 20.04. ROS Noetic. ROS Installation additional ROS package:
 
 ```
 sudo apt install ros-noetic-turtlebot3-msgs
@@ -164,7 +164,7 @@ rocker --x11 --user --home --git --name deform_runtime deform:v1
 5.3 (optional) Attach to the container named **deform_runtime**.
 
 ```
-dokcer exec -it deform_runtime bash
+docker exec -it deform_runtime bash
 ```
 
 5.4 Run different commands in different windows, refer to [Demo](#4-Demo) for details.

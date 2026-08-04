@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "profile": "rescue",
+  "graphs": {
+    "ros1": {
+      "connected": true,
+      "topics": [
+        {"name": "/sim_map", "message_type": "nav_msgs/OccupancyGrid", "last_message_age_seconds": 0.1},
+        {"name": "/percent_completed", "message_type": "std_msgs/Float32", "last_message_age_seconds": 0.1},
+        {"name": "/tb_0/odom", "message_type": "nav_msgs/Odometry", "last_message_age_seconds": 0.1},
+        {"name": "/response_group/status", "message_type": "robosar_messages/ResponseGroupStatus", "last_message_age_seconds": 0.2}
+      ]
+    }
+  }
+}

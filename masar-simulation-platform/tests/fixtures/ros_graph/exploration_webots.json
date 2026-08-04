@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "profile": "exploration_webots",
+  "graphs": {
+    "ros1": {
+      "connected": true,
+      "topics": [
+        {"name": "/sim_map", "message_type": "nav_msgs/OccupancyGrid", "last_message_age_seconds": 0.1},
+        {"name": "/percent_completed", "message_type": "std_msgs/Float32", "last_message_age_seconds": 0.1}
+      ]
+    },
+    "ros2": {
+      "connected": true,
+      "topics": [
+        {"name": "/robot_0/scan", "message_type": "sensor_msgs/msg/LaserScan", "last_message_age_seconds": 0.1},
+        {"name": "/robot_0/odom", "message_type": "nav_msgs/msg/Odometry", "last_message_age_seconds": 0.1}
+      ]
+    }
+  }
+}

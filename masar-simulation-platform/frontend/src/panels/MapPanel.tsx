@@ -1,91 +1,183 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { DataSource } from "../app/api";
-import { MapRenderer } from "../ros/MapRenderer";
+import { useEffect, useRef, useState } from "react";
+import type { DataAvailability, DataSource } from "../app/api";
+import {
+  decodeFrontiers,
+  decodeScalar,
+  decodeTaskAllocation,
+  type FrontierSnapshot,
+  type TaskAssignment
+} from "../ros/decoders";
 import { rosDataRuntime } from "../ros/RosDataRuntime";
+import { runScopedSourceKey } from "../ros/sourceIdentity";
+import { VideoClient } from "../ros/VideoClient";
 import { PanelFrame } from "./PanelFrame";
 import { sourceFor, StateBadge } from "./panelUtils";
 
-export function MapPanel({ sources, trajectoryOnly = false }: { sources: DataSource[]; trajectoryOnly?: boolean }) {
-  const map = sourceFor(sources, "map");
-  const odometry = useMemo(
-    () => sources.filter((source) => source.capability === "odometry" && source.topic).slice(0, 20),
-    [sources]
-  );
-  const state = trajectoryOnly ? combinedState(odometry) : map?.availability ?? "WAITING";
-  const containerRef = useRef<HTMLDivElement>(null);
-  const rendererRef = useRef<MapRenderer | null>(null);
-  const [renderError, setRenderError] = useState<string | null>(null);
-  const subscriptionKey = trajectoryOnly
-    ? odometry.map(sourceKey).join("|")
-    : map ? sourceKey(map) : "";
+interface MapPanelProps {
+  runId: string | null;
+  sources: DataSource[];
+  running: boolean;
+}
+
+export function MapPanel({ runId, sources, running }: MapPanelProps) {
+  const allocationImage = sourceFor(sources, "task_allocation_image");
+  const allocation = sourceFor(sources, "task_allocation");
+  const frontiers = sourceFor(sources, "frontiers");
+  const progress = sourceFor(sources, "exploration_progress");
+  const imageRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef(new VideoClient());
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageRunId, setImageRunId] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
+  const [imageRetry, setImageRetry] = useState(0);
+  const [assignments, setAssignments] = useState<TaskAssignment[] | null>(null);
+  const [frontierSnapshot, setFrontierSnapshot] = useState<FrontierSnapshot | null>(null);
+  const [progressValue, setProgressValue] = useState<number | null>(null);
+  const imageBaseKey = runScopedSourceKey(runId, allocationImage);
+  const imageKey = `${imageBaseKey}:${imageRetry}`;
+  const allocationKey = runScopedSourceKey(runId, allocation);
+  const frontierKey = runScopedSourceKey(runId, frontiers);
+  const progressKey = runScopedSourceKey(runId, progress);
+  const hasPresentedImage = running && imageLoaded && imageRunId === runId;
 
   useEffect(() => {
-    if (!containerRef.current) return;
-    const renderer = new MapRenderer(containerRef.current);
-    rendererRef.current = renderer;
-    return () => {
-      renderer.destroy();
-      rendererRef.current = null;
-    };
-  }, [trajectoryOnly]);
+    setImageLoaded(false);
+    setImageRunId(null);
+    setImageFailed(false);
+    setImageRetry(0);
+    setAssignments(null);
+    setFrontierSnapshot(null);
+    setProgressValue(null);
+  }, [runId]);
 
   useEffect(() => {
-    if (trajectoryOnly) {
-      return releaseAll(
-        odometry.map((source) =>
-          rosDataRuntime.subscribe(source, (message) => {
-            void rendererRef.current
-              ?.renderOdometry(source.topic ?? source.topic_pattern, message)
-              .then((rendered) => setRenderError(rendered ? null : "位姿消息结构无效"))
-              .catch(() => setRenderError("轨迹渲染器不可用"));
-          })
-        )
-      );
+    const image = imageRef.current;
+    if (!image || !allocationImage?.graph || !allocationImage.topic) return;
+    setImageFailed(false);
+    const source = { graph: allocationImage.graph, topic: allocationImage.topic };
+    const retryKey = imageRetry > 0 ? imageRetry : undefined;
+    if (!hasPresentedImage) {
+      videoRef.current.snapshot(image, source, retryKey);
+      return;
     }
-    if (!map?.topic) return;
-    return rosDataRuntime.subscribe(map, (message) => {
-      void rendererRef.current
-        ?.renderOccupancyGrid(message)
-        .then((rendered) => setRenderError(rendered ? null : "OccupancyGrid 消息结构无效"))
-        .catch(() => setRenderError("地图渲染器不可用"));
-    });
-  // Exact graph/topic/type identity controls the underlying subscription.
+
+    const candidate = new Image();
+    candidate.onload = () => {
+      if (candidate.naturalWidth <= 0) {
+        setImageFailed(true);
+        return;
+      }
+      videoRef.current.snapshot(image, source, retryKey);
+      setImageFailed(false);
+    };
+    candidate.onerror = () => setImageFailed(true);
+    videoRef.current.snapshot(candidate, source, retryKey);
+    return () => {
+      candidate.onload = null;
+      candidate.onerror = null;
+      videoRef.current.clear(candidate);
+    };
+  // The cache suffix retries or refreshes one low-frequency allocation snapshot.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [trajectoryOnly, subscriptionKey]);
+  }, [imageKey]);
+
+  useEffect(() => {
+    const image = imageRef.current;
+    return () => {
+      if (image) videoRef.current.clear(image);
+    };
+  }, [runId]);
+
+  useEffect(() => {
+    if (!allocationImage?.topic || !running) return;
+    const timer = window.setTimeout(
+      () => setImageRetry((current) => current + 1),
+      hasPresentedImage ? 3000 : 1500
+    );
+    return () => window.clearTimeout(timer);
+  }, [allocationImage?.topic, hasPresentedImage, imageKey, running]);
+
+  useEffect(() => {
+    setAssignments(null);
+    if (!allocation?.topic) return;
+    return rosDataRuntime.subscribe(allocation, (message) => setAssignments(decodeTaskAllocation(message)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allocationKey]);
+
+  useEffect(() => {
+    setFrontierSnapshot(null);
+    if (!frontiers?.topic) return;
+    return rosDataRuntime.subscribe(frontiers, (message) => setFrontierSnapshot(decodeFrontiers(message)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frontierKey]);
+
+  useEffect(() => {
+    setProgressValue(null);
+    if (!progress?.topic) return;
+    return rosDataRuntime.subscribe(progress, (message) => setProgressValue(decodeScalar(message)));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressKey]);
+
+  const presentedState: DataAvailability = hasPresentedImage
+    ? allocationImage?.topic
+      ? "ONLINE"
+      : "STALE"
+    : imageFailed
+      ? "DISCONNECTED"
+      : allocationImage?.availability ?? "WAITING";
 
   return (
     <PanelFrame
-      panelId={trajectoryOnly ? "trajectory" : "map"}
-      eyebrow={trajectoryOnly ? "POSE TRACE" : "OCCUPANCY GRID"}
-      title={trajectoryOnly ? "轨迹与位姿" : "任务地图"}
-      status={<StateBadge state={state} />}
+      panelId="map"
+      eyebrow="TASK ALLOCATION"
+      title="任务分配与建图"
+      status={<StateBadge state={presentedState} />}
     >
-      <div className="native-map-placeholder">
-        <div className="map-grid" aria-hidden="true" />
-        <div className="ros-map-canvas" ref={containerRef} data-testid={trajectoryOnly ? "trajectory-canvas" : "map-canvas"} />
-        {state !== "ONLINE" || renderError ? (
-          <div className="map-message">
-            <strong>{renderError ?? (trajectoryOnly ? "等待机器人位姿" : "等待 /sim_map")}</strong>
-            <span>{trajectoryOnly ? "收到位姿后叠加各机器人轨迹；画布支持拖动与缩放" : "收到真实 OccupancyGrid 后显示；画布支持拖动与缩放"}</span>
+      <div className="allocation-view">
+        {allocationImage?.topic || hasPresentedImage ? (
+          <img
+            ref={imageRef}
+            className="task-allocation-image"
+            data-testid="task-allocation-image"
+            alt="实时任务分配与建图结果"
+            onLoad={(event) => {
+              setImageLoaded(event.currentTarget.naturalWidth > 0);
+              setImageRunId(runId);
+              setImageFailed(false);
+            }}
+            onError={() => {
+              setImageLoaded(false);
+              setImageFailed(true);
+            }}
+          />
+        ) : null}
+        {!hasPresentedImage ? (
+          <div className="allocation-empty">
+            <strong>{allocationEmptyState(allocationImage, running, imageFailed)}</strong>
+            <span>{allocationImage?.topic ?? "/task_allocation_image"}</span>
           </div>
         ) : null}
+        <dl className="allocation-stats">
+          <div><dt>地图覆盖</dt><dd data-testid="map-coverage">{percentOrDash(progressValue)}</dd></div>
+          <div><dt>候选前沿</dt><dd data-testid="frontier-count">{valueOrDash(frontierSnapshot?.count)}</dd></div>
+          <div><dt>本轮分配</dt><dd data-testid="map-assignment-count">{valueOrDash(assignments?.length)}</dd></div>
+        </dl>
       </div>
     </PanelFrame>
   );
 }
 
-function sourceKey(source: DataSource): string {
-  return [source.graph, source.topic, source.message_type].join(":");
+function allocationEmptyState(source: DataSource | undefined, running: boolean, failed: boolean): string {
+  if (!running) return "等待运行";
+  if (!source?.topic) return "未发现任务分配图";
+  if (failed) return "任务分配图连接重试中";
+  return "等待任务分配图首帧";
 }
 
-function releaseAll(releases: Array<() => void>): () => void {
-  return () => releases.forEach((release) => release());
+function valueOrDash(value: number | undefined | null): string {
+  return value === undefined || value === null ? "—" : String(value);
 }
 
-function combinedState(sources: DataSource[]): DataSource["availability"] {
-  if (sources.some((source) => source.availability === "ONLINE")) return "ONLINE";
-  if (sources.some((source) => source.availability === "TYPE_MISMATCH")) return "TYPE_MISMATCH";
-  if (sources.some((source) => source.availability === "DISCONNECTED")) return "DISCONNECTED";
-  if (sources.some((source) => source.availability === "STALE")) return "STALE";
-  return "WAITING";
+function percentOrDash(value: number | null): string {
+  return value === null ? "—" : `${(Math.max(0, Math.min(1, value)) * 100).toFixed(1)}%`;
 }

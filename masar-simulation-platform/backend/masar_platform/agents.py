@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from contextlib import nullcontext
 import hashlib
 import hmac
 import http.client
@@ -83,6 +84,7 @@ class AgentClient:
         self.retry_delay = retry_delay
         self._sequences: dict[str, int] = defaultdict(int)
         self._sequence_lock = Lock()
+        self._signed_request_lock = Lock()
 
     def health(self) -> dict[str, Any]:
         return self._request("GET", "/healthz", None, None, retry=True, signed=False)
@@ -91,7 +93,20 @@ class AgentClient:
         return self._request("POST", f"/v1/runs/{run_id}/start", run_id, payload, retry=False)
 
     def stop(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
-        return self._request("POST", f"/v1/runs/{run_id}/stop", run_id, payload, retry=False)
+        grace = payload.get("grace_seconds", {})
+        grace_total = (
+            sum(float(grace.get(name, 0.0)) for name in ("sigint", "sigterm", "sigkill"))
+            if isinstance(grace, Mapping)
+            else 0.0
+        )
+        return self._request(
+            "POST",
+            f"/v1/runs/{run_id}/stop",
+            run_id,
+            payload,
+            retry=False,
+            read_timeout=max(self.read_timeout, grace_total + 5.0),
+        )
 
     def probe(self, run_id: str) -> dict[str, Any]:
         return self._request("GET", f"/v1/runs/{run_id}/probe", run_id, None, retry=True)
@@ -106,6 +121,16 @@ class AgentClient:
 
     def graph_snapshot(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]:
         return self._request("POST", f"/v1/runs/{run_id}/graph", run_id, payload, retry=True)
+
+    def webots_preflight(self, run_id: str, *, require_bridge: bool) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/v1/runs/{run_id}/webots-preflight",
+            run_id,
+            {"require_bridge": require_bridge},
+            retry=True,
+            read_timeout=20.0,
+        )
 
     def logs(
         self,
@@ -128,20 +153,36 @@ class AgentClient:
         *,
         retry: bool,
         signed: bool = True,
+        read_timeout: float | None = None,
     ) -> dict[str, Any]:
-        attempts = self.retry_attempts + 1 if retry else 1
-        last_error: AgentClientError | None = None
-        for attempt in range(attempts):
-            try:
-                return self._request_once(method, target, run_id, payload, signed=signed)
-            except (AgentUnavailable, AgentHTTPError) as exc:
-                last_error = exc
-                retryable = isinstance(exc, AgentUnavailable) or exc.status >= 500
-                if not retryable or attempt + 1 >= attempts:
-                    raise
-                time.sleep(self.retry_delay)
-        assert last_error is not None
-        raise last_error
+        request_context = self._signed_request_lock if signed else nullcontext()
+        with request_context:
+            retries_remaining = self.retry_attempts if retry else 0
+            sequence_recovery_available = signed
+            while True:
+                try:
+                    return self._request_once(
+                        method,
+                        target,
+                        run_id,
+                        payload,
+                        signed=signed,
+                        read_timeout=read_timeout,
+                    )
+                except (AgentUnavailable, AgentHTTPError) as exc:
+                    sequence_rejected = (
+                        isinstance(exc, AgentHTTPError)
+                        and exc.code in {"AUTH_STALE_SEQUENCE", "AUTH_REORDERED_SEQUENCE"}
+                    )
+                    if sequence_recovery_available and sequence_rejected and run_id is not None:
+                        self._reseed_sequence(run_id)
+                        sequence_recovery_available = False
+                        continue
+                    retryable = isinstance(exc, AgentUnavailable) or exc.status >= 500
+                    if not retryable or retries_remaining <= 0:
+                        raise
+                    retries_remaining -= 1
+                    time.sleep(self.retry_delay)
 
     def _request_once(
         self,
@@ -151,6 +192,7 @@ class AgentClient:
         payload: Mapping[str, Any] | None,
         *,
         signed: bool,
+        read_timeout: float | None,
     ) -> dict[str, Any]:
         body = b"" if payload is None else json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
         headers = {"Content-Type": "application/json", "Accept": "application/json"}
@@ -163,7 +205,7 @@ class AgentClient:
         try:
             connection.connect()
             if connection.sock is not None:
-                connection.sock.settimeout(self.read_timeout)
+                connection.sock.settimeout(self.read_timeout if read_timeout is None else read_timeout)
             connection.request(method, target, body=body, headers=headers)
             response = connection.getresponse()
             response_body = response.read()
@@ -194,6 +236,10 @@ class AgentClient:
         with self._sequence_lock:
             self._sequences[run_id] += 1
             return self._sequences[run_id]
+
+    def _reseed_sequence(self, run_id: str) -> None:
+        with self._sequence_lock:
+            self._sequences[run_id] = max(self._sequences[run_id], time.time_ns())
 
 
 def _signed_headers(

@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "case_id": "missing_camera",
+      "profile": "swarm_sensor",
+      "capability": "camera",
+      "connected": true,
+      "stale_after_seconds": 2.0,
+      "topics": [{"name": "/robot_0/scan", "message_type": "sensor_msgs/msg/LaserScan", "last_message_age_seconds": 0.1}]
+    },
+    {
+      "case_id": "stale_odom",
+      "profile": "swarm_sensor",
+      "capability": "odometry",
+      "connected": true,
+      "stale_after_seconds": 2.0,
+      "topics": [{"name": "/robot_0/odom", "message_type": "nav_msgs/msg/Odometry", "last_message_age_seconds": 5.0}]
+    },
+    {
+      "case_id": "wrong_odom_type",
+      "profile": "swarm_sensor",
+      "capability": "odometry",
+      "connected": true,
+      "stale_after_seconds": 2.0,
+      "topics": [{"name": "/robot_0/odom", "message_type": "geometry_msgs/msg/Pose", "last_message_age_seconds": 0.1}]
+    },
+    {
+      "case_id": "disconnected_rosbridge",
+      "profile": "exploration",
+      "capability": "map",
+      "connected": false,
+      "stale_after_seconds": 2.0,
+      "topics": []
+    }
+  ]
+}

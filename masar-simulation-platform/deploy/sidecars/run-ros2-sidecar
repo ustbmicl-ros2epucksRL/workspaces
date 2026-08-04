@@ -2,6 +2,11 @@
 set -eo pipefail
 
 source /opt/ros/humble/setup.bash
+if [[ ! -f /root/workspace/ROS2swarm_w/install/setup.bash ]]; then
+  echo "ROS2swarm install overlay is unavailable" >&2
+  exit 78
+fi
+source /root/workspace/ROS2swarm_w/install/setup.bash
 set -u
 
 case "${1:-}" in
@@ -13,6 +18,7 @@ case "${1:-}" in
       topics_pub_glob:="'[]'" \
       topics_sub_glob:="${MASAR_ROS2_TOPICS_GLOB:-'[*]'}" \
       services_glob:="'[rosapi/topics,/rosapi/topics]'" \
+      call_services_in_new_thread:=true \
       params_glob:="'[]'"
     ;;
   tf2_web_republisher)

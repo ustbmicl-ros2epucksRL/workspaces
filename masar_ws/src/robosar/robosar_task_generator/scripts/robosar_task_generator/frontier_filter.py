@@ -45,7 +45,7 @@ class FrontierFilter:
             ns + "/frontier_centroids", Marker, queue_size=10
         )
         self.frontier_array_pub = rospy.Publisher(
-            ns + "/filtered_frontiers", PointArray, queue_size=10
+            ns + "/filtered_frontiers", PointArray, queue_size=10, latch=True
         )
         rospy.loginfo("Frontier filter is ready.")
         rospy.spin()

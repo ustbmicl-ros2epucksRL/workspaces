@@ -1,5 +1,6 @@
 from pathlib import Path
-from threading import Event
+from threading import Event, Thread
+import time
 
 from masar_platform.agents import AgentHTTPError, AgentUnavailable
 from masar_platform.leases import LeaseError
@@ -17,6 +18,32 @@ def test_preflight_checks_have_stable_order_before_any_run_is_created(tmp_path: 
     assert [check.name for check in checks] == ["data_directory", "disk_space", "agent_ros1", "display"]
     assert trace == ["health:ros1"]
     assert orchestrator.states.current() is None
+
+
+def test_webots_preflight_checks_nvidia_before_creating_any_run(tmp_path: Path) -> None:
+    orchestrator, _, trace = build_test_orchestrator(tmp_path, real_preflight=True)
+    swarm = orchestrator.catalog.get("swarm.webots.ros2swarm")
+    exploration = orchestrator.catalog.get("exploration.webots.robosar")
+
+    swarm_checks = orchestrator.preflight.check(swarm)
+    exploration_checks = orchestrator.preflight.check(exploration)
+
+    assert [item.name for item in swarm_checks][-2:] == ["webots_renderer", "display"]
+    assert [item.name for item in exploration_checks][-2:] == ["webots_renderer", "display"]
+    assert "webots-preflight:ros2:False" in trace
+    assert "webots-preflight:ros2:True" in trace
+    assert orchestrator.states.current() is None
+
+
+def test_restarted_api_uses_a_new_webots_preflight_identity_with_the_same_agent(tmp_path: Path) -> None:
+    orchestrator, agents, _ = build_test_orchestrator(tmp_path, real_preflight=True)
+    swarm = orchestrator.catalog.get("swarm.webots.ros2swarm")
+
+    orchestrator.preflight.check(swarm)
+    restarted_preflight = type(orchestrator.preflight)(tmp_path / "runs", agents)
+    restarted_preflight.check(swarm)
+
+    assert len(set(agents["ros2"].webots_preflight_run_ids)) == 2
 
 
 def test_webots_starts_ros2_then_ros1_and_stops_in_manifest_reverse_order(tmp_path: Path) -> None:
@@ -63,6 +90,72 @@ def test_process_exit_before_readiness_is_an_unexpected_exit(tmp_path: Path) -> 
 
     assert failed.state is RunState.FAILED
     assert failed.reason_code is ReasonCode.UNEXPECTED_PROCESS_EXIT
+
+
+def test_successful_readiness_refreshes_lease_before_running(tmp_path: Path) -> None:
+    orchestrator, _, _ = build_test_orchestrator(tmp_path)
+    heartbeat_calls: list[str] = []
+    original_heartbeat = orchestrator._heartbeat
+
+    def record_heartbeat(run_id: str) -> None:
+        heartbeat_calls.append(run_id)
+        original_heartbeat(run_id)
+
+    orchestrator._heartbeat = record_heartbeat  # type: ignore[method-assign]
+    run = orchestrator.create_run("control.gazebo.response-deform", {})
+
+    running = orchestrator.start_run(run.run_id)
+
+    assert running.state is RunState.RUNNING
+    assert heartbeat_calls == [run.run_id, run.run_id]
+
+
+def test_blocking_readiness_probe_keeps_the_run_lease_alive(tmp_path: Path, monkeypatch) -> None:
+    import masar_platform.orchestrator as orchestrator_module
+
+    monkeypatch.setattr(orchestrator_module, "HEARTBEAT_INTERVAL_SECONDS", 0.02)
+    orchestrator, agents, _ = build_test_orchestrator(tmp_path)
+    entered = Event()
+    release = Event()
+    original_probe = agents["ros2"].probe_readiness
+
+    def blocking_probe(run_id: str, payload: dict) -> dict:
+        entered.set()
+        assert release.wait(1)
+        return original_probe(run_id, payload)
+
+    agents["ros2"].probe_readiness = blocking_probe  # type: ignore[method-assign]
+    run = orchestrator.create_run("swarm.webots.ros2swarm", {"number_robots": 5})
+    results = []
+    worker = Thread(target=lambda: results.append(orchestrator.start_run(run.run_id)), daemon=True)
+    worker.start()
+    try:
+        assert entered.wait(1)
+        heartbeat_at = orchestrator.leases.get(run.run_id).heartbeat_at
+        time.sleep(0.08)
+        assert orchestrator.leases.get(run.run_id).heartbeat_at > heartbeat_at
+    finally:
+        release.set()
+        worker.join(timeout=1)
+
+    assert [result.state for result in results] == [RunState.RUNNING]
+
+
+def test_swarm_readiness_requires_every_requested_robot_odom(tmp_path: Path) -> None:
+    orchestrator, agents, _ = build_test_orchestrator(tmp_path)
+    captured: list[list[str]] = []
+    original = agents["ros2"].probe_readiness
+
+    def record_readiness(run_id: str, payload: dict) -> dict:
+        captured.append([probe["name"] for probe in payload["probes"]])
+        return original(run_id, payload)
+
+    agents["ros2"].probe_readiness = record_readiness  # type: ignore[method-assign]
+    run = orchestrator.create_run("swarm.webots.ros2swarm", {"number_robots": 3})
+
+    assert orchestrator.start_run(run.run_id).state is RunState.RUNNING
+    assert captured
+    assert captured[0] == ["/clock", "/robot_0/odom", "/robot_1/odom", "/robot_2/odom"]
 
 
 def test_unavailable_required_agent_fails_preflight_without_durable_run(tmp_path: Path) -> None:
@@ -341,14 +434,20 @@ def test_restart_adopts_a_fully_proven_running_agent_tree(tmp_path: Path) -> Non
 def test_fixed_mission_command_mapping_and_deform_home_rejection(tmp_path: Path) -> None:
     orchestrator, _, trace = build_test_orchestrator(tmp_path)
     run = orchestrator.create_run("control.gazebo.response-deform", {})
+    from masar_platform.orchestrator import CommandNotSupported, RunNotActive
+
+    try:
+        orchestrator.issue_command(run.run_id, "mission.start")
+    except RunNotActive:
+        pass
+    else:
+        raise AssertionError("mission command published before the Run reached RUNNING")
     orchestrator.start_run(run.run_id)
 
     published = orchestrator.issue_command(run.run_id, "mission.start")
 
     assert published["action"] == "ros1.mission.start"
     assert "command:ros1:ros1.mission.start" in trace
-    from masar_platform.orchestrator import CommandNotSupported
-
     try:
         orchestrator.issue_command(run.run_id, "mission.home")
     except CommandNotSupported:

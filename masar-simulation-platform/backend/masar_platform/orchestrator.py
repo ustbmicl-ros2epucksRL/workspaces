@@ -24,7 +24,7 @@ from .agents import AgentHTTPError, AgentUnavailable
 from .artifacts import Artifact, ArtifactStore
 from .catalog import CatalogError, ScenarioCatalog
 from .commands import CommandInvocation, render_invocation
-from .contracts import ScenarioManifest, ScenarioStep
+from .contracts import ReadinessProbe, ScenarioManifest, ScenarioStep
 from .displays import display_plan
 from .events import EventStore
 from .leases import HEARTBEAT_INTERVAL_SECONDS, LeaseConflict, LeaseError, LeaseNotFound, LeaseStore
@@ -61,6 +61,8 @@ class RuntimeAgent(Protocol):
     def command(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]: ...
 
     def graph_snapshot(self, run_id: str, payload: Mapping[str, Any]) -> dict[str, Any]: ...
+
+    def webots_preflight(self, run_id: str, *, require_bridge: bool) -> dict[str, Any]: ...
 
 
 class OrchestratorError(RuntimeError):
@@ -116,10 +118,13 @@ class PreflightChecker:
         agents: Mapping[str, RuntimeAgent],
         *,
         display_check: Callable[[ScenarioManifest], tuple[bool, str]] | None = None,
+        gateway_check: Callable[[ScenarioManifest], tuple[bool, str]] | None = None,
     ) -> None:
         self.data_dir = Path(data_dir)
         self.agents = dict(agents)
         self.display_check = display_check or (lambda _manifest: (True, "display transport checked by Tasks 5-7"))
+        self.gateway_check = gateway_check
+        self.preflight_request_scope = f"preflight-{uuid.uuid4().hex}"
 
     def check(self, manifest: ScenarioManifest) -> tuple[PreflightCheck, ...]:
         checks: list[PreflightCheck] = []
@@ -172,6 +177,53 @@ class PreflightChecker:
                     status_code=503,
                 )
             checks.append(PreflightCheck(f"agent_{agent_kind}", "PASS", "signed Runtime Agent is healthy"))
+
+        if manifest.simulator == "webots":
+            ros2_agent = self.agents.get("ros2")
+            if ros2_agent is None:
+                raise PreflightFailed(
+                    "AGENT_UNAVAILABLE",
+                    "ros2 Runtime Agent is required for Webots",
+                    {"check": "webots_renderer", "agent": "ros2"},
+                    status_code=503,
+                )
+            require_bridge = any(step.command_ref == "ros2.exploration_webots" for step in manifest.steps)
+            try:
+                result = ros2_agent.webots_preflight(
+                    f"{self.preflight_request_scope}-{manifest.scenario_id}",
+                    require_bridge=require_bridge,
+                )
+            except (AgentUnavailable, AgentHTTPError, OSError) as exc:
+                raise PreflightFailed(
+                    "PREFLIGHT_FAILED",
+                    "Webots NVIDIA/bridge preflight failed",
+                    {"check": "webots_renderer", "detail": str(exc)},
+                    status_code=503,
+                ) from exc
+            if result.get("ready") is not True or "nvidia" not in str(result.get("renderer", "")).lower():
+                raise PreflightFailed(
+                    "PREFLIGHT_FAILED",
+                    "Webots NVIDIA renderer is unavailable",
+                    {"check": "webots_renderer", "result": result},
+                )
+            checks.append(
+                PreflightCheck(
+                    "webots_renderer",
+                    "PASS",
+                    f"{result['renderer']} on {result.get('display', ':103')}",
+                )
+            )
+
+        if self.gateway_check is not None:
+            gateway_ready, gateway_detail = self.gateway_check(manifest)
+            if not gateway_ready:
+                raise PreflightFailed(
+                    "WEB_GATEWAY_UNAVAILABLE",
+                    "required browser ROS gateway is unavailable",
+                    {"check": "web_gateway", "detail": gateway_detail},
+                    status_code=503,
+                )
+            checks.append(PreflightCheck("web_gateway", "PASS", gateway_detail))
 
         for step in manifest.steps:
             for probe in step.readiness.all:
@@ -375,7 +427,7 @@ class Orchestrator:
                         "STEP_STARTED",
                         {"step_id": step.id, "agent": step.agent, "command_ref": step.command_ref},
                     )
-                    self._wait_ready(run_id, context.manifest, step)
+                    self._wait_ready(run_id, context, step)
                     self._update_step(run_id, step.id, "READY")
                     self._append_event(run_id, "STEP_READY", {"step_id": step.id, "agent": step.agent})
                 self._start_optional_displays(run_id, context.manifest)
@@ -595,16 +647,18 @@ class Orchestrator:
                         )
                 return
 
-    def _wait_ready(self, run_id: str, manifest: ScenarioManifest, step: ScenarioStep) -> None:
+    def _wait_ready(self, run_id: str, context: RunContext, step: ScenarioStep) -> None:
+        manifest = context.manifest
         deadline = self.monotonic() + step.start_timeout_seconds
         attempts = 0
         next_heartbeat = self.monotonic() + HEARTBEAT_INTERVAL_SECONDS
+        probes = self._resolved_readiness_probes(context, step)
         payload = {
             "runtime": manifest.runtime.model_dump(mode="json"),
-            "probes": [probe.model_dump(mode="json") for probe in step.readiness.all],
+            "probes": [probe.model_dump(mode="json") for probe in probes],
         }
         while True:
-            response = self.agents[step.agent].probe_readiness(run_id, payload)
+            response = self._probe_readiness_with_heartbeat(run_id, step.agent, payload)
             process = next(
                 (record for record in response.get("processes", []) if record.get("process_id") == step.id),
                 None,
@@ -613,6 +667,7 @@ class Orchestrator:
                 raise UnexpectedProcessExit(step.id)
             required = [probe for probe in response.get("probes", []) if probe.get("required", True)]
             if all(probe.get("ready") is True for probe in required):
+                self._heartbeat(run_id)
                 return
             attempts += 1
             now = self.monotonic()
@@ -622,6 +677,64 @@ class Orchestrator:
                 self._heartbeat(run_id)
                 next_heartbeat = now + HEARTBEAT_INTERVAL_SECONDS
             self.sleep(self.readiness_poll_seconds)
+
+    def _probe_readiness_with_heartbeat(
+        self,
+        run_id: str,
+        agent_kind: str,
+        payload: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        finished = ThreadEvent()
+        heartbeat_errors: list[LeaseError] = []
+
+        def keep_lease_alive() -> None:
+            while not finished.wait(HEARTBEAT_INTERVAL_SECONDS):
+                try:
+                    self._heartbeat(run_id)
+                except LeaseError as exc:
+                    heartbeat_errors.append(exc)
+                    return
+
+        heartbeat = Thread(
+            target=keep_lease_alive,
+            daemon=True,
+            name=f"readiness-heartbeat-{run_id}",
+        )
+        heartbeat.start()
+        try:
+            response = self.agents[agent_kind].probe_readiness(run_id, payload)
+        finally:
+            finished.set()
+            heartbeat.join()
+        if heartbeat_errors:
+            raise heartbeat_errors[0]
+        return response
+
+    def _resolved_readiness_probes(
+        self,
+        context: RunContext,
+        step: ScenarioStep,
+    ) -> tuple[ReadinessProbe, ...]:
+        """Expand swarm odometry readiness to every robot in this Run."""
+        probes = list(step.readiness.all)
+        if context.manifest.scenario_id != "swarm.webots.ros2swarm" or step.agent != "ros2":
+            return tuple(probes)
+        try:
+            robot_count = int(context.parameters.get("number_robots", 0))
+        except (TypeError, ValueError):
+            return tuple(probes)
+        odometry_probe = next(
+            (probe for probe in probes if probe.name == "/robot_0/odom"),
+            None,
+        )
+        if odometry_probe is None or robot_count <= 1:
+            return tuple(probes)
+        existing_names = {probe.name for probe in probes}
+        for index in range(1, robot_count):
+            name = f"/robot_{index}/odom"
+            if name not in existing_names:
+                probes.append(odometry_probe.model_copy(update={"name": name}))
+        return tuple(probes)
 
     def _rollback_start_failure(
         self,

@@ -7,6 +7,9 @@ review all pass. The next task must not start before that point.
 Deployment evidence in Tasks 0-D records the historical external-container
 implementation used at that date. It is superseded by the active
 Compose-managed closure rows and section at the end of this ledger.
+Paths under `.superpowers/visual-review/stage-*` identify local browser-QA
+artifacts and are not repository links; the durable evidence is recorded in
+the corresponding acceptance entry.
 
 | Task | Status | Narrow acceptance | Spec review | Quality review | Integrated commits |
 |---|---|---|---|---|---|
@@ -175,7 +178,7 @@ Date: 2026-08-01
 - TDD evidence: the final review introduced six regressions before their fixes. The suite first reproduced missing reconnect, registry replacement after rediscovery, a leaked health interval, camera/topic health interference, a large LaserScan call-stack overflow and unchanged snapshots causing 500 ms global store emissions.
 - Connection acceptance: the browser owns at most one read-only roslib connection per ROS graph, reconnects with bounded backoff and preserves active subscriptions when rosapi resolves the same exact graph/topic/type contracts. Panels cannot publish; browser control remains on the authenticated REST command plane.
 - Discovery and sidecar acceptance: ROS1 and ROS2 expose only exact `rosapi/topics` service discovery while publish globs/capabilities remain disabled. The prior Compose quoting error was removed, all services retain exact `NO_PROXY/no_proxy=127.0.0.1,localhost,::1`, and both rebuilt sidecars remained healthy.
-- Rendering acceptance: the current browser adapters rendered real ROS1/ROS2 data in Chromium with the task-allocation image, world-coordinate SVG trajectory and selected-robot sensors. `TfClient` accepts only explicit safe frames at 10 Hz; no panel requests a full TF tree.
+- Rendering acceptance: the current browser adapters rendered real ROS1/ROS2 data in Chromium with the task-allocation image, world-coordinate SVG trajectory and selected-robot sensors. `TfClient` accepts only explicit safe frames at 10 Hz; no production panel currently instantiates it or requests a TF tree.
 - Sensor acceptance: one same-origin `web_video_server` request is active at a time and the previous URL is cleared synchronously. LaserScan, Odometry and Twist payloads are shape/finite-value checked; a 200,000-beam LaserScan regression passes without spreading values onto the JavaScript call stack.
 - Truthful-health acceptance: WAITING/ONLINE/STALE/TYPE_MISMATCH/DISCONNECTED, observed Hz and message age come from actual transport observations. MJPEG reports only browser-observable load/error connection state; it does not fabricate per-frame timestamps. Releasing the final topic subscription stops health polling.
 - Security deviation: `ros3d` 1.1.0 and the unused ROS2D/EaselJS adapter were removed; `npm audit --audit-level=moderate` reports zero vulnerabilities.
@@ -457,3 +460,86 @@ organized under `docs/` with a root README quick start.
   Vite build, Ruff, compileall, Compose config, Bash syntax, npm audit and scoped diff
   checks passed. Gateway health returned `ok`, all eight Compose services were healthy and
   `/api/v1/runs/current` returned `{"run":null}`. No new simulation Run was started.
+
+## Exploration Media Lifecycle Follow-up
+
+Date: 2026-08-04
+
+Status: `PASSED`. Exploration media survives mission commands and keeps the latest valid
+allocation image when its low-frequency publisher exits.
+
+- Root causes: an MJPEG connection that had not committed its first frame emitted neither
+  DOM `load` nor `error`; periodic allocation refresh replaced the visible image before the
+  candidate response decoded; and the former Burger capability fallback could hide a real
+  discovered camera. HOME/STOP also removes the allocator publisher, so an unresolved
+  profile template must not unmount the last valid image while the Run itself remains active.
+- RED/GREEN coverage reproduced silent MJPEG first-frame recovery, failed allocation refresh,
+  allocator-topic disappearance and discovered-camera override. Allocation snapshot
+  retry/refresh remains 1.5/3 seconds; ordinary robot cameras use selected-only MJPEG.
+- Real exploration Run `run-0c6d116111b047b2940e02cce463766a` displayed the default robot
+  camera without switching robots. Its allocation image remained visible across HOME,
+  restarted START and STOP, then correctly changed to `STALE/数据已陈旧`. The Run ended
+  `COMPLETED/USER_STOP`, left no owned process, and produced 14 archived artifacts.
+- Screenshots: `.superpowers/visual-review/exploration-media-followup/default-robot-camera.png`,
+  `allocation-retained-after-stop.png` and `exploration-media-after-stop.png`.
+- Final gates: Python `259 passed, 2 skipped`; frontend unit `36 passed`; ordinary Chromium
+  `46 passed, 10 live-only skipped`; dedicated production D435 Chromium `1 passed`.
+  TypeScript, Vite production build, Ruff, compileall, Compose config, Bash syntax,
+  `npm audit --package-lock-only --audit-level=moderate` (`0 vulnerabilities`) and
+  platform-scoped `git diff --check -- .` passed. The gateway returned `ok`, all eight
+  Compose services were healthy, both Runtime Agents returned `status=ok`,
+  `/api/v1/runs/current` returned `{"run":null}`, no accepted Run-owned process remained,
+  and ports `1234/18141` had no listener. Port `11311` remains the intentional shared ROS1
+  sidecar master and is not Run-owned.
+
+## Gazebo GPU, D435 and Multi-Group Sensor Closure
+
+Date: 2026-08-04
+
+Status: `PASSED`. Gazebo uses the NVIDIA renderer, all four Burger color cameras remain
+available without browser prewarming, and complete-rescue sensor fields match the actual
+robot models.
+
+- Response DEFORM Run `run-8ef69094949d4b22838a6ae51ad49b21` used NVIDIA RTX 6000 Ada
+  through VirtualGL. The Gazebo status bar showed about `62.23 FPS` and real-time factor
+  `0.96`; a selected D435 color source stabilized at `30.05 Hz`. Chromium switched across
+  all four `/tb_i/camera/color/image_raw` streams in `3.7 s` total without snapshot requests.
+- The final camera design has no four-camera prewarm/cache. One browser owns one MJPEG stream
+  for its selected robot and clears that request on selection changes. D435 depth and both
+  infrared sensors remain inactive, their Gazebo frustums are hidden, and inactive raw depth
+  is absent from both data and recorder profiles. The task-allocation image keeps a separate
+  snapshot retry/last-valid-frame lifecycle because it is a low-frequency latched image, not a
+  robot video stream.
+- Complete-rescue Run `run-3ca10d47f14d4a80a67047b9a2c62f11` exposed five exploration
+  Khepera robots and four response Burger robots as distinct selector entries. Production
+  Chromium verified exploration camera/Scan without IMU or infrared, then response D435,
+  Scan and IMU without infrared. A five-second ROS sample measured exploration Scan
+  `7.79 Hz`, response Scan `4.00 Hz` and response IMU `649.79 Hz`; browser delivery remains
+  capped at 10 Hz.
+- The Stage D browser gate passed in `1.9 min`, including allocation/map state, emergency
+  discoveries, response state and nonblank Gazebo/RViz framebuffers. The Run stopped as
+  `COMPLETED/USER_STOP`, registered 14 artifacts, left no Gazebo/RViz/roslaunch/diagnostic
+  process or `1234/18141` listener, and all eight Compose services remained healthy.
+- Final gates: Python `264 passed, 2 skipped`; frontend adapter unit `38 passed`; ordinary
+  Chromium `46 passed, 10 live-only skipped`; dedicated production Stage D Chromium
+  `1 passed`. TypeScript, Vite production build, Ruff, compileall, Compose config, shell
+  syntax, `npm audit --package-lock-only --audit-level=moderate` (`0 vulnerabilities`) and
+  scoped `git diff --check` passed.
+
+## Workspace Release Audit
+
+Date: 2026-08-04
+
+This audit covers the documentation and migration changes after the last live closure.
+
+- `multi-agent-neat` was pushed at `61bf2a2b`; its full suite returned `220 passed`.
+- Platform Python returned `264 passed, 2 skipped`; frontend unit tests returned `39 passed`;
+  ordinary Chromium returned `46 passed, 10 live-only skipped`; TypeScript and Vite build passed.
+- ROS2swarm stable platform tests returned `23 passed`; ROS1 response plus state-snapshot tests
+  returned `94 passed`; the two ROS2 Runtime Agent probe tests passed inside the Humble container.
+- Markdown link audit covered 45 first-party documents and 132 local links with no missing targets.
+  The stale DEFORM thesis link, hard-coded BenchMARL paths, generated report paths and stale panel
+  title were corrected. Local `.superpowers/visual-review/stage-*` screenshot paths are evidence
+  notes, not repository links.
+- Compose config, `make docker-doctor`, `git diff --check` and the eight-service health check passed;
+  `/api/v1/runs/current` remained `{"run":null}`. No new simulation Run was started.

@@ -15,13 +15,19 @@ export class VideoClient {
 
   constructor(private readonly origin = browserOrigin()) {}
 
-  select(target: VideoTarget, source: VideoSource): string {
-    const url = `${this.origin}/video/${source.graph}/stream?topic=${encodeURIComponent(
-      source.topic
-    )}&type=mjpeg&quality=70`;
+  select(target: VideoTarget, source: VideoSource, retryKey?: string | number): string {
+    const url = this.streamUrl(source, retryKey);
     const previous = this.selected.get(target);
     if (previous === url) return url;
     if (previous !== undefined) this.clear(target);
+    target.src = url;
+    this.selected.set(target, url);
+    return url;
+  }
+
+  snapshot(target: VideoTarget, source: VideoSource, cacheKey?: string | number): string {
+    const url = this.snapshotUrl(source, cacheKey);
+    if (this.selected.get(target) === url) return url;
     target.src = url;
     this.selected.set(target, url);
     return url;
@@ -31,6 +37,18 @@ export class VideoClient {
     target.src = "";
     target.removeAttribute("src");
     this.selected.delete(target);
+  }
+
+  streamUrl(source: VideoSource, retryKey?: string | number): string {
+    const topic = source.topic.split("/").map(encodeURIComponent).join("/");
+    const retry = retryKey === undefined ? "" : `&retry=${encodeURIComponent(String(retryKey))}`;
+    return `${this.origin}/video/${source.graph}/stream?topic=${topic}&type=mjpeg&quality=70${retry}`;
+  }
+
+  snapshotUrl(source: VideoSource, cacheKey?: string | number): string {
+    const topic = source.topic.split("/").map(encodeURIComponent).join("/");
+    const cache = cacheKey === undefined ? "" : `&retry=${encodeURIComponent(String(cacheKey))}`;
+    return `${this.origin}/video/${source.graph}/snapshot?topic=${topic}&quality=70${cache}`;
   }
 }
 

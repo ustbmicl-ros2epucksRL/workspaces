@@ -27,6 +27,20 @@ def test_catalog_registers_exactly_six_public_scenarios() -> None:
     assert len(catalog) == 6
 
 
+def test_controller_demo_exposes_five_distinct_strategy_modes() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    mode = catalog.get("control.gazebo.response-controller").parameters["mode"]
+
+    assert mode.default == "roundflocking-heuristic"
+    assert mode.enum == (
+        "roundflocking-checkpoint",
+        "roundflocking-heuristic",
+        "transport",
+        "transport-checkpoint",
+        "transport-heuristic",
+    )
+
+
 def test_manifests_have_required_runtime_contract() -> None:
     catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
     for manifest in catalog:
@@ -50,7 +64,6 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
             (
                 180,
                 (
-                    ("tcp", "127.0.0.1:18141", None),
                     ("ros2_topic", "/clock", "rosgraph_msgs/msg/Clock"),
                     ("ros2_topic", "/robot_0/odom", "nav_msgs/msg/Odometry"),
                 ),
@@ -82,7 +95,11 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
                 (
                     ("ros1_topic", "/clock", "rosgraph_msgs/Clock"),
                     ("ros1_topic", "/sim_map", "nav_msgs/OccupancyGrid"),
-                    ("ros1_topic", "/percent_completed", "std_msgs/Float32"),
+                    (
+                        "ros1_topic",
+                        "/frontier_filter/filtered_frontiers",
+                        "robosar_messages/PointArray",
+                    ),
                 ),
             )
         ],
@@ -98,7 +115,11 @@ def test_readiness_contract_matches_spec_19_4_exactly() -> None:
                 180,
                 (
                     ("ros1_topic", "/sim_map", "nav_msgs/OccupancyGrid"),
-                    ("ros1_topic", "/percent_completed", "std_msgs/Float32"),
+                    (
+                        "ros1_topic",
+                        "/frontier_filter/filtered_frontiers",
+                        "robosar_messages/PointArray",
+                    ),
                 ),
             ),
         ],
@@ -179,6 +200,12 @@ def test_catalog_parameter_contract_cannot_be_mutated() -> None:
     assert serialized["parameters"]["number_robots"]["default"] == 5
 
 
+def test_all_platform_scenarios_share_the_ros2_web_domain() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+
+    assert {manifest.runtime.ros2_domain_id for manifest in catalog} == {42}
+
+
 def test_unknown_manifest_fields_are_rejected(tmp_path: Path) -> None:
     source = ROOT / "scenarios" / "swarm.webots.ros2swarm.yaml"
     payload = source.read_text(encoding="utf-8") + "\nunknown_field: true\n"
@@ -199,6 +226,16 @@ def test_invalid_parameters_and_incompatible_combinations_are_rejected(tmp_path:
 
     with pytest.raises(ValueError, match="webots|supported"):
         catalog.get("rescue.gazebo.tepper-response").model_copy(update={"simulator": "webots"})
+
+
+def test_swarm_world_is_fixed_while_robot_type_remains_selectable() -> None:
+    catalog = ScenarioCatalog.from_directory(ROOT / "scenarios")
+    swarm = catalog.get("swarm.webots.ros2swarm")
+
+    assert swarm.parameters["webots_world"].enum == ("command_world.wbt",)
+    assert swarm.parameters["robot"].enum == ("e_puck", "burger")
+    with pytest.raises(CatalogError):
+        catalog.validate_parameters(swarm.scenario_id, {"webots_world": "obstacle_world.wbt"})
 
 
 def test_dependency_cycles_and_unknown_references_are_rejected(tmp_path: Path) -> None:

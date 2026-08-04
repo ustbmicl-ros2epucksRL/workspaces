@@ -26,9 +26,11 @@ class TaskCommander(ABC):
         self.callback_triggered = False
         # task publisher
         self.task_pub = rospy.Publisher(
-            "task_allocation", task_allocation, queue_size=10
+            "task_allocation", task_allocation, queue_size=10, latch=True
         )
-        self.task_num_pub = rospy.Publisher("tasks_completed", Int32, queue_size=10)
+        self.task_num_pub = rospy.Publisher(
+            "tasks_completed", Int32, queue_size=10, latch=True
+        )
 
     def status_callback(self, msg):
         self.callback_triggered = True

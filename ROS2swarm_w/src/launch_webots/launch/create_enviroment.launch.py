@@ -38,6 +38,7 @@ from launch_webots.environment_generator import (
     generate_world_file,
     get_task_type_from_pattern,
     normalize_transport_object_shape,
+    platform_basic_time_step_ms,
 )
 
 
@@ -312,6 +313,7 @@ def generate_launch_description():
         positions,
         z_height,
         task_objects,
+        basic_time_step_ms=platform_basic_time_step_ms(robot_type),
     )
 
     # 添加日志级别参数
@@ -434,9 +436,13 @@ def generate_launch_description():
 
             # 根据机器人类型创建对应的节点
             if robot_type == "e_puck":
-                robot_nodes = create_epuck_nodes(i, use_sim_time=True)
+                robot_nodes = create_epuck_nodes(
+                    i, use_sim_time=True, webots_port=webots_port
+                )
             elif robot_type == "burger":
-                robot_nodes = create_burger_nodes(i, use_sim_time=True)
+                robot_nodes = create_burger_nodes(
+                    i, use_sim_time=True, webots_port=webots_port
+                )
             else:
                 raise ValueError(f"不支持的机器人类型: {robot_type}")
 

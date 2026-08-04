@@ -2,6 +2,7 @@ import type { DataAvailability, DataSource } from "../app/api";
 
 export const availabilityLabels: Record<DataAvailability, string> = {
   UNAVAILABLE: "未提供",
+  DISCOVERED: "已发现",
   WAITING: "等待数据",
   ONLINE: "在线",
   STALE: "数据已陈旧",
