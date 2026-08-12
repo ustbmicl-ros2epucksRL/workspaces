@@ -1,0 +1,144 @@
+\documentclass{ustbthesis}
+\usepackage[
+    backend=biber,
+    style=gb7714-2015,
+    sortcites=true,
+    autocite=inline,
+    autopunct=true,
+    hyperref=true,
+    natbib,
+    gbnamefmt=lowercase
+]{biblatex}
+
+\hypersetup{hidelinks,colorlinks=false,citecolor=black}
+\addbibresource{myrefs.bib}
+
+\usepackage{indentfirst}
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage[labelfont=bf,textfont=bf,font=small]{subfig}
+\newcommand{\figref}[1]{~\ref{#1}~}
+\newcommand{\tabref}[1]{~\ref{#1}~}
+
+\newcolumntype{P}[1]{>{\centering\arraybackslash}p{#1}}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 作者
+\Author{待填写}
+\EnglishAuthor{To be filled}
+%% 标题
+\Title{待定}
+\EnglishTitle{To be determined}
+%% 日期
+\Date{待填写}
+\EnglishDate{To be filled}
+%% 学院
+\College{待填写}
+\EnglishCollege{To be filled}
+%% 地址
+\Address{待填写}
+\EnglishAddress{To be filled}
+%% 培养单位（所在单位、学位授予单位）
+\Affiliation{北京科技大学}
+\EnglishAffiliation{University of Science and Technology Beijing}
+%% 邮编
+\Postcode{待填写}
+%% 城市
+\City{待填写}
+\EnglishCity{To be filled}
+%% 国家
+\Country{中国}
+\EnglishCountry{P.R.CHINA}
+%% 学号
+\StudentCode{待填写}
+%% 专业
+\Major{待填写}
+\EnglishMajor{To be filled}
+%% 研究方向
+\Direction{待填写}
+\EnglishDirection{To be filled}
+%% 导师
+\Supervisor{待填写}
+\EnglishSupervisor{To be filled}
+
+\DegreeType{待填写}
+\EnglishDegreeType{To be filled}
+
+%% 中图分类号
+\CLCNumber{待填写}
+%% UDC分类号
+\UDCNumber{待填写}
+%% 学校代码
+\UniversityCode{10008}
+\UniversityLogoFile{images/ustb.png}
+%% 密级
+\SecurityLevel{公开}
+%% 提交日期
+\SubmissionDate{}
+\EnglishSubmissionDate{}
+\makeatletter
+% 定义一个章节起始页控制变量（默认为true，表示用cleardoublepage）
+\newif\if@startondoublepage
+\@startondoublepagetrue
+
+% 重定义chapter命令，根据控制变量决定使用cleardoublepage还是clearpage
+\let\original@chapter\chapter
+\renewcommand\chapter{%
+  \if@startondoublepage
+    \cleardoublepage
+  \else
+    \clearpage
+  \fi
+  \thispagestyle{fancy}%
+  \global\@topnum\z@
+  \@afterindentfalse
+  \secdef\@chapter\@schapter}
+\makeatother
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%封面信息%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\TitlePage
+
+\SecondPage
+
+\ThirdPage
+
+\pagestyle{fancy}
+
+%% 中英文摘要
+\include{contents/abstract}
+%% 序言
+% \include{contents/preclude}
+%% 目录
+\tableofcontents
+
+\include{contents/list}
+
+\mainmatter
+\pagenumbering{arabic}\setcounter{page}{1}
+\pagestyle{fancy}
+
+\include{contents/chap1}
+\include{contents/chap2}
+\include{contents/chap3}
+\include{contents/chap4}
+\include{contents/chap5}
+\include{contents/chap6}
+
+\chapter*{参考文献}\addcontentsline{toc}{chapter}{参考文献}
+
+\printbibliography[heading=none]
+
+%% 附录
+% \include{contents/appendix}
+%% 致谢
+\include{contents/thanks}
+%% 作者简历及在学研究成果
+\include{contents/mresume}
+%% 关于论文使用授权的说明
+\postDeclarations
+%% 学位论文数据集
+\include{contents/dataset}
+
+\end{document}
