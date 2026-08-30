@@ -66,10 +66,11 @@ cd /root/workspace/ROS2swarm_w
 `start_simulation.sh` 当前默认参数在脚本开头配置：
 
 ```text
-WEBOTS_WORLD=command_world.wbt
-PATTERN=roundflocking_pattern
-NUMBER_ROBOTS=5
-ROBOT=burger
+WEBOTS_WORLD=command_world_2m.wbt
+PATTERN=navigation_pattern
+NUMBER_ROBOTS=3
+RANDOM_SEED=42
+ROBOT=e_puck
 SENSOR_TYPE=lidar
 WEBOTS_MODE=realtime
 WEBOTS_GUI=true
@@ -159,10 +160,10 @@ ROS2swarm_w/
 ├── add_robots_to_simulation.sh     # 已有仿真中追加机器人
 ├── docs/
 │   ├── robosar_webots_bridge_plan.md
-│   ├── EPUCK2_REAL_DEPLOYMENT_GUIDE.md
-│   ├── EPUCK2_ARENA_ADAPTATION_GUIDE.md
+│   ├── EPUCK2_PI_PUCK_END_TO_END_DEPLOYMENT.md
+│   ├── EPUCK2_REAL_DEPLOYMENT_FLOW.md
 │   ├── PT_NEAT_REAL_ROBOT_DEPLOYMENT_GUIDE.md
-│   └── REAL_EPUCK_DEPLOYMENT_IMPLEMENTATION_PLAN.md
+│   └── REAL_ROBOT_EXPERIMENT_METRICS.md
 └── src/
     ├── communication_interfaces/   # ROS2 自定义消息
     ├── launch_webots/              # Webots world、robot 生成、RoboSAR bridge adapter
@@ -346,10 +347,10 @@ voting_patterns/e_puck/voter_model_pattern.mp4
 ## 文档职责
 
 - [RoboSAR Webots 桥接说明](docs/robosar_webots_bridge_plan.md)：当前双容器启动、地图与 TF 口径。
-- [e-puck2 实机部署指南](docs/EPUCK2_REAL_DEPLOYMENT_GUIDE.md)：当前无硬件闭环候选版本的启动、标定和验收入口。
-- [e-puck2 场地适配指南](docs/EPUCK2_ARENA_ADAPTATION_GUIDE.md)：真实场地、地图、标记和机器人参数适配。
+- [e-puck2 + Pi-puck 端到端部署指南](docs/EPUCK2_PI_PUCK_END_TO_END_DEPLOYMENT.md)：当前唯一正式实物启动、标定和验收流程。
+- [e-puck2 实物部署现场流程](docs/EPUCK2_REAL_DEPLOYMENT_FLOW.md)：现场按顺序执行的精简部署清单。
 - [PT/NEAT 实机策略契约](docs/PT_NEAT_REAL_ROBOT_DEPLOYMENT_GUIDE.md)：策略输入、输出和 sim-to-real 约束。
-- [e-puck 实物部署代码实施方案](docs/REAL_EPUCK_DEPLOYMENT_IMPLEMENTATION_PLAN.md)：2026-07-19 实施前计划快照；其中“当前状态”只描述当日初始基线，完成情况以实机部署指南为准。
+- [实物实验指标记录规范](docs/REAL_ROBOT_EXPERIMENT_METRICS.md)：现场实验的成功判定和资源指标记录格式。
 - [ROS2swarm 配置参考](src/ros2swarm/config/CONFIG.md)：包级参数含义；不替代本 README 或平台运维手册。
 - `src/launch_webots/assets/**/docs` 是 Webots 传感器资产资料，不是 MASAR 操作手册。
 
@@ -363,13 +364,16 @@ python3 -m pytest tests/test_webots_start_scripts.py
 python3 -m pytest src/launch_webots/test/test_environment_generator.py
 python3 -m pytest src/ros2swarm/test/test_real_robot_geometry.py \
        src/ros2swarm/test/test_real_robot_policy_mode.py \
-       src/ros2swarm/test/test_real_robot_safety.py \
        src/ros2swarm/test/test_real_robot_state.py \
        src/ros2swarm/test/test_global_info_bridge.py \
+       src/ros2swarm/test/test_fiducial_detector.py \
+       src/ros2swarm/test/test_hardware_protection_layer.py \
        src/ros2swarm/test/test_roundflocking_neat_safety.py
+python3 scripts/validate_epuck2_mock_chain.py --all-patterns --robot-count 3
 ```
 
-这些入口覆盖平台启动、世界生成、真实机器人安全/几何、世界位姿桥和 NEAT 输入边界。
+这些入口覆盖平台启动、世界生成、顶视定位、共享保护层、世界位姿桥、PT/NEAT
+输入边界，以及三机器人六种 PT/NEAT 实物 mock 控制链。
 完整的 `src/ros2swarm/test` 还保留上游旧接口、launch 和代码风格检查，当前不作为平台发布门；
 若要运行它，先确认已经执行 `colcon build --symlink-install` 并 source `install/setup.bash`，
 再单独处理其中的历史测试债务。

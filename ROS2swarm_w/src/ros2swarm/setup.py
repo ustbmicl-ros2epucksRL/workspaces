@@ -128,16 +128,12 @@ setup(
             'lidar_layer = ros2swarm.sensor_layer.lidar_layer:main',
 
             # physical e-puck deployment adapters
-            'policy_scan_adapter = '
-            'ros2swarm.real_robot.policy_scan_adapter:main',
             'global_info_bridge = '
             'ros2swarm.real_robot.global_info_bridge:main',
             'marker_state_fuser = '
             'ros2swarm.real_robot.marker_state_fuser:main',
             'fiducial_detector = '
             'ros2swarm.real_robot.fiducial_detector:main',
-            'safety_supervisor = '
-            'ros2swarm.real_robot.safety_supervisor:main',
             'fake_epuck_driver = '
             'ros2swarm.real_robot.fake_epuck_driver:main',
             'fake_marker_tracker = '

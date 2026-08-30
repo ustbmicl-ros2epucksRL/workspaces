@@ -18,7 +18,7 @@ class SyntheticScanPublisher(Node):
         self.declare_parameters(
             namespace="",
             parameters=[
-                ("topic", "scan_raw"),
+                ("topic", "scan"),
                 ("frame_id", "laser_frame"),
                 ("beam_count", 360),
                 ("range_min", 0.06),

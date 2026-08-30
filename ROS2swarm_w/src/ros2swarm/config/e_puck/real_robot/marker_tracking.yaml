@@ -1,16 +1,30 @@
-/**:
+fiducial_detector:
   ros__parameters:
     backend: 'qr'
     image_topic: '/overhead_camera/image_raw'
     camera_info_topic: '/overhead_camera/camera_info'
     output_topic: '/marker_detections'
-    marker_size: 0.08
+    marker_size: 0.08    #测量二维码被检测外框的实际边长，单位米。
     aruco_dictionary: 'DICT_5X5_250'
-    max_reprojection_error: 4.0
-    marker_keys: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
-    entity_names: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
-    entity_types: [0, 2, 2, 1, 2]
+    max_reprojection_error: 4.0 #二维码角点重投影误差阈值，单位是像素。超过 4 像素则标记为无效。
+
+marker_state_fuser:
+  ros__parameters:
+    detections_topic: '/marker_detections'
+    output_topic: '/global_state'
+    # 识别到的二维码文本  这三个数组必须按相同下标一一对应
+    marker_keys: ['robot_0', 'robot_1', 'robot_2', 'navigation_target_0', 'navigation_target_1', 'navigation_target_2', 'flocking_target', 'transport_box', 'target_zone']
+    # 发布到 /global_info 的名称
+    entity_names: ['robot_0', 'robot_1', 'robot_2', 'navigation_target_0', 'navigation_target_1', 'navigation_target_2', 'flocking_target', 'transport_box', 'target_zone']
+    #0=机器人，1=物体，2=目标
+    entity_types: [0, 0, 0, 2, 2, 2, 2, 1, 2]
+    #例如：识别到二维码文本 robot_0 后，程序使用第 0 行：名称为 robot_0、类型为机器人，并发布到 /global_info["robots"]["robot_0"]
+    #二维码未居中或方向未对齐时测量。若二维码中心正好位于机器人旋转中心上方，并且二维码方向与机器人前进方向一致，可以保持 [0,0,0]
     marker_offsets: [
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
@@ -18,8 +32,25 @@
       0.0, 0.0, 0.0
     ]
     # [a, b, tx, c, d, ty]; replace with calibrated camera-plane transform.
+    #使用现场对应点和标定脚本计算
     camera_to_world: [1.0, 0.0, 0.0, 0.0, -1.0, 0.0]
-    max_marker_age: 0.30
-    velocity_alpha: 0.65
-    max_velocity_dt: 0.50
-    publish_period: 0.05
+    #当前模板参数假设：
+    #                     世界 +y
+    #                      ↑
+    #          (-1,+1)     |     (+1,+1)
+    #                      |
+    #世界 -x  ←────────── (0,0) ──────────→ 世界 +x
+    #                 相机光轴落点
+    #                      |
+    #          (-1,-1)     |     (+1,-1)
+    #                      ↓
+    #                   世界 -y
+    max_marker_age: 0.30 #超过 0.30 秒没有新的有效检测，就把实体标记为无效。
+    velocity_alpha: 0.65 #实物位置差分速度的平滑系数：数值越大越跟随当前测量，越小越平滑。
+    max_velocity_dt: 0.50 #两次检测间隔超过 0.50 秒时，不使用这段数据计算速度，避免速度尖峰。
+    publish_period: 0.05 #实物融合器每 0.05 秒发布一次，即约 20 Hz。
+
+    #相机帧率较低：可适当增大 max_marker_age；
+    #检测抖动明显：可减小 velocity_alpha；
+    #速度响应太慢：可增大 velocity_alpha；
+    #二维码识别误差普遍超过 4 像素：检查相机和二维码尺寸后再调整阈值；

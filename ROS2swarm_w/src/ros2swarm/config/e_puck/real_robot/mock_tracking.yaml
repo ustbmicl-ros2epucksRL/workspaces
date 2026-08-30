@@ -1,9 +1,13 @@
 /**:
   ros__parameters:
-    marker_keys: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
-    entity_names: ['robot_0', 'navigation_target_0', 'flocking_target', 'transport_box', 'target_zone']
-    entity_types: [0, 2, 2, 1, 2]
+    marker_keys: ['robot_0', 'robot_1', 'robot_2', 'navigation_target_0', 'navigation_target_1', 'navigation_target_2', 'flocking_target', 'transport_box', 'target_zone']
+    entity_names: ['robot_0', 'robot_1', 'robot_2', 'navigation_target_0', 'navigation_target_1', 'navigation_target_2', 'flocking_target', 'transport_box', 'target_zone']
+    entity_types: [0, 0, 0, 2, 2, 2, 2, 1, 2]
     marker_offsets: [
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
+      0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,
       0.0, 0.0, 0.0,

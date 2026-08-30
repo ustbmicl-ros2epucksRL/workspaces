@@ -28,6 +28,9 @@ class FakeEPuckDriver(Node):
                 ("update_period", 0.02),
                 ("odom_frame", "odom"),
                 ("base_frame", "base_link"),
+                ("initial_x", 0.0),
+                ("initial_y", 0.0),
+                ("initial_yaw", 0.0),
             ],
         )
         self.cmd_timeout = float(self.get_parameter("cmd_timeout").value)
@@ -39,9 +42,9 @@ class FakeEPuckDriver(Node):
         self.base_frame = str(self.get_parameter("base_frame").value)
         self.command = Twist()
         self.last_command_time = None
-        self.x = 0.0
-        self.y = 0.0
-        self.yaw = 0.0
+        self.x = float(self.get_parameter("initial_x").value)
+        self.y = float(self.get_parameter("initial_y").value)
+        self.yaw = float(self.get_parameter("initial_yaw").value)
         self.publisher = self.create_publisher(
             Odometry, str(self.get_parameter("odom_topic").value), 10
         )

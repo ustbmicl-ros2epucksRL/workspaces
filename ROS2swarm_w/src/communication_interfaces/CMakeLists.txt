@@ -40,7 +40,6 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/MarkerDetectionArray.msg"
   "msg/TrackedEntity.msg"
   "msg/TrackedEntityArray.msg"
-  "msg/SafetyState.msg"
   DEPENDENCIES builtin_interfaces std_msgs geometry_msgs
 )
 

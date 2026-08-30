@@ -12,7 +12,6 @@
 #    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #    See the License for the specific language governing permissions and
 #    limitations under the License.
-from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from ros2swarm.abstract_pattern import AbstractPattern
 from ros2swarm.utils import setup_node
@@ -70,8 +69,8 @@ class HardwareProtectionLayer(AbstractPattern):
             parameters=[
                 ('hardware_protection_layer_max_range', 0.0),   # 最大探测距离
                 ('hardware_protection_layer_min_range', 0.0),   # 最小探测距离
-                ('hardware_protection_layer_front_attraction', 0.0),# 前方吸引因子
-                ('hardware_protection_layer_threshold', 0), # 阈值，用于检测障碍物的条件
+                ('hardware_protection_layer_front_attraction', 0.0),  # 前方吸引因子
+                ('hardware_protection_layer_threshold', 0),  # 障碍光束阈值
                 ('max_translational_velocity', 0.0),    # 最大平移速度
                 ('max_rotational_velocity', 0.0),    # 最大旋转速度
                 ('wheel_separation', 0.0),
@@ -89,7 +88,7 @@ class HardwareProtectionLayer(AbstractPattern):
         self.current_angles = None
         self.current_ranges = None
         self.has_received_drive_command = False
-        
+
         # 订阅传感器数据（range_data 话题）
         self.range_data_subscription = self.create_subscription(
             RangeData,
@@ -97,7 +96,7 @@ class HardwareProtectionLayer(AbstractPattern):
             self.swarm_command_controlled(self.range_data_callback),
             qos_profile=qos_profile_sensor_data
         )
-        
+
         # 创建发布器，发布经过调整后的速度命令（cmd_vel 话题）
         self.publisher_cmd_vel = self.create_publisher(Twist,
                                                        self.get_namespace() + '/cmd_vel',
@@ -127,6 +126,14 @@ class HardwareProtectionLayer(AbstractPattern):
         self.publisher_cmd_vel.publish(Twist())
         super().destroy_node()
 
+    def on_swarm_stop(self):
+        """Forward STOP immediately instead of waiting for driver timeout."""
+        self.publisher_cmd_vel.publish(Twist())
+
+    def swarm_command_false_case(self):
+        """Keep the final command at zero while the swarm is stopped."""
+        self.publisher_cmd_vel.publish(Twist())
+
     def vector_calc(self):
         """
         计算是否需要进行避障，并返回对应的避障向量。
@@ -139,14 +146,18 @@ class HardwareProtectionLayer(AbstractPattern):
         # 设置避障的最大距离
         avoid_distance = self.param_max_range
         # 计算避障向量
-        direction, obstacle_free = ScanCalculationFunctions.potential_field(self.param_front_attraction,
-                                                     avoid_distance,
-                                                     self.param_max_rotational_velocity,
-                                                     self.param_max_translational_velocity,
-                                                     self.param_min_range,
-                                                     self.param_threshold,
-                                                     self.current_ranges,
-                                                     self.angles)
+        direction, obstacle_free = (
+            ScanCalculationFunctions.potential_field(
+                self.param_front_attraction,
+                avoid_distance,
+                self.param_max_rotational_velocity,
+                self.param_max_translational_velocity,
+                self.param_min_range,
+                self.param_threshold,
+                self.current_ranges,
+                self.angles,
+            )
+        )
         limited_linear, limited_angular = limit_twist_to_wheel_speed(
             direction.linear.x,
             direction.angular.z,
@@ -201,10 +212,11 @@ class HardwareProtectionLayer(AbstractPattern):
             return
 
         [adjust, direction] = self.vector_calc()
-        
+
         if adjust:
             self.publisher_cmd_vel.publish(direction)
             self.get_logger().debug('Adjusting to"%s"' % direction)
+
 
 def main(args=None):
     setup_node.init_and_spin(args, HardwareProtectionLayer)

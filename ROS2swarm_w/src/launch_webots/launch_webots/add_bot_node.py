@@ -12,8 +12,8 @@ from launch_webots.environment_generator import (
     occupied_positions_from_global_info,
 )
 
-DEFAULT_SPAWN_MIN = -1.0
-DEFAULT_SPAWN_MAX = 1.0
+DEFAULT_SPAWN_MIN = -0.8
+DEFAULT_SPAWN_MAX = 0.8
 
 
 def _epuck_proto(name: str, x: float, y: float, z: float) -> str:

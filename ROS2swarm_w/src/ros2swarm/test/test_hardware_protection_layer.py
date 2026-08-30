@@ -55,3 +55,17 @@ class TestHardwareProtectionLayer(unittest.TestCase):
         self.node.range_data_callback(self._range_data())
 
         self.node.publisher_cmd_vel.publish.assert_called_once()
+
+    def test_stop_is_forwarded_immediately(self):
+        self.node.on_swarm_stop()
+
+        stop = self.node.publisher_cmd_vel.publish.call_args.args[0]
+        self.assertEqual(stop.linear.x, 0.0)
+        self.assertEqual(stop.angular.z, 0.0)
+
+    def test_callbacks_keep_output_zero_before_start(self):
+        self.node.swarm_command_false_case()
+
+        stop = self.node.publisher_cmd_vel.publish.call_args.args[0]
+        self.assertEqual(stop.linear.x, 0.0)
+        self.assertEqual(stop.angular.z, 0.0)

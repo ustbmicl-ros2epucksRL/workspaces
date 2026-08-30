@@ -99,17 +99,45 @@ def test_platform_generated_world_aligns_timestep_without_changing_native_defaul
     assert "basicTimeStep 20" in platform_output.read_text(encoding="utf-8")
 
 
-def test_default_webots_dry_runs_match_pre_change_baseline():
+def test_default_robosar_dry_run_matches_pre_change_baseline():
     baseline_env = {
         "ROS2SWARM_VNC_DISPLAY": ":99",
         "ROS2SWARM_XAUTHORITY": "/tmp/masar-platform-baseline.xauth",
     }
 
-    for script_name in ("start_simulation.sh", "start_robosar_webots.sh"):
-        result = _run_script(script_name, "--dry-run", "--no-vglrun", env=baseline_env)
-        assert result.returncode == 0, result.stdout + result.stderr
-        assert result.stderr == ""
-        assert result.stdout == _baseline(script_name)
+    script_name = "start_robosar_webots.sh"
+    result = _run_script(script_name, "--dry-run", "--no-vglrun", env=baseline_env)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stderr == ""
+    assert result.stdout == _baseline(script_name)
+
+
+def test_default_simulation_targets_reproducible_three_epuck_2m_scene():
+    result = _run_script(
+        "start_simulation.sh",
+        "--dry-run",
+        "--no-vglrun",
+        env={
+            "ROS2SWARM_VNC_DISPLAY": ":99",
+            "ROS2SWARM_XAUTHORITY": "/tmp/masar-platform-baseline.xauth",
+        },
+    )
+
+    output = result.stdout + result.stderr
+    assert result.returncode == 0, output
+    for argument in (
+        "webots_world:=command_world_2m.wbt",
+        "pattern:=navigation_pattern",
+        "number_robots:=3",
+        "robot:=e_puck",
+        "sensor_type:=lidar",
+        "x_min:=-0.75",
+        "x_max:=0.75",
+        "y_min:=-0.75",
+        "y_max:=0.75",
+        "random_seed:=42",
+    ):
+        assert argument in output
 
 
 def test_robosar_platform_stream_environment_is_forwarded_explicitly():

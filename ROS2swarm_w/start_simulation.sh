@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# 作用：构建 ROS2swarm Webots 仿真相关包，并启动默认的 transport 仿真场景。
+# 作用：构建 ROS2swarm Webots 仿真相关包，并启动默认的 navigation 仿真场景。
 # 用法：./start_simulation.sh [选项]
 # 可直接修改的全局变量：
-#   WEBOTS_WORLD / PATTERN / NUMBER_ROBOTS / TOTAL_ROBOTS
+#   WEBOTS_WORLD / PATTERN / NUMBER_ROBOTS / TOTAL_ROBOTS / RANDOM_SEED
 #   LOG_LEVEL / ROBOT / SENSOR_TYPE
 #   WEBOTS_MODE / WEBOTS_GUI
 #   X_MIN / X_MAX / Y_MIN / Y_MAX / MIN_DISTANCE / Z_HEIGHT
@@ -16,33 +16,34 @@
 set -euo pipefail
 
 # Webots 世界模板文件名。
-# Webots 世界模板文件名。
-WEBOTS_WORLD="command_world.wbt"                # 例如：command_world.wbt
+WEBOTS_WORLD="command_world_2m.wbt"                # 例如：command_world.wbt
 # 行为模式 launch 名称。
-PATTERN="roundflocking_pattern"
+PATTERN="navigation_pattern"
 # 例如：transport_pattern、roundflocking_pattern、navigation_pattern、aggregation_pattern、attraction_pattern、dispersion_pattern、drive_pattern。
 #transport_pattern_neat、roundflocking_pattern_neat、navigation_pattern_neat
 # 当前实例中实际生成并启动的机器人数量。
-NUMBER_ROBOTS="5"                               # 正整数
+NUMBER_ROBOTS="3"                               # 正整数
 # 实验总机器人数量，主要用于测量/日志相关流程。
 TOTAL_ROBOTS="10"                               # 正整数
+# 固定随机布局，便于重复运行时复现初始状态；留空可恢复随机布局。
+RANDOM_SEED=""                                # 整数或空字符串
 # ROS 日志级别。
 LOG_LEVEL="info"                                # debug、info、warn、error、fatal
 # Webots 运行模式和渲染开关。
 WEBOTS_MODE="realtime"                          # pause、realtime、fast、rendering
 WEBOTS_GUI="true"                               # true、false
 # 机器人类型。
-ROBOT="burger"                                  # e_puck、burger
+ROBOT="e_puck"                                  # e_puck、burger
 # 传感器类型。
 SENSOR_TYPE="lidar"                             # lidar、ir
 # 随机生成区域 X 最小值。
-X_MIN="-1.0"                                    # 浮点数
+X_MIN="-0.75"                                    # 浮点数  -1.0
 # 随机生成区域 X 最大值。
-X_MAX="1.0"                                     # 浮点数
+X_MAX="0.75"                                     # 浮点数  1.0
 # 随机生成区域 Y 最小值。
-Y_MIN="-1.0"                                    # 浮点数
+Y_MIN="-0.75"                                    # 浮点数  -1.0
 # 随机生成区域 Y 最大值。
-Y_MAX="1.0"                                     # 浮点数
+Y_MAX="0.75"                                     # 浮点数  1.0
 # 初始生成时机器人/任务物体之间的最小间距。
 MIN_DISTANCE="0.2"                              # 正浮点数
 # 机器人生成高度。
@@ -90,6 +91,8 @@ usage() {
     当前实例中实际生成并启动的机器人数量；正整数。
   TOTAL_ROBOTS
     实验总机器人数量，主要给测量/日志流程使用；正整数。
+  RANDOM_SEED
+    机器人和任务物体布局的随机种子；整数，留空表示每次随机。
   LOG_LEVEL
     ROS 日志级别；可选 debug、info、warn、error、fatal。
   WEBOTS_MODE
@@ -228,6 +231,10 @@ launch_cmd=(
   num_obstacles:=${NUM_OBSTACLES}
   transport_object_shape:=${TRANSPORT_OBJECT_SHAPE}
 )
+
+if [[ -n "$RANDOM_SEED" ]]; then
+  launch_cmd+=(random_seed:=${RANDOM_SEED})
+fi
 
 if resolve_use_vglrun "$USE_VGLRUN"; then
   launch_cmd=(vglrun -d "$VGLRUN_DEVICE" "${launch_cmd[@]}")

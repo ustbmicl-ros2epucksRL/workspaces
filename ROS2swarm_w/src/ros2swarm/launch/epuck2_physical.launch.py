@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Launch one e-puck2 policy through the physical safety pipeline."""
+"""Launch one physical e-puck2 with the same control chain as Webots."""
 
 import os
 
@@ -10,35 +10,34 @@ from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
+def _as_bool(context, name):
+    return LaunchConfiguration(name).perform(context).lower() == "true"
+
+
 def _launch_setup(context):
     package_dir = get_package_share_directory("ros2swarm")
+    config_dir = os.path.join(package_dir, "config", "e_puck")
     robot_id = int(LaunchConfiguration("robot_id").perform(context))
     robot_name = f"robot_{robot_id}"
     pattern = LaunchConfiguration("pattern").perform(context)
-    mock_hardware = (
-        LaunchConfiguration("mock_hardware").perform(context).lower()
-        == "true"
+    is_transport = "transport_pattern" in pattern
+
+    pattern_config = os.path.join(
+        config_dir,
+        "movement_pattern",
+        "basic",
+        f"{pattern}.yaml",
     )
-    start_driver = (
-        LaunchConfiguration("start_driver").perform(context).lower()
-        == "true"
-    )
-    start_lidar = (
-        LaunchConfiguration("start_lidar").perform(context).lower()
-        == "true"
-    )
-    start_policy = (
-        LaunchConfiguration("start_policy").perform(context).lower()
-        == "true"
-    )
-    start_scan_adapter = (
-        LaunchConfiguration("start_scan_adapter").perform(context).lower()
-        == "true"
-    )
-    start_safety = (
-        LaunchConfiguration("start_safety").perform(context).lower()
-        == "true"
-    )
+    if not os.path.exists(pattern_config):
+        raise RuntimeError(f"Pattern config does not exist: {pattern_config}")
+
+    mock_hardware = _as_bool(context, "mock_hardware")
+    start_driver = _as_bool(context, "start_driver")
+    start_lidar = _as_bool(context, "start_lidar")
+    start_lidar_layer = _as_bool(context, "start_lidar_layer")
+    start_policy = _as_bool(context, "start_policy")
+    start_protection = _as_bool(context, "start_hardware_protection")
+
     driver_package = LaunchConfiguration("driver_package").perform(context)
     driver_executable = LaunchConfiguration("driver_executable").perform(
         context
@@ -52,22 +51,7 @@ def _launch_setup(context):
         LaunchConfiguration("lidar_baudrate").perform(context)
     )
     lidar_scan_mode = LaunchConfiguration("lidar_scan_mode").perform(context)
-    lidar_sensor_yaw = float(
-        LaunchConfiguration("lidar_sensor_yaw").perform(context)
-    )
     lidar_frame = f"{robot_name}/laser_frame"
-    config_dir = os.path.join(package_dir, "config", "e_puck")
-    pattern_config = os.path.join(
-        config_dir,
-        "movement_pattern",
-        "basic",
-        f"{pattern}.yaml",
-    )
-    if not os.path.exists(pattern_config):
-        raise RuntimeError(f"Pattern config does not exist: {pattern_config}")
-    safety_config = os.path.join(config_dir, "real_robot", "safety.yaml")
-    input_max_range = 0.35 if pattern == "navigation_pattern" else 0.20
-    task_mode = pattern.replace("_pattern_neat", "").replace("_pattern", "")
 
     actions = []
     if mock_hardware:
@@ -81,6 +65,9 @@ def _launch_setup(context):
                     "use_sim_time": False,
                     "odom_frame": f"{robot_name}/odom",
                     "base_frame": f"{robot_name}/base_link",
+                    "initial_x": float(LaunchConfiguration("initial_x").perform(context)),
+                    "initial_y": float(LaunchConfiguration("initial_y").perform(context)),
+                    "initial_yaw": float(LaunchConfiguration("initial_yaw").perform(context)),
                 }],
             ),
             Node(
@@ -88,7 +75,11 @@ def _launch_setup(context):
                 executable="synthetic_scan_publisher",
                 namespace=robot_name,
                 output="screen",
-                parameters=[{"use_sim_time": False}],
+                parameters=[{
+                    "use_sim_time": False,
+                    "topic": "scan",
+                    "frame_id": lidar_frame,
+                }],
             ),
         ])
     elif start_driver:
@@ -97,7 +88,8 @@ def _launch_setup(context):
             executable=driver_executable,
             namespace=robot_name,
             output="screen",
-            # The e-puck2 driver's scan is IR/ToF, not the added 360 Lidar.
+            # The e-puck driver's scan is IR/ToF. Keep /scan for the added
+            # 360-degree lidar, matching the Webots topic contract.
             remappings=[("scan", "proximity_scan")],
             parameters=[{
                 "use_sim_time": False,
@@ -124,7 +116,7 @@ def _launch_setup(context):
                     "serial_port": lidar_serial_port,
                     "serial_baudrate": lidar_baudrate,
                     "frame_id": lidar_frame,
-                    "topic_name": "scan_raw",
+                    "topic_name": "scan",
                     "scan_mode": lidar_scan_mode,
                     "inverted": False,
                     "angle_compensate": True,
@@ -140,7 +132,7 @@ def _launch_setup(context):
                     "--x", LaunchConfiguration("lidar_x"),
                     "--y", LaunchConfiguration("lidar_y"),
                     "--z", LaunchConfiguration("lidar_z"),
-                    "--yaw", LaunchConfiguration("lidar_sensor_yaw"),
+                    "--yaw", LaunchConfiguration("lidar_yaw"),
                     "--pitch", "0.0",
                     "--roll", "0.0",
                     "--frame-id", f"{robot_name}/base_link",
@@ -149,22 +141,20 @@ def _launch_setup(context):
             ),
         ])
 
-    if start_scan_adapter:
+    # Reuse the same LaserScan -> RangeData layer as Webots. The policy also
+    # consumes /scan directly and performs its existing 12-ray sampling.
+    if start_lidar_layer:
         actions.append(Node(
             package="ros2swarm",
-            executable="policy_scan_adapter",
+            executable="lidar_layer",
             namespace=robot_name,
             output="screen",
-            parameters=[{
-                "use_sim_time": False,
-                "input_topic": "scan_raw",
-                "output_topic": "scan",
-                "n_rays": 12,
-                "input_max_range": input_max_range,
-                "sensor_yaw": lidar_sensor_yaw,
-                "output_frame": f"{robot_name}/base_link",
-            }],
+            parameters=[
+                os.path.join(config_dir, "sensor_specification.yaml"),
+                {"use_sim_time": False},
+            ],
         ))
+
     if start_policy:
         actions.append(Node(
             package="ros2swarm",
@@ -175,25 +165,25 @@ def _launch_setup(context):
                 pattern_config,
                 {
                     "use_sim_time": False,
-                    "bypass_protection": False,
+                    # Keep the policy and velocity mapping used by Webots.
+                    # This flag only disables simulation fallbacks and enables
+                    # stale-input handling for physical ROS communication.
                     "real_robot_mode": True,
                 },
             ],
         ))
-    if start_safety:
+
+    # bringup_patterns.launch.py bypasses this node for Transport, whose
+    # validated config publishes directly to cmd_vel. Preserve that behavior.
+    if start_protection and not is_transport:
         actions.append(Node(
             package="ros2swarm",
-            executable="safety_supervisor",
+            executable="hardware_protection_layer",
             namespace=robot_name,
             output="screen",
             parameters=[
-                safety_config,
-                {
-                    "use_sim_time": False,
-                    "robot_name": robot_name,
-                    "task_mode": task_mode,
-                    "sensor_yaw": lidar_sensor_yaw,
-                },
+                os.path.join(config_dir, "hardware_protection_layer.yaml"),
+                {"use_sim_time": False},
             ],
         ))
     return actions
@@ -204,10 +194,16 @@ def generate_launch_description():
         DeclareLaunchArgument("robot_id", default_value="0"),
         DeclareLaunchArgument("pattern", default_value="navigation_pattern"),
         DeclareLaunchArgument("mock_hardware", default_value="false"),
+        DeclareLaunchArgument("initial_x", default_value="0.0"),
+        DeclareLaunchArgument("initial_y", default_value="0.0"),
+        DeclareLaunchArgument("initial_yaw", default_value="0.0"),
         DeclareLaunchArgument("start_driver", default_value="false"),
         DeclareLaunchArgument("start_policy", default_value="true"),
-        DeclareLaunchArgument("start_scan_adapter", default_value="true"),
-        DeclareLaunchArgument("start_safety", default_value="true"),
+        DeclareLaunchArgument("start_lidar_layer", default_value="true"),
+        DeclareLaunchArgument(
+            "start_hardware_protection",
+            default_value="true",
+        ),
         DeclareLaunchArgument(
             "driver_package",
             default_value="epuck_ros2_driver",
@@ -228,6 +224,6 @@ def generate_launch_description():
         DeclareLaunchArgument("lidar_x", default_value="0.0"),
         DeclareLaunchArgument("lidar_y", default_value="0.0"),
         DeclareLaunchArgument("lidar_z", default_value="0.08"),
-        DeclareLaunchArgument("lidar_sensor_yaw", default_value="0.0"),
+        DeclareLaunchArgument("lidar_yaw", default_value="0.0"),
         OpaqueFunction(function=_launch_setup),
     ])

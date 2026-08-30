@@ -52,8 +52,9 @@
     # ===== 观测归一化配置 =====
     # actor 在VMAS环境训练时使用的坐标范围为 [-1, 1]
     # Webots仿真场景大小为 3.5x3.5，坐标范围为 [-1.75, 1.75]
+    # Webots仿真场景大小为 2.0x2.0，坐标范围为 [-1.0, 1.0]
     # world_scale用于将世界坐标归一化到网络期望的输入范围
-    world_scale: 1.75  # 归一化因子: 实际坐标 / world_scale -> [-1, 1]
+    world_scale: 1.0  # 归一化因子: 实际坐标 / world_scale -> [-1, 1]
     velocity_scale: 0.0       # <=0 表示使用 world_scale
     action_mapping: 'heading' # heading | projection | direct
     turn_gain: 2.0
