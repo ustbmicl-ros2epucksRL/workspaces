@@ -21,7 +21,7 @@ make docker-start
 http://127.0.0.1:18090
 ```
 
-`make docker-start` 是幂等命令。服务已经健康时不会重建或重启 8 个常驻服务；
+`make docker-start` 是幂等命令。服务已经健康时不会重建或重启 9 个常驻服务；
 前端源码发生变化时，它只使用固定 Node 容器更新 `frontend/dist`，Caddy 会直接
 读取新的挂载文件。
 
@@ -63,7 +63,7 @@ make docker-doctor
 
 ## 3. Compose 服务
 
-单一 `deploy/compose.yaml` 管理 8 个常驻服务：
+单一 `deploy/compose.yaml` 管理 9 个常驻服务：
 
 | 服务 | 职责 |
 |---|---|
@@ -75,6 +75,7 @@ make docker-doctor
 | `display` | Gazebo、RViz、Webots 的 Xvfb/noVNC 显示管理 |
 | `webots-guard` | Webots 兼容端口的 loopback 访问保护 |
 | `caddy` | 前端与全部浏览器请求的同源入口 |
+| `public-tunnel` | 经宿主机 HTTP 代理建立 Pinggy 匿名公网入口 |
 
 两个公开业务镜像固定为：
 
@@ -103,7 +104,7 @@ make docker-init
 5. 缺少 `masar_ws/devel/setup.bash` 时执行 `catkin_make`。
 6. 缺少 `ROS2swarm_w/install/setup.bash` 时执行 `colcon build`。
 7. 只在缺少平台依赖镜像时构建 API、sidecar、display 和 guard 镜像。
-8. 启动 8 个服务并等待全部健康。
+8. 启动 9 个服务并等待全部健康。
 
 首次 ROS 编译可能较慢，完整日志保存在：
 
@@ -180,7 +181,7 @@ GUI 也不重复显示相机视锥，以保证仿真和当前彩色画面流畅�
 ## 7. Run 与平台停止
 
 一次“启动环境”创建一个 Run。该模块的仿真、RViz、录包和业务进程都属于同一
-Run。页面“停止运行”或 Run stop API 会逆序停止该 Run 的全部进程，但 8 个常驻
+Run。页面“停止运行”或 Run stop API 会逆序停止该 Run 的全部进程，但 9 个常驻
 Compose 服务保持健康，便于开始下一次实验。
 
 整个平台关闭使用：
@@ -189,7 +190,7 @@ Compose 服务保持健康，便于开始下一次实验。
 make docker-stop
 ```
 
-该命令会先请求活动 Run 停止并等待 `current=null`，随后关闭全部 8 个服务，包括
+该命令会先请求活动 Run 停止并等待 `current=null`，随后关闭全部 9 个服务，包括
 两个业务 runtime。API 不可用时会给出警告后执行整个平台关闭。它不会向宿主机
 无关进程发送信号。
 
@@ -202,6 +203,7 @@ make docker-status
 make docker-logs
 make docker-logs SERVICE=api
 make docker-logs SERVICE=ros1-runtime
+make docker-logs SERVICE=public-tunnel
 ```
 
 查看当前 Run 与能力目录：
@@ -218,6 +220,22 @@ curl --noproxy '*' -fsS http://127.0.0.1:18090/api/v1/capabilities
 docker restart masar_ros1_srv-g
 docker restart masar_ros2_bridge-w
 ```
+
+### 公网临时分享
+
+`public-tunnel` 默认通过 `http://127.0.0.1:7897` 代理连接 Pinggy。代理地址不同时，
+在启动前设置：
+
+```bash
+export MASAR_PUBLIC_TUNNEL_PROXY=http://127.0.0.1:<代理端口>
+make docker-start
+```
+
+启动或查询状态时会输出类似 `https://<随机名称>.free.pinggy.net` 的公网 URL。
+匿名免费隧道最多持续 60 分钟，Compose 会自动重连并生成新 URL，因此分享前应重新
+执行 `make docker-status`。访客第一次打开免费 URL 时，需要在 Pinggy 安全提示页
+点击 `Enter site`。公网入口没有平台级身份认证或只读权限，获得 URL 的访客可能操作
+当前 Run，只应分享给可信人员。
 
 ## 9. 远程服务器访问
 

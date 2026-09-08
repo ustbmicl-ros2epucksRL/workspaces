@@ -12,3 +12,5 @@ __pycache__/
 # Local MASAR platform test and visual-review artifacts
 /masar-simulation-platform/test-results/
 /masar-simulation-platform/frontend/.superpowers/
+/reference_repos
+/DEFORM

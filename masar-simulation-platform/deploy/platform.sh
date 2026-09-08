@@ -27,6 +27,7 @@ readonly -a SERVICES=(
   webots-guard
   display
   caddy
+  public-tunnel
 )
 readonly -a PLATFORM_PORTS=(
   18090 18100 18101 18102 18111 18112 18121 18122 18131 18132 18133 18141
@@ -41,7 +42,7 @@ Commands:
   start           Build missing assets/overlays and start the complete platform
   stop            Stop the active Run, then stop all Compose-managed platform services
   status          Show Compose, gateway and active Run status
-  logs [SERVICE]  Show recent logs for all services or one of the eight platform services
+  logs [SERVICE]  Show recent logs for all services or one of the nine platform services
   doctor          Run read-only host and port prerequisite checks
 EOF
 }
@@ -51,8 +52,22 @@ log() {
 }
 
 print_access_hint() {
+  local public_url
   log "browser: $gateway_url"
   log "remote SSH: LocalForward 18090 127.0.0.1:18090"
+  public_url="$(public_tunnel_url)"
+  if [[ -n "$public_url" ]]; then
+    log "public URL (anonymous, expires within 60 minutes): $public_url"
+  else
+    warn "public tunnel URL is not available; check: make docker-logs SERVICE=public-tunnel"
+  fi
+}
+
+public_tunnel_url() {
+  compose logs --no-color public-tunnel 2>/dev/null \
+    | sed -nE 's#.*(https://[[:alnum:]-]+\.free\.pinggy\.net).*#\1#p' \
+    | tail -n 1 \
+    || true
 }
 
 warn() {
@@ -348,6 +363,7 @@ expected = {
     "webots-guard",
     "display",
     "caddy",
+    "public-tunnel",
 }
 raw = os.environ.get("COMPOSE_PS_OUTPUT", "").strip()
 if not raw:
@@ -480,7 +496,7 @@ wait_for_platform() {
   local interval="${MASAR_PLATFORM_READY_INTERVAL_SECONDS:-2}"
   for attempt in $(seq 1 "$attempts"); do
     if platform_healthy; then
-      log "all eight services are healthy"
+      log "all nine services are healthy"
       return 0
     fi
     sleep "$interval"
@@ -518,7 +534,7 @@ command_start() {
 
   compose down --remove-orphans >/dev/null 2>&1 || true
   migrate_legacy_runtimes
-  log "starting eight Compose-managed services"
+  log "starting nine Compose-managed services"
   compose up -d --remove-orphans
   wait_for_platform
   log "ready: $gateway_url"

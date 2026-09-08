@@ -100,12 +100,16 @@ case "${1:-}" in
       exit 0
     fi
     if [[ "$*" == *" config --services"* ]]; then
-      printf '%s\n' api ros1-runtime ros2-runtime ros1-web ros2-web webots-guard display caddy
+      printf '%s\n' api ros1-runtime ros2-runtime ros1-web ros2-web webots-guard display caddy public-tunnel
+      exit 0
+    fi
+    if [[ "$*" == *" logs "* && "$*" == *public-tunnel* ]]; then
+      printf 'public-tunnel-1 | https://masar-test.free.pinggy.net\n'
       exit 0
     fi
     if [[ "$*" == *" ps "* || "$*" == *" ps" ]]; then
       if [[ -f "$FAKE_STATE/compose-running" ]]; then
-        for service in api ros1-runtime ros2-runtime ros1-web ros2-web webots-guard display caddy; do
+        for service in api ros1-runtime ros2-runtime ros1-web ros2-web webots-guard display caddy public-tunnel; do
           printf '{"Service":"%s","State":"running","Health":"healthy"}\n' "$service"
         done
       fi
@@ -334,6 +338,7 @@ def test_start_reports_one_to_one_gateway_and_ssh_entry(tmp_path: Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
     assert "http://127.0.0.1:18090" in result.stdout
     assert "LocalForward 18090 127.0.0.1:18090" in result.stdout
+    assert "https://masar-test.free.pinggy.net" in result.stdout
     assert "18089" not in result.stdout
     assert "7897" not in result.stdout
 

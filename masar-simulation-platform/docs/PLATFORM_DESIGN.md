@@ -31,7 +31,7 @@
 | 可视化技术 | Robot Web Tools 为 ROS 数据主链路；Webots/Gazebo/RViz 统一使用 noVNC；Webots 通过 VirtualGL 使用宿主 NVIDIA X server |
 | 历史能力 | MVP 归档运行资料和 rosbag；回放与多实验对比后续实现 |
 | 对外入口 | 绑定 `127.0.0.1:18090`；本机直接访问，远程服务器通过 SSH 隧道访问 |
-| 部署入口 | `make docker-start`；8 个常驻服务由一个 Compose 项目管理 |
+| 部署入口 | `make docker-start`；9 个常驻服务由一个 Compose 项目管理 |
 | 开发模式 | 不区分生产/开发 Compose；依赖在镜像，平台源码/配置大多只读挂载，整个 ROS workspace 读写挂载以复用构建结果 |
 
 ### 2.1 Workspace 与文档边界
@@ -388,13 +388,16 @@ ROS Web sidecar 必须加载对应业务消息 overlay，而不只连接 ROS gra
 ### 9.2 访问边界
 
 - 平台默认监听 `127.0.0.1:18090`。
+- `public-tunnel` 可通过宿主机 HTTP 代理提供临时 HTTPS 分享 URL；它是出站 SSH 隧道，
+  不会新增宿主机监听端口。
 - 代理默认监听 `127.0.0.1:18101` 和 `127.0.0.1:18102`。
 - ROS Web 与 noVNC 内部端口不绑定公网接口。Webots R2025a 原生进程固定 wildcard listen，平台用健康检查覆盖的 IPv4/IPv6 INPUT 守卫拒绝所有非 loopback 的 `18141` 连接；只有 Caddy 能从 loopback 反代该流。
 - 浏览器只访问 `18090` 的同源 HTTP/WebSocket 路径。
 - API 校验 `Origin`、`run_id` 和一次性命令 token。
 - 不把 Docker socket、shell 或 rosbridge 原始发布能力暴露给浏览器。
 
-单用户不等于无安全边界。SSH 隧道负责用户认证，平台仍需防止浏览器误发任意命令。
+单用户不等于无安全边界。SSH 隧道负责远程服务器访问时的用户认证；Pinggy 匿名分享
+不提供平台登录，获得 URL 的访客可能操作当前 Run，只应分享给可信人员。
 
 ## 10. 归档与后续回放
 
@@ -465,6 +468,10 @@ Host masar-platform
 
 连接后本地浏览器访问 `http://127.0.0.1:18090`。也可以使用 Cursor/VS Code 的
 Ports 面板只转发 `18090`。
+
+若宿主机可通过 `127.0.0.1:7897` 访问外网，可由 Compose 的 `public-tunnel` 服务
+生成临时 HTTPS 分享地址。该地址由 Pinggy 匿名服务分配，最多持续 60 分钟，重连后
+会变化；详细命令与权限限制见运维手册。
 
 本执行环境可以操作服务器文件、命令、Docker 容器以及可达网页，并可使用服务器侧的自动化 Chromium 做页面检查。它不能在没有远程调试或配对的情况下直接控制用户 Windows 上已经打开的 Chrome，也不能绕过服务器网络、校园 VPN 或 SSH 可达性限制。
 

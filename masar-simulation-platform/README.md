@@ -45,7 +45,7 @@ http://127.0.0.1:18090
 ```bash
 make docker-doctor   # 只读环境检查
 make docker-start    # 初始化并启动完整平台
-make docker-status   # 查看 8 个服务和当前 Run
+make docker-status   # 查看 9 个服务和当前 Run
 make docker-logs     # 查看聚合日志
 make docker-stop     # 先停止当前 Run，再关闭完整平台
 ```
@@ -60,6 +60,11 @@ LocalForward 18090 127.0.0.1:18090
 
 连接服务器后，本地浏览器仍访问 `http://127.0.0.1:18090`。不需要单独转发 Agent、
 rosbridge、noVNC、Webots 或 Docker 端口。
+
+平台还会通过宿主机 `127.0.0.1:7897` HTTP 代理建立匿名 Pinggy 公网隧道。执行
+`make docker-status` 可以查看当前公网 URL。免费 URL 最多保持 60 分钟，隧道自动
+重连后会生成新 URL；访客首次打开时需要在 Pinggy 安全提示页点击 `Enter site`。
+公网链接没有平台级登录或只读权限，只应分享给可信人员。
 
 ## 平台模块
 

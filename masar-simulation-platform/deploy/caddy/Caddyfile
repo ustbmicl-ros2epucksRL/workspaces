@@ -7,7 +7,8 @@
 	}
 }
 
-http://127.0.0.1:18090 {
+# Local gateway remains 127.0.0.1:18090; accept the Host header used by a public tunnel.
+http://:18090 {
 	bind 127.0.0.1
 	@traversal path_regexp traversal (?i)(?:^|/)(?:\.{2}|%2e%2e)(?:/|$)
 	respond @traversal "invalid path" 400

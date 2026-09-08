@@ -248,6 +248,26 @@ services:
       retries: 3
       start_period: 3s
     restart: unless-stopped
+  public-tunnel:
+    build:
+      context: ..
+      dockerfile: deploy/public-tunnel/Dockerfile
+      network: host
+      args:
+        MASAR_BUILD_PROXY: ${MASAR_PUBLIC_TUNNEL_PROXY:-http://127.0.0.1:7897}
+    network_mode: host
+    environment:
+      MASAR_PUBLIC_TUNNEL_PROXY: ${MASAR_PUBLIC_TUNNEL_PROXY:-http://127.0.0.1:7897}
+    depends_on:
+      caddy:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, /usr/local/bin/public-tunnel-health]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
 
 volumes:
   platform-runs:

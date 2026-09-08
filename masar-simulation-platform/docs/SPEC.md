@@ -15,7 +15,7 @@
 
 原始业务环境验证始于 2026-07-31；当前部署、显示与传感器契约更新于 2026-08-04。
 
-1. 单一 Compose 项目管理 `ros1-runtime`、`ros2-runtime`、`ros1-web`、`ros2-web`、`api`、`display`、`webots-guard` 和 `caddy` 8 个常驻服务。
+1. 单一 Compose 项目管理 `ros1-runtime`、`ros2-runtime`、`ros1-web`、`ros2-web`、`api`、`display`、`webots-guard`、`caddy` 和 `public-tunnel` 9 个常驻服务。
 2. ROS1 runtime 使用公开固定 digest `talent18/masar_ros1_srv-g:v2@sha256:3639f637...`；ROS2 runtime 使用 `talent18/masar_ros2_bridge-w:v2@sha256:5550e15e...`。二者均使用 host network、host IPC、GPU/X11 和 workspace bind mount。
 3. ROS1/ROS2 `dynamic_bridge`、六个场景、真实浏览器数据面和三模块 Run 生命周期均已验收；当前证据统一记录在 `ACCEPTANCE.md`。
 4. ROS Web Tools 网关由独立 ROS1/ROS2 sidecar 提供，不安装进业务 runtime。
@@ -505,7 +505,7 @@ MVP summary 可以包含运行时长、最终状态、数据缺失、任务数�
 
 ## 16. Rollback Plan
 
-1. `make docker-stop` 先停止活动 Run，再关闭 8 个 Compose 服务；不会删除业务镜像、现有 ROS 工程、Run 归档或无关容器。
+1. `make docker-stop` 先停止活动 Run，再关闭 9 个 Compose 服务；不会删除业务镜像、现有 ROS 工程、Run 归档或无关容器。
 2. 现有工程兼容改动按独立提交回滚；因为参数默认关闭，紧急情况下不设置平台参数即可恢复原路径。
 3. 平台模式参数保持默认关闭；在无平台 Run 时仍可进入对应 runtime 执行原顶层脚本和 Qt GUI。
 4. 场景 catalog 版本不兼容时拒绝启动，不自动降级或执行旧清单中的原始命令。
@@ -566,7 +566,7 @@ masar-simulation-platform/
 基线版本：Python 3.10；FastAPI 0.115.6；Uvicorn 0.34.0；Pydantic 2.10.5；PyYAML 6.0.2；SQLite 3.37+ WAL；固定构建镜像中的 Node.js 22.23.2；React 19.0.0；Vite 6.4.3；TypeScript 5.7.2；Vitest 4.1.10；Playwright 1.62.1；`roslib` 2.1.0。依赖 lockfile 必须记录这些直接依赖和所有传递依赖。Vite 与 Playwright 从原计划版本升级到同代安全修复版本，因为 2026-08-01 的 npm audit 已确认原版本存在公开漏洞；`ros3d` 1.1.0 与旧 ROS2D/EaselJS 链均不进入当前生产依赖。
 
 当前部署由 `make docker-start` 调用 `deploy/platform.sh`，并由单一
-`deploy/compose.yaml` 管理 8 个服务。两个 Runtime Agent 是业务 runtime 的容器
+`deploy/compose.yaml` 管理 9 个服务。两个 Runtime Agent 是业务 runtime 的容器
 主进程，容器重启后自动恢复。平台不挂载 Docker socket到 API、前端、Agent 或
 sidecar。依赖保存在镜像中；workspace、API/场景源码、sidecar/display/guard 配置和
 前端构建产物采用 bind mount，修改普通源码不要求重建服务镜像。
@@ -579,7 +579,7 @@ Compose 中的每个服务，以及未来的 host API 和两个 Runtime Agent，
 
 ### 19.2 端口和 URL
 
-除下述 Webots 原生实现例外，全部服务绑定 `127.0.0.1`，Caddy 是唯一外部入口。Webots R2025a 固定使用 `QHostAddress::Any` 且没有 bind-host 参数，因此 `webots-guard` 在 host network 对 `18141` 安装 IPv4/IPv6 INPUT 规则并拒绝所有非 loopback 流量；其有效访问边界仍是 `127.0.0.1:18141`。
+除下述 Webots 原生实现例外，全部服务绑定 `127.0.0.1`，Caddy 是内部 HTTP 入口；可选的 `public-tunnel` 通过宿主机 HTTP 代理建立出站 SSH 隧道，不新增监听端口。Webots R2025a 固定使用 `QHostAddress::Any` 且没有 bind-host 参数，因此 `webots-guard` 在 host network 对 `18141` 安装 IPv4/IPv6 INPUT 规则并拒绝所有非 loopback 流量；其有效访问边界仍是 `127.0.0.1:18141`。
 
 宿主机 workspace 支持任意绝对路径，但必须保持以下同级布局：
 
@@ -599,6 +599,10 @@ LocalForward 18090 127.0.0.1:18090
 
 本地和 SSH 转发后的浏览器地址保持一致，不单独暴露 Agent、rosbridge、noVNC、Webots
 或 Docker 端口。
+
+配置 `MASAR_PUBLIC_TUNNEL_PROXY=http://127.0.0.1:7897` 后，`public-tunnel` 会输出
+Pinggy 匿名 HTTPS URL；免费 URL 最多持续 60 分钟，重连后 URL 可能变化，且不提供
+平台级身份认证或只读权限。
 
 Gazebo/RViz 显示 sidecar 必须把 noVNC 绑定到 IPv4 loopback，把底层 VNC 显式绑定到 `127.0.0.1` 与 `::1`，不得依赖 x11vnc 的隐式 IPv6 默认值。每个显示组件启动后必须立即原子记录 `run_id`、PID、PGID 和 `/proc` start ticks；停止前必须重新证明所有权，PID 被复用时拒绝发送信号。
 

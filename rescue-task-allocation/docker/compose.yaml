@@ -1,0 +1,53 @@
+name: rescue-task-allocation
+
+services:
+  rescue-task-allocation:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        UID: ${RESEARCH_UID:-1006}
+        GID: ${RESEARCH_GID:-1006}
+    container_name: rescue-task-allocation
+    working_dir: /root/workspace/rescue-task-allocation
+    user: "${RESEARCH_UID:-1006}:${RESEARCH_GID:-1006}"
+    network_mode: host
+    ipc: host
+    gpus: all
+    group_add:
+      - video
+    devices:
+      - /dev/dri:/dev/dri
+    environment:
+      DISPLAY: ${DISPLAY:-${MASAR_HOST_DISPLAY:-:0}}
+      XAUTHORITY: /tmp/.docker.xauth
+      QT_X11_NO_MITSHM: "1"
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: all
+      MPLBACKEND: ${MPLBACKEND:-Agg}
+    volumes:
+      # Read all research material, including MASAR and ROS2swarm, without write access.
+      - type: bind
+        source: /home/zjc/workspace
+        target: /root/workspace
+        read_only: true
+      # The mother project is the only writable research tree.
+      - type: bind
+        source: /home/zjc/workspace/rescue-task-allocation
+        target: /root/workspace/rescue-task-allocation
+        read_only: false
+      - type: bind
+        source: ${HOST_XAUTHORITY:-${XAUTHORITY:-/home/zjc/.Xauthority}}
+        target: /tmp/.docker.xauth
+        read_only: true
+      - type: bind
+        source: /tmp/.X11-unix
+        target: /tmp/.X11-unix
+        read_only: false
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /home/research/.cache
+    stdin_open: true
+    tty: true
+    command: ["bash"]

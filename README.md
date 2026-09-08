@@ -13,6 +13,11 @@
 - `masar-simulation-platform` 是上述 ROS1/ROS2 仿真的统一 Web 控制与观测入口，按“群行为验证、探索组运行、完整搜救”三个模块组织场景。
 - `DEFORM` 是可变编队导航的参考/上游工作区；`masar_ws` 内当前使用的是 `src/robosar_deform_vendor` 里的 ROS1 vendor 拷贝。
 
+## 论文与第四章研究
+
+- [硕士学位论文整体骨架](thesis_overall_framework.md)：论文总问题、章节关系、第三章/第四章/第五章衔接和总体实验路线。
+- [第四章研究实施方案](rescue-task-allocation/chapter4/chapter4_interaction_aware_graph_matching_research_plan.md)：第四章问题定义、方法、实验顺序和 MASAR 适配边界。
+
 ## 目录说明
 
 
@@ -55,7 +60,7 @@ LocalForward 18090 127.0.0.1:18090
 
 平台提供六个受限场景，归入群行为与控制验证、探索组独立运行、完整搜救三个模块。
 一次 Run 包含该场景的全部业务、仿真、RViz 和录制进程；页面停止会关闭整个 Run，
-但保留 8 个常驻 Compose 服务供下一次运行。关闭整个平台使用 `make docker-stop`。
+但保留 9 个常驻 Compose 服务供下一次运行。关闭整个平台使用 `make docker-stop`。
 
 完整命令、首次构建、远程访问与排障见
 [平台使用与运维手册](masar-simulation-platform/docs/OPERATIONS.md)。
@@ -104,7 +109,7 @@ flowchart LR
 
 | 子系统 | 当前推荐环境 | 说明 |
 |---|---|---|
-| `masar-simulation-platform` | Docker Compose v2 + NVIDIA/X11 | 单一入口管理 8 个常驻服务；宿主机不要求安装 ROS、Node.js 或平台 Python 依赖 |
+| `masar-simulation-platform` | Docker Compose v2 + NVIDIA/X11 | 单一入口管理 9 个常驻服务；宿主机不要求安装 ROS、Node.js 或平台 Python 依赖 |
 | `ROS2swarm_w` | `talent18/masar_ros2_bridge-w:v2` | 镜像提供 ROS2 Humble、Webots 和桥接依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
 | `masar_ws` | `talent18/masar_ros1_srv-g:v2` | 镜像提供 ROS1 Noetic、Gazebo 和系统依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
 | `multi-agent-neat` | 项目自身 Python/PyTorch 环境 | 训练流程尚未接入统一平台，按其独立 README 创建环境 |

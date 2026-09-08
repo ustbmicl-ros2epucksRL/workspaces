@@ -1,0 +1,28 @@
+#!/bin/sh
+set -eu
+
+proxy_url="${MASAR_PUBLIC_TUNNEL_PROXY:-http://127.0.0.1:7897}"
+proxy_address="${proxy_url#http://}"
+
+case "$proxy_url" in
+  http://*:* ) ;;
+  * )
+    echo "MASAR_PUBLIC_TUNNEL_PROXY must be an http://host:port URL" >&2
+    exit 64
+    ;;
+esac
+
+echo "Connecting to Pinggy through HTTP proxy $proxy_address"
+echo "The anonymous public URL expires after 60 minutes and is renewed on reconnect."
+
+exec ssh \
+  -T \
+  -p 443 \
+  -o ExitOnForwardFailure=yes \
+  -o ServerAliveInterval=20 \
+  -o ServerAliveCountMax=3 \
+  -o StrictHostKeyChecking=accept-new \
+  -o UserKnownHostsFile=/tmp/known_hosts \
+  -o "ProxyCommand=nc -X connect -x $proxy_address %h %p" \
+  -R 0:127.0.0.1:18090 \
+  a.pinggy.io
