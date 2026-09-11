@@ -9,7 +9,7 @@
     bypass_protection: true
     
     # ===== VMAS best_actor.pt 配置 =====
-    actor_path: 'best_actor.pt'
+    actor_path: 'best_actor3.pt'
     actor_device: 'cpu'
     
     # ===== 速度限制 (基于 E-puck v2 安全参数) =====
