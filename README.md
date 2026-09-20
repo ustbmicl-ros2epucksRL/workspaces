@@ -13,22 +13,21 @@
 - `masar-simulation-platform` 是上述 ROS1/ROS2 仿真的统一 Web 控制与观测入口，按“群行为验证、探索组运行、完整搜救”三个模块组织场景。
 - `DEFORM` 是可变编队导航的参考/上游工作区；`masar_ws` 内当前使用的是 `src/robosar_deform_vendor` 里的 ROS1 vendor 拷贝。
 
-## 论文与第四章研究
 
-- [硕士学位论文整体骨架](thesis_overall_framework.md)：论文总问题、章节关系、第三章/第四章/第五章衔接和总体实验路线。
-- [第四章研究实施方案](rescue-task-allocation/chapter4/chapter4_interaction_aware_graph_matching_research_plan.md)：第四章问题定义、方法、实验顺序和 MASAR 适配边界。
 
 ## 目录说明
 
 
-| 目录                                                                         | 定位                         | 主要内容                                                                                      |
-| -------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- |
-| [multi-agent-neat](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/README.md) | 独立 Git 仓库，作为本工作区的学习算法子模块索引 | VMAS 任务上的 Pure-NEAT、EA-RL、warm-start EA-RL、BenchMARL/heuristic baseline、结果分析与视频导出         |
-| [VectorizedMultiAgentSimulator](VectorizedMultiAgentSimulator/README.md) | VMAS 开源环境                  | PyTorch 向量化 2D 多智能体仿真器，为 `multi-agent-neat` 提供 `flocking`、`transport`、`coordinated_navigation` 等训练/评估环境            |
-| [ROS2swarm_w](ROS2swarm_w/README.md)                                     | ROS2 + Webots 群行为验证        | Webots 场景、`robot_N` 节点、e-puck/Burger 支持、ROS2swarm 行为策略、NEAT/VMAS 策略加载、RoboSAR Webots 桥接适配 |
-| [masar_ws](masar_ws/README.md)                                           | ROS1 RoboSAR 搜救系统          | 多机器人 SLAM、任务生成、任务分配、导航控制、GUI、Gazebo 搜救闭环、Webots 桥接闭环、应急响应组与 DEFORM 集成                     |
-| [masar-simulation-platform](masar-simulation-platform/README.md) | 统一仿真验证与可视化平台 | React 工作台、运行编排 API、Gazebo/Webots/RViz noVNC、ROS Web sidecar 和运行归档 |
-| [DEFORM](DEFORM/)                                                        | 可变编队导航参考项目                 | ROS1 Noetic 下的多机器人可变编队规划与局部避障参考实现                                                         |
+| 目录                                                                                                | 定位                         | 主要内容                                                                                                    |
+| ------------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------- |
+| [multi-agent-neat](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/README.md) | 独立 Git 仓库，作为本工作区的学习算法子模块索引 | VMAS 任务上的 Pure-NEAT、EA-RL、warm-start EA-RL、BenchMARL/heuristic baseline、结果分析与视频导出                       |
+| [VectorizedMultiAgentSimulator](VectorizedMultiAgentSimulator/README.md)                          | VMAS 开源环境                  | PyTorch 向量化 2D 多智能体仿真器，为 `multi-agent-neat` 提供 `flocking`、`transport`、`coordinated_navigation` 等训练/评估环境 |
+| [ROS2swarm_w](ROS2swarm_w/README.md)                                                              | ROS2 + Webots 群行为验证        | Webots 场景、`robot_N` 节点、e-puck/Burger 支持、ROS2swarm 行为策略、NEAT/VMAS 策略加载、RoboSAR Webots 桥接适配               |
+| [masar_ws](masar_ws/README.md)                                                                    | ROS1 RoboSAR 搜救系统          | 多机器人 SLAM、任务生成、任务分配、导航控制、GUI、Gazebo 搜救闭环、Webots 桥接闭环、应急响应组与 DEFORM 集成                                   |
+| [masar-simulation-platform](masar-simulation-platform/README.md)                                  | 统一仿真验证与可视化平台               | React 工作台、运行编排 API、Gazebo/Webots/RViz noVNC、ROS Web sidecar 和运行归档                                       |
+
+
+
 
 ## 统一平台快速开始
 
@@ -80,7 +79,6 @@ LocalForward 18090 127.0.0.1:18090
 
 ![完整搜救模块：Gazebo、RViz、任务分配与响应组状态](平台展示2.png)
 
-
 ## 总体关系
 
 ```mermaid
@@ -107,13 +105,15 @@ flowchart LR
 
 ## 运行环境
 
-| 子系统 | 当前推荐环境 | 说明 |
-|---|---|---|
-| `masar-simulation-platform` | Docker Compose v2 + NVIDIA/X11 | 单一入口管理 9 个常驻服务；宿主机不要求安装 ROS、Node.js 或平台 Python 依赖 |
-| `ROS2swarm_w` | `talent18/masar_ros2_bridge-w:v2` | 镜像提供 ROS2 Humble、Webots 和桥接依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
-| `masar_ws` | `talent18/masar_ros1_srv-g:v2` | 镜像提供 ROS1 Noetic、Gazebo 和系统依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
-| `multi-agent-neat` | 项目自身 Python/PyTorch 环境 | 训练流程尚未接入统一平台，按其独立 README 创建环境 |
-| `VectorizedMultiAgentSimulator` | Python + PyTorch | `multi-agent-neat` 使用的 VMAS 环境源码依赖 |
+
+| 子系统                             | 当前推荐环境                            | 说明                                                              |
+| ------------------------------- | --------------------------------- | --------------------------------------------------------------- |
+| `masar-simulation-platform`     | Docker Compose v2 + NVIDIA/X11    | 单一入口管理 9 个常驻服务；宿主机不要求安装 ROS、Node.js 或平台 Python 依赖               |
+| `ROS2swarm_w`                   | `talent18/masar_ros2_bridge-w:v2` | 镜像提供 ROS2 Humble、Webots 和桥接依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
+| `masar_ws`                      | `talent18/masar_ros1_srv-g:v2`    | 镜像提供 ROS1 Noetic、Gazebo 和系统依赖；可独立运行，平台 Compose 以固定 digest 复用该镜像 |
+| `multi-agent-neat`              | 项目自身 Python/PyTorch 环境            | 训练流程尚未接入统一平台，按其独立 README 创建环境                                   |
+| `VectorizedMultiAgentSimulator` | Python + PyTorch                  | `multi-agent-neat` 使用的 VMAS 环境源码依赖                              |
+
 
 两个 ROS 镜像只提供运行环境和系统依赖，当前工作区以读写挂载进入容器，因此修改
 `masar_ws` 或 `ROS2swarm_w` 源码不需要重新制作业务镜像。首次平台启动会自动生成
@@ -250,15 +250,16 @@ cd masar_ws
 
 ### VMAS 算法结果
 
-`multi-agent-neat` 是独立 Git 子模块，GitHub 上的结果链接会跳转到子模块仓库查看。当前 [`multi-agent-neat/results/analysis`](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/tree/main/results/analysis) 的正式摘要覆盖 `flocking`、`transport` 和 `coordinated_navigation`。下表只列这三个已整理的主结果；其它任务目录中的产物不代表已经纳入 workspace 总结口径。
+`multi-agent-neat` 是独立 Git 子模块，GitHub 上的结果链接会跳转到子模块仓库查看。当前 `[multi-agent-neat/results/analysis](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/tree/main/results/analysis)` 的正式摘要覆盖 `flocking`、`transport` 和 `coordinated_navigation`。下表只列这三个已整理的主结果；其它任务目录中的产物不代表已经纳入 workspace 总结口径。
 
 结果中的 Final IQM 来自统一的算法训练对比报告，质量指标来自各任务独立的 rollout 评估，不能把不同任务的 IQM 直接横向比较。
 
-| 任务 | 当前选中策略 | 训练对比摘要 | 独立质量评估 | 结果入口 |
-| --- | --- | --- | --- | --- |
-| `vmas/flocking` | EA-RL warmup，`rec + layerwise + 50 gen` | 6 seeds，Final IQM `-24.189`；相对 heuristic 提升 `39.637%`，相对 NEAT recurrent 提升 `12.071%` | TP-CERL 环误差 `0.073`，队形均匀性 `0.814`（均为 policy-level 汇总） | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/flocking_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/best_policy_trajectory.png)、[视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/video_index.md) |
-| `vmas/transport` | EA-RL warmup，`rec + layerwise + 50 gen` | 6 seeds，Final IQM `80.086`；相对 heuristic 提升 `4.099%`，相对 NEAT recurrent 提升 `44.990%` | TP-CERL 成功率 `81.9%`，超时惩罚平均完成步数 `327.626`；heuristic 的对应参考为 `263.305`，仍需按任务目标分别解读 | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/transport_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/best_policy_trajectory.png)、[视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/video_index.md) |
-| `vmas/coordinated_navigation`（报告标题：Navigation） | EA-RL warmup，`rec + layerwise + 30 gen` | 6 seeds，Final IQM `7.314`；相对 heuristic 提升 `1.384%`，相对 NEAT recurrent 提升 `12.109%` | TP-CERL 成功率 `97.4%`、碰撞率 `1.8%`；heuristic 参考为 `100.0%` / `0.0%` | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/coordinated_navigation_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/best_policy_trajectory.png)、[时间线图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/best_policy_timeline.png) |
+
+| 任务                                             | 当前选中策略                                  | 训练对比摘要                                                                               | 独立质量评估                                                                          | 结果入口                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| ---------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `vmas/flocking`                                | EA-RL warmup，`rec + layerwise + 50 gen` | 6 seeds，Final IQM `-24.189`；相对 heuristic 提升 `39.637%`，相对 NEAT recurrent 提升 `12.071%` | TP-CERL 环误差 `0.073`，队形均匀性 `0.814`（均为 policy-level 汇总）                           | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/flocking_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/best_policy_trajectory.png)、[视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/flocking/video_index.md)                                                                                 |
+| `vmas/transport`                               | EA-RL warmup，`rec + layerwise + 50 gen` | 6 seeds，Final IQM `80.086`；相对 heuristic 提升 `4.099%`，相对 NEAT recurrent 提升 `44.990%`   | TP-CERL 成功率 `81.9%`，超时惩罚平均完成步数 `327.626`；heuristic 的对应参考为 `263.305`，仍需按任务目标分别解读 | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/transport_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/best_policy_trajectory.png)、[视频索引](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/transport/video_index.md)                                                                            |
+| `vmas/coordinated_navigation`（报告标题：Navigation） | EA-RL warmup，`rec + layerwise + 30 gen` | 6 seeds，Final IQM `7.314`；相对 heuristic 提升 `1.384%`，相对 NEAT recurrent 提升 `12.109%`    | TP-CERL 成功率 `97.4%`、碰撞率 `1.8%`；heuristic 参考为 `100.0%` / `0.0%`                  | [算法对比](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/algorithm_training_comparison.md)、[质量指标](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/coordinated_navigation_quality_metrics.md)、[轨迹图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/best_policy_trajectory.png)、[时间线图](https://github.com/ustbmicl-ros2epucksRL/multi-agent-neat/blob/main/results/analysis/coordinated_navigation/best_policy_timeline.png) |
 
 
 可视化结果还包括：

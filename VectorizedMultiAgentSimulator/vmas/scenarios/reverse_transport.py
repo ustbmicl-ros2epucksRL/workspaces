@@ -57,6 +57,7 @@ class Scenario(BaseScenario):
         )
         self.package.goal = goal
         world.add_landmark(self.package)
+        self.spawn_bounds = (-1.0, 1.0)
 
         return world
 
@@ -69,10 +70,7 @@ class Scenario(BaseScenario):
             ),
             device=self.world.device,
             dtype=torch.float32,
-        ).uniform_(
-            -1.0,
-            1.0,
-        )
+        ).uniform_(*self.spawn_bounds)
 
         self.package.set_pos(
             package_pos,
@@ -113,43 +111,35 @@ class Scenario(BaseScenario):
                 batch_index=env_index,
             )
 
-        self.package.goal.set_pos(
-            torch.zeros(
-                (
-                    (1, self.world.dim_p)
-                    if env_index is not None
-                    else (self.world.batch_dim, self.world.dim_p)
-                ),
-                device=self.world.device,
-                dtype=torch.float32,
-            ).uniform_(
-                -1.0,
-                1.0,
+        package_occupied = self.package.state.pos.unsqueeze(1)
+        if env_index is not None:
+            package_occupied = package_occupied[env_index].unsqueeze(0)
+        ScenarioUtils.spawn_entities_randomly(
+            [self.package.goal],
+            self.world,
+            env_index,
+            min_dist_between_entities=(
+                self.package.shape.circumscribed_radius()
+                + self.package.goal.shape.radius
+                + 0.01
             ),
-            batch_index=env_index,
+            x_bounds=self.spawn_bounds,
+            y_bounds=self.spawn_bounds,
+            occupied_positions=package_occupied,
         )
 
+        on_goal = self.world.is_overlapping(self.package, self.package.goal)
+        dist_to_goal = torch.linalg.vector_norm(
+            self.package.state.pos - self.package.goal.state.pos, dim=1
+        )
         if env_index is None:
-            self.package.global_shaping = (
-                torch.linalg.vector_norm(
-                    self.package.state.pos - self.package.goal.state.pos, dim=1
-                )
-                * self.shaping_factor
-            )
-            self.package.on_goal = torch.zeros(
-                self.world.batch_dim,
-                dtype=torch.bool,
-                device=self.world.device,
-            )
+            self.package.global_shaping = dist_to_goal * self.shaping_factor
+            self.package.on_goal = on_goal
         else:
             self.package.global_shaping[env_index] = (
-                torch.linalg.vector_norm(
-                    self.package.state.pos[env_index]
-                    - self.package.goal.state.pos[env_index]
-                )
-                * self.shaping_factor
+                dist_to_goal[env_index] * self.shaping_factor
             )
-            self.package.on_goal[env_index] = False
+            self.package.on_goal[env_index] = on_goal[env_index]
 
     def reward(self, agent: Agent):
         is_first = agent == self.world.agents[0]
