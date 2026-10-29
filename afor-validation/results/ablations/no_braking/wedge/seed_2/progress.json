@@ -1,0 +1,12 @@
+{
+  "update": 500,
+  "validation": {
+    "update": 500,
+    "episodes": 16,
+    "successes": 0,
+    "collisions": 16,
+    "timeouts": 0,
+    "bypasses": 0
+  },
+  "training_elapsed_s": 2191.7188733834773
+}

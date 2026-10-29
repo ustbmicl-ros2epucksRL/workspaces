@@ -1,0 +1,414 @@
+{
+  "archive": "/home/zjc/workspace/afor-validation-archive-20261019-212429",
+  "training_source_hash": "dfbf2426525cec1dde92cc17aa743fe8184eeb66c22db70bf35690a1f0c3e2cd",
+  "retained_files": {
+    "src/afor_local/environment.py": {
+      "original_path": "repaired/src/afor_repaired/local/environment.py",
+      "original_sha256": "c35f70a5518d3f3aba5b51b8a85636bab539e87cb21b123ef7f28bcb4cb16e0a"
+    },
+    "src/afor_local/observation.py": {
+      "original_path": "repaired/src/afor_repaired/local/observation.py",
+      "original_sha256": "f6f55312f2e99d87fbdfafb89c633861f20d603b88bb029d2aad90cbf8f8bf66"
+    },
+    "src/afor_local/policy.py": {
+      "original_path": "repaired/src/afor_repaired/local/policy.py",
+      "original_sha256": "1e3095dc8a4bee1f3b61ce31f6644328dbeb14d0fe1431d9ea9c59f3a4ee1182"
+    },
+    "src/afor_local/barrier.py": {
+      "original_path": "repaired/src/afor_repaired/local/barrier.py",
+      "original_sha256": "f471617bc721002563d19be1cfd58c343a50116c4dcf9b49134f5213c2cc53b0"
+    },
+    "src/afor_local/train.py": {
+      "original_path": "repaired/src/afor_repaired/local/train.py",
+      "original_sha256": "87552c092e34e468e62a3e26058ea4ac807de7a7d19a887be3b6c68076f9bba1"
+    },
+    "src/afor_local/evaluate.py": {
+      "original_path": "repaired/src/afor_repaired/local/evaluate.py",
+      "original_sha256": "6a55af2a4f60cf0428b10cd189a93b042c08b7567864fcc32fc06f65ff347fdd"
+    },
+    "src/afor_local/__init__.py": {
+      "original_path": "repaired/src/afor_repaired/local/__init__.py",
+      "original_sha256": "06b1960bb9bbd15edd8426ef048e50feb0f6e3234ccec7124f55f21d44397ef0"
+    },
+    "src/afor_local/swept_geometry.py": {
+      "original_path": "repaired/src/afor_repaired/learning/swept.py",
+      "original_sha256": "d4256f86357d38417dc312187a997782dee0da857dde3b2024e4c6e200c04608"
+    },
+    "src/afor_local/collision_geometry.py": {
+      "original_path": "repaired/src/afor_repaired/collision_geometry.py",
+      "original_sha256": "e25b96f4a70d8d0b3ab099e088267652e25c940a799186dd0d915b9a8980819b"
+    },
+    "tests/test_local.py": {
+      "original_path": "repaired/tests/test_local.py",
+      "original_sha256": "a8a2ca2d245938bda0e29fb35fdee02e61f932271dd565a5432fd64d8560b9ff"
+    },
+    "tests/test_local_deployment.py": {
+      "original_path": "repaired/tests/test_local_deployment.py",
+      "original_sha256": "26753e97391546115bc6fd3c7169cd6e00ff8a20dfd5f1e31cdf78dec53de358"
+    },
+    "deployment/__init__.py": {
+      "original_path": "deployment/__init__.py",
+      "original_sha256": "c2b1e005532a6167e5db71c53bc1211ced96da63b95801eda85058825655bea7"
+    },
+    "deployment/local_controller.py": {
+      "original_path": "deployment/local_controller.py",
+      "original_sha256": "253f84c4e5375bb4e0817c2e15b9b3059ae5c145a2ce7bd81cb8fd749f5aa25d"
+    },
+    "tools/run_local_study.py": {
+      "original_path": "tools/run_local_study.py",
+      "original_sha256": "e7c3f9d49bf6975258f717c3d0ed48d4134a9e3bf34ff86074e9576e14159c3c"
+    },
+    "tools/plot_local_trace.py": {
+      "original_path": "tools/plot_local_trace.py",
+      "original_sha256": "188bf5a9f33076bc893d31e113180dd97f2b34888882797f8b574857784a639b"
+    },
+    "tools/plot_local_scene.py": {
+      "original_path": "tools/plot_local_scene.py",
+      "original_sha256": "a7b7ba403b5e07823c078540719cca40e1c7c8ec4a6322eedca517da8755d630"
+    },
+    "tools/export_local_deployment.py": {
+      "original_path": "tools/export_local_deployment.py",
+      "original_sha256": "3391a5f9b0bf8faf09cac9bd4affef2c3d9944e76a9dc59e92ffccda793a2d88"
+    },
+    "tools/validate_local_deployment.py": {
+      "original_path": "tools/validate_local_deployment.py",
+      "original_sha256": "3bfe786bdd2b7d068bdf5d85014bd6c4fd9a0a69057461b3c63e045f96866409"
+    },
+    "tools/evaluate_narrowing_widths.py": {
+      "original_path": "tools/evaluate_narrowing_widths.py",
+      "original_sha256": "80dab57edd3cc86eb09507a30f5d7978c65962db62638d4a2cc06fd28e08cff2"
+    },
+    "models/line/actor.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/policy_bundle/line/actor.pt",
+      "original_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8"
+    },
+    "deployment/line/actor.ts": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/deployment_bundle/line/actor.ts",
+      "original_sha256": "0d55b3abc60d5fa7e5bb0af9610de41b8b213445ca2ffdb21a49e81e6cde9e14"
+    },
+    "results/training/line/config.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/config.json",
+      "original_sha256": "b29741e297940e41182bdf26354946f45b3d36ea23a494a2d3b6ee5790559ed6"
+    },
+    "results/training/line/study.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/study.json",
+      "original_sha256": "c65249c98e3cbf7121342cc1088467c671c9cce884e31ed5ada1969536d48f45"
+    },
+    "results/training/line/metrics.jsonl": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/metrics.jsonl",
+      "original_sha256": "b35de8da7672c990c95dfa207fbaa36160ab30fbc8bbe0fff7a45484f686a81f"
+    },
+    "results/training/line/validation.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/validation.json",
+      "original_sha256": "5f3b6d0214d066e4cef38df1a1ed481a647a1abcfa90d9647e0f6a154e0fc8fb"
+    },
+    "results/training/line/final_test.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/final_test.json",
+      "original_sha256": "248ef8b36e0971af998909ffb64f1729853d1c2ab238db00c76eef772cd06bbb"
+    },
+    "results/training/line/final_test_trace.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/line_barrier_seed2/final_test_trace.pt",
+      "original_sha256": "6c4a244309422c1d49408a38f751efa865ffbf12be9117f1163cf2062a6088b7"
+    },
+    "models/circle/actor.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/policy_bundle/circle/actor.pt",
+      "original_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125"
+    },
+    "deployment/circle/actor.ts": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/deployment_bundle/circle/actor.ts",
+      "original_sha256": "ff8ff78b24b5123357efd8f46d186f2a502a32a8d183e42c62afa4201ecf20ab"
+    },
+    "results/training/circle/config.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/config.json",
+      "original_sha256": "3e76eefc36c31e096e8d0983ff2bf5c070b1298f943a78896a429e1b71e950d5"
+    },
+    "results/training/circle/study.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/study.json",
+      "original_sha256": "13ca7e75428dc9f0eca9e5c4931237ae0241694b833be35b4047fa44973df5f3"
+    },
+    "results/training/circle/metrics.jsonl": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/metrics.jsonl",
+      "original_sha256": "8d364704fa086a9e146be12e5d5201aa81d035be8136a1286b99c5e42e7855d1"
+    },
+    "results/training/circle/validation.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/validation.json",
+      "original_sha256": "10b51c85f34f8b9970d75571b50283e6509531ce2729b77d19a022f13107742e"
+    },
+    "results/training/circle/final_test.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/final_test.json",
+      "original_sha256": "f0f113aa88386ad82e6ca449bc771f111bea9927b364a0100128a7cbd34a396b"
+    },
+    "results/training/circle/final_test_trace.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/circle_barrier_seed2/final_test_trace.pt",
+      "original_sha256": "f574886a5337bc6be9f0ae39b7c16cb659a66cd822f4de9af942801b7a4e39c8"
+    },
+    "models/wedge/actor.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/policy_bundle/wedge/actor.pt",
+      "original_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2"
+    },
+    "deployment/wedge/actor.ts": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/deployment_bundle/wedge/actor.ts",
+      "original_sha256": "634d3a79e32d26812fbd18737eac98b1066010e65b610a1c8fa7eb8bd1eb322a"
+    },
+    "results/training/wedge/config.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/config.json",
+      "original_sha256": "6f2f7b6db506a504a88aad415f980ddbd0c889c2694d5bb7476de5aa9be64ec4"
+    },
+    "results/training/wedge/study.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/study.json",
+      "original_sha256": "7c4194804009973e5838f305343f224b9f2a5fdda6897390a8acabff978d94da"
+    },
+    "results/training/wedge/metrics.jsonl": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/metrics.jsonl",
+      "original_sha256": "a85ec10557d54c51e288073013d630445c8187f63ea5f349b4d3d40d1978692a"
+    },
+    "results/training/wedge/validation.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/validation.json",
+      "original_sha256": "d7ae95566b7d6e0f7414c5a5c3bca3b2e741ddb7b1648d3de2c9d4a5f83a4a7a"
+    },
+    "results/training/wedge/final_test.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/final_test.json",
+      "original_sha256": "502e24766359158f99492ead4b9fd163116c77882e6e436f4282d8b789bcd2ce"
+    },
+    "results/training/wedge/final_test_trace.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/wedge_barrier_seed2/final_test_trace.pt",
+      "original_sha256": "f485d849b3c5d8444372c95b3238a7a41a11d47e1e63979e45e5c80e1d0ddf12"
+    },
+    "deployment/contract.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/deployment_bundle/contract.json",
+      "original_sha256": "252c3b9e94a18f4de079feca69ff4d9b3101dd7acb007fc34dd627ac52718f65"
+    },
+    "results/deployment_validation.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/deployment_bundle/validation.json",
+      "original_sha256": "2c9a331d74497fdf9a5e1be04656e5e82a6016c5787920f0f856a96f4e61e90b"
+    },
+    "results/widths/line_seed2_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.6.pt",
+      "original_sha256": "dedec4b290cadb7e69c60b51e86c151cf74ff06f1b0f16088ff1f69ee4e24d72"
+    },
+    "results/widths/wedge_seed2_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.5.pt",
+      "original_sha256": "b3fdde2c6aa20a79d110332abe0b94fc07f1c12d8240cc0adbe22d89afc4e6f8"
+    },
+    "results/widths/wedge_seed3_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.5.pt",
+      "original_sha256": "8b1bfb9679db4cd0696d7486f1ade608228f5670f669ddbc2b2c83879f8d28bf"
+    },
+    "results/widths/wedge_seed3_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.6.pt",
+      "original_sha256": "86703a781950dfdb3f2d63165921b4767c40d6d212253e50bf4302c34553ba6e"
+    },
+    "results/widths/line_seed2_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.3.pt",
+      "original_sha256": "ebb96ee881986eb263c566a37d13a4395dd510f3809250fc4537a055babd70e0"
+    },
+    "results/widths/wedge_seed2.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2.json",
+      "original_sha256": "8133f52b524da797631ba3985d89d5713dc6834f6d2cd038953ea08d3ca7116f"
+    },
+    "results/widths/line_seed3_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.5.pt",
+      "original_sha256": "e1a4a5e76801463b5698c0a5e55f853a8243613eba703b8dc9549f30330c14c1"
+    },
+    "results/widths/line_seed2_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.5.pt",
+      "original_sha256": "8b9c348ffcce701cf893852b3fa67b6c186962a68f6d6378d152bd8bb5634ccb"
+    },
+    "results/widths/circle_seed3_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.2.pt",
+      "original_sha256": "b223a97681d873b20c5aab93c2825abc8f865f2219bd275e0ec3d7e1c38aca49"
+    },
+    "results/widths/circle_seed2.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2.json",
+      "original_sha256": "bcfb8fdc95df480d7ba8b49132f293815effb73d3129724924565069331c51bb"
+    },
+    "results/widths/circle_seed3_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.1.pt",
+      "original_sha256": "9e4db4e0c005a1d6b5df6dc45aaa357311d67b65ec2ca91c0cf9231cec6f9f33"
+    },
+    "results/widths/circle_seed3_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.4.pt",
+      "original_sha256": "d87e0642324e2ff5932834e455dee4a05fd23c224dd18e39983efa5e1680c006"
+    },
+    "results/widths/circle_seed3_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.3.pt",
+      "original_sha256": "82ad9eaa0c6db625b0ea981ad978d15d05b7ff2c7523cca34f2fa2f44cb46472"
+    },
+    "results/widths/line_seed2_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.2.pt",
+      "original_sha256": "1bcae23e08a7a75216c0b94c1b77369a431e440554b84fef23ccc00d432d0a62"
+    },
+    "results/widths/wedge_seed2_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.1.pt",
+      "original_sha256": "aa1ab478d46821359f9f61a0422dd921d2b7058314c24ae652511891ccf26872"
+    },
+    "results/widths/wedge_seed3_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.1.pt",
+      "original_sha256": "2032792eb6ff7a5012e2501b7f440e5400816bcff11f90ec13665e08a0c8aba9"
+    },
+    "results/widths/circle_seed2_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.3.pt",
+      "original_sha256": "9fd3883d14c166b48bcee2f17c2311cbc553a49b006d004b6e5c543e17d2bd7d"
+    },
+    "results/widths/wedge_seed2_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.2.pt",
+      "original_sha256": "9a6d9bf98290e576bb7b49a81daa5076b7260578a82d40cc4fb17cc345810eaf"
+    },
+    "results/widths/line_seed2_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.1.pt",
+      "original_sha256": "002637224cbcc8d336bdcbfac2bb72894ec4dced8c25a63a1f5a435bb19bf0c1"
+    },
+    "results/widths/wedge_seed2_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.3.pt",
+      "original_sha256": "8f2b01d72bdeb8a3156727009df320228d45ceba58659b6ab2c78288982d3dd3"
+    },
+    "results/widths/circle_seed2_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.6.pt",
+      "original_sha256": "a93114109b84fd35f43966b227d25e50846ebf30c1313b8b9827cddf5b9c904b"
+    },
+    "results/widths/wedge_seed3.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3.json",
+      "original_sha256": "1b026679bc80b9c54a5127c2ace1585f21aacad420ebc7b9bdb5492257e119d9"
+    },
+    "results/widths/protocol.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/protocol.json",
+      "original_sha256": "6a2982458b158ab7a0f25699d4546cb1fb67c5d08ea274b856263456ef6a8a1b"
+    },
+    "results/widths/line_seed2_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2_width1.4.pt",
+      "original_sha256": "4c5f402df1e512924c7955ce4b16501656f0e8f4d1273f5c15933bb6b45c8a5b"
+    },
+    "results/widths/circle_seed3_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.5.pt",
+      "original_sha256": "cd80c6e6e0ae8542facd02d7ced4e12e86573ae41476984369dda4b615bc6f6a"
+    },
+    "results/widths/line_seed2.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed2.json",
+      "original_sha256": "206af6371017f4c53be544d8a9f35b747ef59e28ed7a33136e03b24c97d31745"
+    },
+    "results/widths/wedge_seed2_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.4.pt",
+      "original_sha256": "d5f84a99d7535aa5a946443d8513af2928b0e5f5404fb3c70e77ffa4afc2da53"
+    },
+    "results/widths/circle_seed2_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.1.pt",
+      "original_sha256": "0b56815f05ccc7e58923f50fec8981db9eb54b98c070b03ef8878cf91b9ba1e4"
+    },
+    "results/widths/circle_seed3_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3_width1.6.pt",
+      "original_sha256": "54b2387a85ff5e019550ed2ddede3b32d4740f9f757b7434d4cc8ea07d1c7aec"
+    },
+    "results/widths/line_seed3_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.2.pt",
+      "original_sha256": "7a749c5a8227631e3b7d920822dfa08db81e012d49d378289227bf95a6888c2e"
+    },
+    "results/widths/wedge_seed3_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.4.pt",
+      "original_sha256": "decad6f5eedeabfad3b697815017062993efb47dbcb46031b10aeadda442286b"
+    },
+    "results/widths/wedge_seed2_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed2_width1.6.pt",
+      "original_sha256": "12965fc4d9c76f1e45f5e99a6d218306eb2b9bf43abe01b95340c06b6b7e9ec6"
+    },
+    "results/widths/line_seed3_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.4.pt",
+      "original_sha256": "d326393756a968d057d4e2a9501b7e60f5bf00d708ee1bea06145baeac0e9255"
+    },
+    "results/widths/circle_seed2_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.2.pt",
+      "original_sha256": "f4bcb660867281ffdc1a95047ac8ec210977d579803d6f7ffa7a48b4be4ae3c8"
+    },
+    "results/widths/circle_seed2_width1.5.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.5.pt",
+      "original_sha256": "2a82f85a6987cb69d846cc7ce9ef61f85ef00f3c614bfcc213da27356ad99fa0"
+    },
+    "results/widths/line_seed3_width1.1.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.1.pt",
+      "original_sha256": "3a72b0dec6f1660e71c791675b878522ef94dd246f84fd0d0dca4c97700f5b40"
+    },
+    "results/widths/line_seed3_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.3.pt",
+      "original_sha256": "a36f4b37bfb61a25e4b905ee35754f05abeb16066e3d970569bf126296363aaa"
+    },
+    "results/widths/summary.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/summary.json",
+      "original_sha256": "91fd60dc2b6dbe4d42d7ac196df89859bfe587643f055ac33f4faff518a1243d"
+    },
+    "results/widths/line_seed3.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3.json",
+      "original_sha256": "af0f454829aa69dbcbd38d9673e02c6827319a3f63698f22658106d720853779"
+    },
+    "results/widths/circle_seed2_width1.4.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed2_width1.4.pt",
+      "original_sha256": "bb2377134b8c586b33c5e08c79e28e78637e7f3947e515b6fb74c606d301c5bd"
+    },
+    "results/widths/circle_seed3.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/circle_seed3.json",
+      "original_sha256": "aa3a7ab59e4ee5caf05295b5d8d3f4fed60dc4d853cf11901d8f4d3b9a4b49b8"
+    },
+    "results/widths/wedge_seed3_width1.2.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.2.pt",
+      "original_sha256": "f688a36f22355af8ff4f0ec55925d0275106205a26deb3f8165c42afde6a05f4"
+    },
+    "results/widths/wedge_seed3_width1.3.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/wedge_seed3_width1.3.pt",
+      "original_sha256": "a559610801ab37229404b63b1914cce9bdd890c3010b7a2e28240edd14c04e3c"
+    },
+    "results/widths/line_seed3_width1.6.pt": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/recommended_width_validation/line_seed3_width1.6.pt",
+      "original_sha256": "0216f6006231a73fd2da37f78b00d99f429c0dfda8d97ecc6f454b64a2bc5656"
+    },
+    "results/training/final_summary.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/final_summary.json",
+      "original_sha256": "5096ea98169c9a3cb98e32e2ff5f4fcb7b4b6113e959ed8c2a1804931307561d"
+    },
+    "results/training/convergence_summary.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/convergence_summary.json",
+      "original_sha256": "ee6efcb22486ad7c9c6d0644d5fc608d93302d115d362bd42c6ebaaa7ba18d16"
+    },
+    "results/training/final_test_protocol.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/final_test_protocol.json",
+      "original_sha256": "856577dc696015c1b8ac6e919c34378f0c63ed0eb8b8919ee304a063e493f431"
+    },
+    "results/training/pretest_plan.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/pretest_plan.json",
+      "original_sha256": "4678d1e7405fbd1da83e0c96bfb04363cdfb909c1e6adf53ab75c86a1d76a28e"
+    },
+    "results/training/source_manifest.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/source_manifest.json",
+      "original_sha256": "0f771ed828b970530146f11b87cebc5de1d014f7094dccb0b6e8daed3d8906e5"
+    },
+    "results/figures/scene_check.png": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/scene_check.png",
+      "original_sha256": "a7a3e56080844b41eeb670158abcf00b7d19ee37007c192d5445205cecab6e9e"
+    },
+    "results/figures/scene_check.pdf": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/scene_check.pdf",
+      "original_sha256": "62a60bf0af14905df3f767ce41c49ddccadf7d95a1d2e9d9a6b4bd361dc79961"
+    },
+    "results/figures/three_formation_trajectories.png": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/three_formation_trajectories.png",
+      "original_sha256": "073f5b72baceb50aca13737f7ddce117f5f877c1878bcef01e1eccea9788954b"
+    },
+    "results/figures/three_formation_trajectories.pdf": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/three_formation_trajectories.pdf",
+      "original_sha256": "a6427eaf20c25937eabde7c46bab83341d10310d15a15960ca91e8859591ce9a"
+    },
+    "results/figures/mechanism_learning_curves.png": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/mechanism_learning_curves.png",
+      "original_sha256": "b0e93223a0287f3a7c0953a58d6f2791195ad9915eb197d0e28ef3aafc17ae9a"
+    },
+    "results/figures/mechanism_learning_curves.pdf": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/mechanism_learning_curves.pdf",
+      "original_sha256": "dea8cccdb63d3aa62563c6c694a2aeb5ab0cc139df34ef4aae6816b4dd923d1f"
+    },
+    "models/manifest.json": {
+      "original_path": "outputs/2026-10-19/narrowing_local_study/policy_bundle/manifest.json",
+      "original_sha256": "e247a37b95fce82a0ac4a821ebb9e2e502b6d176665f68e420d7f6f1e2d3a1a6"
+    },
+    "docs/DEPLOYMENT.md": {
+      "original_path": "docs/LOCAL_DEPLOYMENT.md",
+      "original_sha256": "213821fb684f3cf41ad644fb8ac38a636de6fd23744b858c6cdcce236bec77d7"
+    }
+  }
+}

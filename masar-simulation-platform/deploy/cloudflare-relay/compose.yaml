@@ -1,0 +1,92 @@
+name: masar-cloudflare-relay
+
+services:
+  ssh-forward:
+    build:
+      context: .
+    network_mode: host
+    environment:
+      AUTOSSH_GATETIME: "0"
+      AUTOSSH_POLL: "30"
+    command:
+      - -M
+      - "0"
+      - -N
+      - -T
+      - -i
+      - /run/secrets/masar-tunnel-key
+      - -o
+      - BatchMode=yes
+      - -o
+      - IdentitiesOnly=yes
+      - -o
+      - UserKnownHostsFile=/run/secrets/known_hosts
+      - -o
+      - StrictHostKeyChecking=yes
+      - -o
+      - ExitOnForwardFailure=yes
+      - -o
+      - ServerAliveInterval=30
+      - -o
+      - ServerAliveCountMax=3
+      - -L
+      - 127.0.0.1:18090:127.0.0.1:18090
+      - zjc@202.204.62.208
+    volumes:
+      - ./.secrets/masar_tunnel_ed25519:/run/secrets/masar-tunnel-key:ro
+      - ./.secrets/known_hosts:/run/secrets/known_hosts:ro
+    read_only: true
+    tmpfs:
+      - /tmp:size=4m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - wget -q -T 5 -O /dev/null http://127.0.0.1:18090/
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339
+    user: "1066:1067"
+    network_mode: host
+    command:
+      - tunnel
+      - --protocol
+      - quic
+      - --edge-ip-version
+      - "4"
+      - --metrics
+      - 127.0.0.1:20241
+      - run
+      - --token-file
+      - /run/secrets/cloudflared-token
+    volumes:
+      - ./.secrets/cloudflared.token:/run/secrets/cloudflared-token:ro
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      ssh-forward:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - cloudflared
+        - tunnel
+        - --metrics
+        - 127.0.0.1:20241
+        - ready
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped

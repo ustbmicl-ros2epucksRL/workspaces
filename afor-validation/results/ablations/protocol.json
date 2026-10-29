@@ -1,0 +1,74 @@
+{
+  "protocol": {
+    "updates": 500,
+    "training_seeds": [
+      2,
+      3,
+      4
+    ],
+    "formations": [
+      "line",
+      "circle",
+      "wedge"
+    ],
+    "variants": {
+      "full": {},
+      "no_braking": {
+        "barrier_weight": 0.0
+      },
+      "no_neighbours": {
+        "neighbours": false
+      },
+      "shared_value": {
+        "shared_value": true
+      },
+      "no_goal_cost": {
+        "goal_distance_weight": 0.0
+      }
+    },
+    "training_width_m": 1.2,
+    "widths_m": [
+      1.1,
+      1.2,
+      1.3,
+      1.4
+    ],
+    "trajectory_widths_m": [
+      1.1,
+      1.2,
+      1.3,
+      1.4
+    ],
+    "test_seeds": [
+      61001,
+      61002,
+      61003
+    ],
+    "episodes_per_case": 32,
+    "validation_every": 50,
+    "validation_seed": 41001,
+    "validation_episodes": 16,
+    "checkpoint_selection": "Fixed final update; no model or seed selection",
+    "research_hash": "fb8235509181fb694892a0eaadd7ddbc88594f118794f481bfeb591e92789114",
+    "production_source_hash": "488a259ce4d50f75cf7a4406d917b13a7dc6e63a0e31a10e92165e221ec17ab5",
+    "acceptance": "Strict swept collision; all five robots cross the opening, reach assigned goals, recover formation, stop, and dwell",
+    "observations": "The neighbour control masks the deployed actor input; the training critic and local braking teacher retain identical original measurements",
+    "shared_value": "The value head uses actor features and removes the independent critic encoder; actor capacity is unchanged and total training capacity is lower",
+    "primary_metrics": [
+      "team_success_rate",
+      "collision_rate",
+      "timeout_rate",
+      "success_duration_s",
+      "mean_formation_error_m",
+      "min_clearance_m"
+    ],
+    "secondary_metrics": [
+      "mean_robot_path_m",
+      "rms_command_acceleration_m_s2",
+      "rms_command_jerk_m_s3"
+    ],
+    "uncertainty": "Training seed is the replication unit; report mean and sample SD across training seeds",
+    "trajectory_selection": "Fixed test seed 61001, episode 0, training seed 2, all four openings; same indices across variants, no outcome-based selection",
+    "limits": "Original narrowing geometry only; not arbitrary environments, AFOR superiority, or a hard safety guarantee"
+  }
+}

@@ -1,0 +1,49 @@
+{
+  "task": {
+    "num_envs": 16,
+    "horizon": 750,
+    "formation": "circle",
+    "scenario": "narrowing",
+    "passage_width": 1.2,
+    "dt": 0.05,
+    "radius": 0.13,
+    "proximity_weight": 0.0,
+    "formation_weight": 0.15,
+    "goal_distance_weight": 1.0
+  },
+  "ppo": {
+    "steps": 128,
+    "sequence": 16,
+    "sequences_per_batch": 64,
+    "epochs": 4,
+    "lr": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip": 0.2,
+    "entropy": 0.001,
+    "independent_value": true,
+    "barrier_weight": 1.0
+  },
+  "policy": {
+    "hidden": 64,
+    "memory": true,
+    "neighbours": true
+  },
+  "seed": 2,
+  "source_hash": "dfbf2426525cec1dde92cc17aa743fe8184eeb66c22db70bf35690a1f0c3e2cd",
+  "source_file": "/home/zjc/workspace/afor-validation/outputs/2026-10-19/narrowing_local_study/source/afor_repaired/local/train.py",
+  "validation_seed": 41001,
+  "validation_episodes_per_case": 16,
+  "validation_scenarios": [
+    "narrowing"
+  ],
+  "validation_formations": [
+    "circle"
+  ],
+  "final_test_seeds": [
+    51001,
+    51002,
+    51003
+  ],
+  "target_updates": 500
+}

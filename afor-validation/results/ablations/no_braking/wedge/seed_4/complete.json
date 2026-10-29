@@ -1,0 +1,41 @@
+{
+  "config": {
+    "variant": "no_braking",
+    "control": {
+      "barrier_weight": 0.0
+    },
+    "formation": "wedge",
+    "seed": 4,
+    "task": {
+      "num_envs": 16,
+      "horizon": 750,
+      "formation": "wedge",
+      "scenario": "narrowing",
+      "passage_width": 1.2,
+      "dt": 0.05,
+      "radius": 0.13,
+      "formation_weight": 0.15,
+      "goal_distance_weight": 1.0
+    },
+    "ppo": {
+      "steps": 128,
+      "sequence": 16,
+      "sequences_per_batch": 64,
+      "epochs": 4,
+      "lr": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip": 0.2,
+      "entropy": 0.001,
+      "independent_value": true,
+      "barrier_weight": 0.0
+    },
+    "research_hash": "fb8235509181fb694892a0eaadd7ddbc88594f118794f481bfeb591e92789114",
+    "production_source_hash": "488a259ce4d50f75cf7a4406d917b13a7dc6e63a0e31a10e92165e221ec17ab5",
+    "updates": 500
+  },
+  "training_and_evaluation_s": 1331.6634483896196,
+  "actor_sha256": "1798adf012fed44956d44c811a9c4c0d88c232eeba753c618a3334559d05f26d",
+  "episodes": 384,
+  "successes": 0
+}

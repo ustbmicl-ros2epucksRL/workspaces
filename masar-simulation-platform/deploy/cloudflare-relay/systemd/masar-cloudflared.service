@@ -1,0 +1,14 @@
+[Unit]
+Description=Cloudflare Tunnel for MASAR
+Wants=network-online.target masar-ssh-forward.service
+After=network-online.target masar-ssh-forward.service
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/cloudflared tunnel --protocol quic --edge-ip-version 4 --metrics 127.0.0.1:20241 run --token-file %h/cloudflare-relay/.secrets/cloudflared.token
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+
+[Install]
+WantedBy=default.target

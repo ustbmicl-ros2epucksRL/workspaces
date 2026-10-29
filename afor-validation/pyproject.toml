@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "afor-local"
+version = "1.0.0"
+description = "Local recurrent PPO for five-robot formation in a narrowing corridor"
+requires-python = ">=3.11"
+dependencies = ["torch>=2.4", "numpy>=1.25"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "matplotlib>=3.8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "."]

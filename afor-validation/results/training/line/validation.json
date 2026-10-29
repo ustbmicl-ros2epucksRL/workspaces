@@ -1,0 +1,3472 @@
+[
+  {
+    "update": 50,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.12291440973058343,
+    "seconds": 182.19370393455029,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.12291440973058343,
+        "mean_formation_error": 0.04936625016853213,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 306,
+            "goal_distance": 0.07557382434606552,
+            "formation_error": 0.04258762672543526,
+            "max_goal_distance": 0.12414617091417313,
+            "max_speed": 0.13385076820850372,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.008790974416927,
+              0.10373211906636715,
+              0.7650647115707397
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 308,
+            "goal_distance": 0.15310601890087128,
+            "formation_error": 0.04967447370290756,
+            "max_goal_distance": 0.2083069533109665,
+            "max_speed": 0.12302369624376297,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.010625597086328653,
+              0.09540638291056483,
+              0.7960176420211792
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 303,
+            "goal_distance": 0.15980632603168488,
+            "formation_error": 0.05240507051348686,
+            "max_goal_distance": 0.2143968790769577,
+            "max_speed": 0.12946204841136932,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.006227753819931736,
+              0.09760212545366162,
+              0.7898892116546631
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.07313695549964905,
+            "formation_error": 0.044308774173259735,
+            "max_goal_distance": 0.12172245979309082,
+            "max_speed": 0.12941710650920868,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.011042881621136313,
+              0.0973065202875465,
+              0.7751061868667602
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 306,
+            "goal_distance": 0.06843720376491547,
+            "formation_error": 0.04938714578747749,
+            "max_goal_distance": 0.11872103065252304,
+            "max_speed": 0.12899263203144073,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.008984713035265268,
+              0.10378346314285375,
+              0.7762589406967163
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 304,
+            "goal_distance": 0.1213621273636818,
+            "formation_error": 0.048826850950717926,
+            "max_goal_distance": 0.17191097140312195,
+            "max_speed": 0.12943287193775177,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.006608845863329882,
+              0.10920094171151296,
+              0.7817761850357056
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.1433514654636383,
+            "formation_error": 0.04708792641758919,
+            "max_goal_distance": 0.197416290640831,
+            "max_speed": 0.13608667254447937,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.01172018740635683,
+              0.09938082286623312,
+              0.776212329864502
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 306,
+            "goal_distance": 0.0862201601266861,
+            "formation_error": 0.05255284160375595,
+            "max_goal_distance": 0.13430623710155487,
+            "max_speed": 0.11931668967008591,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.011198313359809864,
+              0.08965394249786576,
+              0.7970095825195312
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.10798070579767227,
+            "formation_error": 0.051087819039821625,
+            "max_goal_distance": 0.1661117672920227,
+            "max_speed": 0.11744539439678192,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.015249175107465707,
+              0.09404545981454049,
+              0.8006310415267944
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 306,
+            "goal_distance": 0.1620384305715561,
+            "formation_error": 0.05111895129084587,
+            "max_goal_distance": 0.21589943766593933,
+            "max_speed": 0.13179899752140045,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.010573678454703583,
+              0.09763593042555421,
+              0.7863872003555298
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 308,
+            "goal_distance": 0.13167116045951843,
+            "formation_error": 0.051685113459825516,
+            "max_goal_distance": 0.18843650817871094,
+            "max_speed": 0.12256666272878647,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.007488187125867185,
+              0.0964350710611227,
+              0.7931452941894531
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.06884919106960297,
+            "formation_error": 0.04804246872663498,
+            "max_goal_distance": 0.12006836384534836,
+            "max_speed": 0.1260261982679367,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.011656446024075118,
+              0.09529599154607454,
+              0.7817878675460815
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.14376282691955566,
+            "formation_error": 0.0488194078207016,
+            "max_goal_distance": 0.1973809152841568,
+            "max_speed": 0.12421498447656631,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.012912581298554549,
+              0.09867238984880097,
+              0.7895523262023926
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.1672368347644806,
+            "formation_error": 0.04922744631767273,
+            "max_goal_distance": 0.22066843509674072,
+            "max_speed": 0.11793626099824905,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.012134796706721018,
+              0.09213725624765351,
+              0.8057175827026367
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 307,
+            "goal_distance": 0.17584165930747986,
+            "formation_error": 0.05200348421931267,
+            "max_goal_distance": 0.2312162220478058,
+            "max_speed": 0.11428438872098923,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.014635946977703596,
+              0.09517524214364542,
+              0.812518949508667
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 311,
+            "goal_distance": 0.1282556653022766,
+            "formation_error": 0.05104460194706917,
+            "max_goal_distance": 0.1894952356815338,
+            "max_speed": 0.11545651406049728,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0172334418564542,
+              0.10176359834057272,
+              0.8011345815658569
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 100,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.12940043350681663,
+    "seconds": 188.1233235001564,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.12940043350681663,
+        "mean_formation_error": 0.04945299448445439,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 333,
+            "goal_distance": 0.09146904200315475,
+            "formation_error": 0.04815368354320526,
+            "max_goal_distance": 0.14957402646541595,
+            "max_speed": 0.08141949027776718,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05764442051092644,
+              0.08859716622714278,
+              0.8350540351867676
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 333,
+            "goal_distance": 0.15701863169670105,
+            "formation_error": 0.04972068592905998,
+            "max_goal_distance": 0.23544776439666748,
+            "max_speed": 0.08750537037849426,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05573330316832492,
+              0.11060208739245192,
+              0.8450145673751831
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 330,
+            "goal_distance": 0.16202469170093536,
+            "formation_error": 0.04834813252091408,
+            "max_goal_distance": 0.23444439470767975,
+            "max_speed": 0.08648085594177246,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05582902273574586,
+              0.11175716080979245,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 333,
+            "goal_distance": 0.08987393975257874,
+            "formation_error": 0.04676638916134834,
+            "max_goal_distance": 0.1568460315465927,
+            "max_speed": 0.08703700453042984,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.053420634517801546,
+              0.09537454520799865,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 333,
+            "goal_distance": 0.08696677535772324,
+            "formation_error": 0.04650646448135376,
+            "max_goal_distance": 0.15342266857624054,
+            "max_speed": 0.08680307865142822,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.056590497928960426,
+              0.09327955024321374,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 331,
+            "goal_distance": 0.12895044684410095,
+            "formation_error": 0.047194331884384155,
+            "max_goal_distance": 0.19954729080200195,
+            "max_speed": 0.08877836912870407,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05570338260278074,
+              0.10467370067645285,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 330,
+            "goal_distance": 0.15031012892723083,
+            "formation_error": 0.04686763882637024,
+            "max_goal_distance": 0.21566908061504364,
+            "max_speed": 0.08649838715791702,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05398756868375432,
+              0.10268782300458074,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 331,
+            "goal_distance": 0.09074512124061584,
+            "formation_error": 0.04981730133295059,
+            "max_goal_distance": 0.17959024012088776,
+            "max_speed": 0.07986773550510406,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05987535007070727,
+              0.1058923518342452,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 333,
+            "goal_distance": 0.11762531101703644,
+            "formation_error": 0.05104953795671463,
+            "max_goal_distance": 0.2030857652425766,
+            "max_speed": 0.08251158148050308,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0562796632827261,
+              0.10672195269926732,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 332,
+            "goal_distance": 0.16462096571922302,
+            "formation_error": 0.04724745824933052,
+            "max_goal_distance": 0.23334453999996185,
+            "max_speed": 0.08829448372125626,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05669516178039108,
+              0.10716437338627974,
+              0.86308180809021
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 332,
+            "goal_distance": 0.1394035518169403,
+            "formation_error": 0.04887383058667183,
+            "max_goal_distance": 0.21652495861053467,
+            "max_speed": 0.08655720949172974,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05402796410802413,
+              0.10969682395822214,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 332,
+            "goal_distance": 0.09162931889295578,
+            "formation_error": 0.04912019148468971,
+            "max_goal_distance": 0.16589964926242828,
+            "max_speed": 0.09992898255586624,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.053121160680053015,
+              0.09445929998442845,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 332,
+            "goal_distance": 0.14886772632598877,
+            "formation_error": 0.048291534185409546,
+            "max_goal_distance": 0.22187459468841553,
+            "max_speed": 0.08988386392593384,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05311249366128146,
+              0.10848789196592468,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 336,
+            "goal_distance": 0.15825729072093964,
+            "formation_error": 0.054397404193878174,
+            "max_goal_distance": 0.24195629358291626,
+            "max_speed": 0.06474240869283676,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05116505903309154,
+              0.11422667652920232,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 338,
+            "goal_distance": 0.16114087402820587,
+            "formation_error": 0.05666410177946091,
+            "max_goal_distance": 0.2513953447341919,
+            "max_speed": 0.06391596794128418,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.051241213258887086,
+              0.11406019298010253,
+              0.8497489643096924
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 334,
+            "goal_distance": 0.1315031200647354,
+            "formation_error": 0.052229225635528564,
+            "max_goal_distance": 0.21672788262367249,
+            "max_speed": 0.07755455374717712,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.052680676489896494,
+              0.1085682598532473,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 150,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.06304178317077458,
+    "seconds": 189.07049841433764,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.06304178317077458,
+        "mean_formation_error": 0.06295986310578883,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 265,
+            "goal_distance": 0.05868151783943176,
+            "formation_error": 0.06070779636502266,
+            "max_goal_distance": 0.07214822620153427,
+            "max_speed": 0.07876795530319214,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06035915401319092,
+              0.17761935689150482,
+              0.8474610996246338
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 256,
+            "goal_distance": 0.07030057907104492,
+            "formation_error": 0.0639154314994812,
+            "max_goal_distance": 0.1309160441160202,
+            "max_speed": 0.09563751518726349,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06005526432291641,
+              0.1756868253337085,
+              0.8450145673751831
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 255,
+            "goal_distance": 0.0761474221944809,
+            "formation_error": 0.0680915117263794,
+            "max_goal_distance": 0.13090290129184723,
+            "max_speed": 0.09295139461755753,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05864241166462486,
+              0.1828208492179796,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 259,
+            "goal_distance": 0.05280051380395889,
+            "formation_error": 0.06373163312673569,
+            "max_goal_distance": 0.06871706992387772,
+            "max_speed": 0.09593845903873444,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06152628415126349,
+              0.17810474457479147,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 262,
+            "goal_distance": 0.05933069437742233,
+            "formation_error": 0.06037413328886032,
+            "max_goal_distance": 0.08070608228445053,
+            "max_speed": 0.1013190820813179,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06132043177057034,
+              0.17718015587396024,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 261,
+            "goal_distance": 0.05176452919840813,
+            "formation_error": 0.06314464658498764,
+            "max_goal_distance": 0.0884823203086853,
+            "max_speed": 0.09795575588941574,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.060924527734321665,
+              0.18177341905247452,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 258,
+            "goal_distance": 0.062124766409397125,
+            "formation_error": 0.06527268141508102,
+            "max_goal_distance": 0.12119333446025848,
+            "max_speed": 0.10234665870666504,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05980191167734933,
+              0.17983687187248837,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 259,
+            "goal_distance": 0.05598226934671402,
+            "formation_error": 0.06200193613767624,
+            "max_goal_distance": 0.07615432888269424,
+            "max_speed": 0.09521900862455368,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06175097822147407,
+              0.17723092057595619,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 258,
+            "goal_distance": 0.052232611924409866,
+            "formation_error": 0.05920539051294327,
+            "max_goal_distance": 0.09624524414539337,
+            "max_speed": 0.09530363231897354,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.059810210800011365,
+              0.17674805413702926,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 255,
+            "goal_distance": 0.07738523185253143,
+            "formation_error": 0.06737763434648514,
+            "max_goal_distance": 0.13608591258525848,
+            "max_speed": 0.09683634340763092,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.059267886968911776,
+              0.1821537144463224,
+              0.8694561672210693
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 256,
+            "goal_distance": 0.057856135070323944,
+            "formation_error": 0.06533819437026978,
+            "max_goal_distance": 0.11172543466091156,
+            "max_speed": 0.09581436216831207,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06033411690799695,
+              0.17951253323700694,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 257,
+            "goal_distance": 0.05439413711428642,
+            "formation_error": 0.06312218308448792,
+            "max_goal_distance": 0.07433261722326279,
+            "max_speed": 0.10288246721029282,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05796859466050669,
+              0.17543209249289382,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 256,
+            "goal_distance": 0.060880571603775024,
+            "formation_error": 0.06526301801204681,
+            "max_goal_distance": 0.11804764717817307,
+            "max_speed": 0.09925751388072968,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06031524694355894,
+              0.1853072792861939,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 257,
+            "goal_distance": 0.08026643097400665,
+            "formation_error": 0.060908664017915726,
+            "max_goal_distance": 0.14767049252986908,
+            "max_speed": 0.09880910813808441,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05768749524394107,
+              0.16919352879528987,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 259,
+            "goal_distance": 0.08428522199392319,
+            "formation_error": 0.05944199487566948,
+            "max_goal_distance": 0.15589024126529694,
+            "max_speed": 0.09651914983987808,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.061231463664351726,
+              0.1762635315974796,
+              0.8497489643096924
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 257,
+            "goal_distance": 0.054235897958278656,
+            "formation_error": 0.05946096032857895,
+            "max_goal_distance": 0.11320651322603226,
+            "max_speed": 0.09705233573913574,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0576666680747126,
+              0.172035853611809,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 200,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.05785249685868621,
+    "seconds": 205.35133735463023,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.05785249685868621,
+        "mean_formation_error": 0.04965801117941737,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 207,
+            "goal_distance": 0.04665505141019821,
+            "formation_error": 0.052578914910554886,
+            "max_goal_distance": 0.058621879667043686,
+            "max_speed": 0.09912276268005371,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.031793661168589005,
+              0.11781391516846168,
+              0.8474610996246338
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 209,
+            "goal_distance": 0.06349839270114899,
+            "formation_error": 0.04961699992418289,
+            "max_goal_distance": 0.11441779136657715,
+            "max_speed": 0.09468058496713638,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03073582609714287,
+              0.13552284304237733,
+              0.8450145673751831
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 209,
+            "goal_distance": 0.07236184924840927,
+            "formation_error": 0.049598731100559235,
+            "max_goal_distance": 0.1236971989274025,
+            "max_speed": 0.10922974348068237,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03086661937353824,
+              0.13867123092909023,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 206,
+            "goal_distance": 0.048442304134368896,
+            "formation_error": 0.05380924418568611,
+            "max_goal_distance": 0.06154521927237511,
+            "max_speed": 0.09269674122333527,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.030780876726091144,
+              0.1198949346542689,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 205,
+            "goal_distance": 0.05055450648069382,
+            "formation_error": 0.05572563409805298,
+            "max_goal_distance": 0.06249663978815079,
+            "max_speed": 0.09541575610637665,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.029955877082073368,
+              0.12260087291825861,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 208,
+            "goal_distance": 0.042492255568504333,
+            "formation_error": 0.05091281980276108,
+            "max_goal_distance": 0.0848495364189148,
+            "max_speed": 0.0874175876379013,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.027335182731956342,
+              0.1250938774793589,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 208,
+            "goal_distance": 0.050278712064027786,
+            "formation_error": 0.04887565225362778,
+            "max_goal_distance": 0.09236562997102737,
+            "max_speed": 0.11515862494707108,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02924193021504151,
+              0.12982032880692468,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 207,
+            "goal_distance": 0.0506242997944355,
+            "formation_error": 0.057447485625743866,
+            "max_goal_distance": 0.07797713577747345,
+            "max_speed": 0.0958355963230133,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03461128377867084,
+              0.12462643840801446,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 206,
+            "goal_distance": 0.04901628568768501,
+            "formation_error": 0.039981596171855927,
+            "max_goal_distance": 0.09306781738996506,
+            "max_speed": 0.08346422016620636,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02760111139592991,
+              0.10411070513509846,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 210,
+            "goal_distance": 0.07046498358249664,
+            "formation_error": 0.04873514175415039,
+            "max_goal_distance": 0.11858289688825607,
+            "max_speed": 0.11301256716251373,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.031363269558890294,
+              0.13356098528924565,
+              0.8694561672210693
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 209,
+            "goal_distance": 0.05428476259112358,
+            "formation_error": 0.05062147229909897,
+            "max_goal_distance": 0.10463408380746841,
+            "max_speed": 0.09441836178302765,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.029817861395806222,
+              0.1291154403195573,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 205,
+            "goal_distance": 0.04735645651817322,
+            "formation_error": 0.04987569898366928,
+            "max_goal_distance": 0.05515899509191513,
+            "max_speed": 0.08680463582277298,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.028488812330377644,
+              0.12148138949225007,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 209,
+            "goal_distance": 0.062427692115306854,
+            "formation_error": 0.049348752945661545,
+            "max_goal_distance": 0.11371190845966339,
+            "max_speed": 0.11090048402547836,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.031953547145062045,
+              0.1365887217446521,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 208,
+            "goal_distance": 0.0847344622015953,
+            "formation_error": 0.04873448982834816,
+            "max_goal_distance": 0.14248880743980408,
+            "max_speed": 0.11693143099546432,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.029069080197901553,
+              0.13307832058771463,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 210,
+            "goal_distance": 0.08561268448829651,
+            "formation_error": 0.04785499721765518,
+            "max_goal_distance": 0.1441161334514618,
+            "max_speed": 0.1007765382528305,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03008181194650339,
+              0.1253666915671225,
+              0.8497489643096924
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 207,
+            "goal_distance": 0.04683525115251541,
+            "formation_error": 0.04081054776906967,
+            "max_goal_distance": 0.1071343943476677,
+            "max_speed": 0.08850039541721344,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.027881598265446672,
+              0.12814252174132623,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 250,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.09521709266118705,
+    "seconds": 195.67921538092196,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.09521709266118705,
+        "mean_formation_error": 0.049328245455399156,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 224,
+            "goal_distance": 0.06137021631002426,
+            "formation_error": 0.05093710869550705,
+            "max_goal_distance": 0.10916236788034439,
+            "max_speed": 0.10573050379753113,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0569848930763131,
+              0.1660073412660989,
+              0.8474610996246338
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 228,
+            "goal_distance": 0.11512979120016098,
+            "formation_error": 0.04816938191652298,
+            "max_goal_distance": 0.147041454911232,
+            "max_speed": 0.08170115947723389,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05978326148840435,
+              0.14598620979647664,
+              0.8450145673751831
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 226,
+            "goal_distance": 0.1161678284406662,
+            "formation_error": 0.053530167788267136,
+            "max_goal_distance": 0.16486284136772156,
+            "max_speed": 0.0889754369854927,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05831651261286419,
+              0.15993308796303007,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 226,
+            "goal_distance": 0.059271372854709625,
+            "formation_error": 0.046786513179540634,
+            "max_goal_distance": 0.09240187704563141,
+            "max_speed": 0.09899847954511642,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0557259866089459,
+              0.16102897682079714,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 225,
+            "goal_distance": 0.06064782664179802,
+            "formation_error": 0.05206401273608208,
+            "max_goal_distance": 0.10525252670049667,
+            "max_speed": 0.10666851699352264,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.040715930409062684,
+              0.17009299431939912,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 225,
+            "goal_distance": 0.08759371936321259,
+            "formation_error": 0.05366965010762215,
+            "max_goal_distance": 0.139968141913414,
+            "max_speed": 0.10387264937162399,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.039408806761034476,
+              0.17367909216073119,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 230,
+            "goal_distance": 0.10278342664241791,
+            "formation_error": 0.04937805235385895,
+            "max_goal_distance": 0.14610590040683746,
+            "max_speed": 0.08438066393136978,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05569169425859721,
+              0.14781136432206854,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 226,
+            "goal_distance": 0.06888125836849213,
+            "formation_error": 0.04613082483410835,
+            "max_goal_distance": 0.11330592632293701,
+            "max_speed": 0.08149317651987076,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05790687599231742,
+              0.16092017684259402,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 229,
+            "goal_distance": 0.09120702743530273,
+            "formation_error": 0.047076739370822906,
+            "max_goal_distance": 0.12661518156528473,
+            "max_speed": 0.08044397085905075,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05925042529414648,
+              0.13851559238707056,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 227,
+            "goal_distance": 0.11789989471435547,
+            "formation_error": 0.05360398441553116,
+            "max_goal_distance": 0.16565564274787903,
+            "max_speed": 0.08284816890954971,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.060181074024312886,
+              0.16266669989801086,
+              0.8694561672210693
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 226,
+            "goal_distance": 0.09921909868717194,
+            "formation_error": 0.05193527415394783,
+            "max_goal_distance": 0.14449892938137054,
+            "max_speed": 0.08759869635105133,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04654423415428732,
+              0.16258702197459396,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 227,
+            "goal_distance": 0.05853133648633957,
+            "formation_error": 0.04707111790776253,
+            "max_goal_distance": 0.0909515768289566,
+            "max_speed": 0.08680730313062668,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05830690193723703,
+              0.16136127544568651,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 227,
+            "goal_distance": 0.1049305647611618,
+            "formation_error": 0.048247430473566055,
+            "max_goal_distance": 0.1421426236629486,
+            "max_speed": 0.08541373908519745,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05840681054786134,
+              0.15360800360214277,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 231,
+            "goal_distance": 0.13316063582897186,
+            "formation_error": 0.046852704137563705,
+            "max_goal_distance": 0.16345395147800446,
+            "max_speed": 0.07747027277946472,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.056913839490761564,
+              0.14857608628984403,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 232,
+            "goal_distance": 0.14119291305541992,
+            "formation_error": 0.046313729137182236,
+            "max_goal_distance": 0.17152133584022522,
+            "max_speed": 0.07649840414524078,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05535726245798622,
+              0.15550325206447257,
+              0.8497489643096924
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 230,
+            "goal_distance": 0.10548657178878784,
+            "formation_error": 0.04748523607850075,
+            "max_goal_distance": 0.13803237676620483,
+            "max_speed": 0.0747273862361908,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05901227180415658,
+              0.13735876777493083,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 300,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.15621166955679655,
+    "seconds": 197.22288135439157,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.15621166955679655,
+        "mean_formation_error": 0.04611475463025272,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 209,
+            "goal_distance": 0.11905860900878906,
+            "formation_error": 0.04612908512353897,
+            "max_goal_distance": 0.15477052330970764,
+            "max_speed": 0.07765354961156845,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.028611338474531012,
+              0.1774172229310808,
+              0.8474610996246338
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.18032124638557434,
+            "formation_error": 0.05070294812321663,
+            "max_goal_distance": 0.239058718085289,
+            "max_speed": 0.07587375491857529,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02600693828292011,
+              0.1725757986800603,
+              0.8397186946868896
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.1857583224773407,
+            "formation_error": 0.04176291823387146,
+            "max_goal_distance": 0.2363937646150589,
+            "max_speed": 0.062378477305173874,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0471745587589098,
+              0.1592954339819213,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 210,
+            "goal_distance": 0.11712275445461273,
+            "formation_error": 0.04820911958813667,
+            "max_goal_distance": 0.16306647658348083,
+            "max_speed": 0.07450549304485321,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02411586856052078,
+              0.176305980515775,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.10932645946741104,
+            "formation_error": 0.048186417669057846,
+            "max_goal_distance": 0.15494336187839508,
+            "max_speed": 0.0759984478354454,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.045783881200287924,
+              0.16565724540731896,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 212,
+            "goal_distance": 0.1507778912782669,
+            "formation_error": 0.04946853965520859,
+            "max_goal_distance": 0.19730421900749207,
+            "max_speed": 0.07401992380619049,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.047327510775455495,
+              0.16653919532675432,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 210,
+            "goal_distance": 0.17068834602832794,
+            "formation_error": 0.04801977798342705,
+            "max_goal_distance": 0.2144770473241806,
+            "max_speed": 0.07870668172836304,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02470357912560117,
+              0.18069600159250288,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.12428178638219833,
+            "formation_error": 0.052090179175138474,
+            "max_goal_distance": 0.19540345668792725,
+            "max_speed": 0.07306590676307678,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03354378604731062,
+              0.1644853704907424,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.1468583047389984,
+            "formation_error": 0.04078055918216705,
+            "max_goal_distance": 0.21351048350334167,
+            "max_speed": 0.05606558173894882,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.048905929815130755,
+              0.1457602130029193,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.18665705621242523,
+            "formation_error": 0.04942299798130989,
+            "max_goal_distance": 0.2360474169254303,
+            "max_speed": 0.07673203200101852,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.02868082967983454,
+              0.1798702495662095,
+              0.8064817142486572
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 212,
+            "goal_distance": 0.16367825865745544,
+            "formation_error": 0.04511694982647896,
+            "max_goal_distance": 0.21840529143810272,
+            "max_speed": 0.06125815585255623,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.050184165440620376,
+              0.15738663777824163,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.11671976745128632,
+            "formation_error": 0.03899458795785904,
+            "max_goal_distance": 0.1715804636478424,
+            "max_speed": 0.0522872731089592,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04681996728337917,
+              0.1648732077353242,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 211,
+            "goal_distance": 0.17351333796977997,
+            "formation_error": 0.04001926630735397,
+            "max_goal_distance": 0.2222437560558319,
+            "max_speed": 0.06217891722917557,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04428458581974093,
+              0.15923240747562994,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 212,
+            "goal_distance": 0.19581758975982666,
+            "formation_error": 0.04372609406709671,
+            "max_goal_distance": 0.25823649764060974,
+            "max_speed": 0.06405051052570343,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04997106403990309,
+              0.15223256084061326,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 212,
+            "goal_distance": 0.1967494636774063,
+            "formation_error": 0.052185557782649994,
+            "max_goal_distance": 0.2667616307735443,
+            "max_speed": 0.07397688925266266,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.023601829568741406,
+              0.17441801871596424,
+              0.8392437648773193
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 212,
+            "goal_distance": 0.1620575189590454,
+            "formation_error": 0.043021075427532196,
+            "max_goal_distance": 0.22696444392204285,
+            "max_speed": 0.061373528093099594,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0530288130917721,
+              0.1443813210745148,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 350,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.08736889390274882,
+    "seconds": 184.4948520027101,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.08736889390274882,
+        "mean_formation_error": 0.04261532216332853,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 229,
+            "goal_distance": 0.05921353027224541,
+            "formation_error": 0.052968598902225494,
+            "max_goal_distance": 0.11374972015619278,
+            "max_speed": 0.07682400941848755,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0718648925560122,
+              0.10612361052863567,
+              0.8474610996246338
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 229,
+            "goal_distance": 0.10548732429742813,
+            "formation_error": 0.038859400898218155,
+            "max_goal_distance": 0.13942906260490417,
+            "max_speed": 0.1015978753566742,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06461862395233314,
+              0.07838092980153852,
+              0.8450145673751831
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 238,
+            "goal_distance": 0.11620882898569107,
+            "formation_error": 0.04331531748175621,
+            "max_goal_distance": 0.14644412696361542,
+            "max_speed": 0.05702538043260574,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06622697593264043,
+              0.040409166762634896,
+              0.8629535388946533
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 229,
+            "goal_distance": 0.05542482063174248,
+            "formation_error": 0.04629892855882645,
+            "max_goal_distance": 0.09940628707408905,
+            "max_speed": 0.07581906020641327,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07129980764011279,
+              0.09192128099448174,
+              0.8396693420410156
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 237,
+            "goal_distance": 0.05309540033340454,
+            "formation_error": 0.04795866832137108,
+            "max_goal_distance": 0.08899200707674026,
+            "max_speed": 0.06793885678052902,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07186938728146092,
+              0.06967219889157214,
+              0.8415287685394287
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 237,
+            "goal_distance": 0.08581095188856125,
+            "formation_error": 0.04840932786464691,
+            "max_goal_distance": 0.12623225152492523,
+            "max_speed": 0.06400948762893677,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0725897050151032,
+              0.10223094872100932,
+              0.835219259262085
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 227,
+            "goal_distance": 0.10106129944324493,
+            "formation_error": 0.04682741314172745,
+            "max_goal_distance": 0.14320239424705505,
+            "max_speed": 0.08948923647403717,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06468176707137763,
+              0.09368971764131609,
+              0.8317506265640259
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 233,
+            "goal_distance": 0.056553781032562256,
+            "formation_error": 0.03832688182592392,
+            "max_goal_distance": 0.09900128841400146,
+            "max_speed": 0.08488107472658157,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06675135862854481,
+              0.07044942449726657,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 227,
+            "goal_distance": 0.07505486160516739,
+            "formation_error": 0.03849797695875168,
+            "max_goal_distance": 0.10887956619262695,
+            "max_speed": 0.10652996599674225,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.059559365965914546,
+              0.07822261526779895,
+              0.8379138660430908
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 232,
+            "goal_distance": 0.11935476213693619,
+            "formation_error": 0.044418152421712875,
+            "max_goal_distance": 0.15248093008995056,
+            "max_speed": 0.07538063824176788,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07058548489245847,
+              0.09246670032856166,
+              0.8689632368087769
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 239,
+            "goal_distance": 0.08698409795761108,
+            "formation_error": 0.03998464718461037,
+            "max_goal_distance": 0.12820523977279663,
+            "max_speed": 0.0648903101682663,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06699854579584841,
+              0.08325515082697973,
+              0.85072350025177
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 225,
+            "goal_distance": 0.048413150012493134,
+            "formation_error": 0.04083092883229256,
+            "max_goal_distance": 0.08252805471420288,
+            "max_speed": 0.09807602316141129,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0616084360463362,
+              0.08880650470075166,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 230,
+            "goal_distance": 0.09877584874629974,
+            "formation_error": 0.04436207935214043,
+            "max_goal_distance": 0.12901857495307922,
+            "max_speed": 0.08612934499979019,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06573723402983972,
+              0.0838557995835355,
+              0.8581179332733154
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 228,
+            "goal_distance": 0.12016379833221436,
+            "formation_error": 0.03587418049573898,
+            "max_goal_distance": 0.1513192057609558,
+            "max_speed": 0.09753558784723282,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.061419203042913206,
+              0.07815646709103641,
+              0.8293576192855835
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 232,
+            "goal_distance": 0.12567827105522156,
+            "formation_error": 0.03828347101807594,
+            "max_goal_distance": 0.1746571958065033,
+            "max_speed": 0.10354214161634445,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0647758690757238,
+              0.07047878409617817,
+              0.8472491455078125
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 231,
+            "goal_distance": 0.09062157571315765,
+            "formation_error": 0.03662918135523796,
+            "max_goal_distance": 0.12781426310539246,
+            "max_speed": 0.09589169919490814,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06344609018711589,
+              0.07274522759663099,
+              0.8425854396820068
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 400,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.07294728932902217,
+    "seconds": 180.04289541766047,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.07294728932902217,
+        "mean_formation_error": 0.046208413783460855,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 190,
+            "goal_distance": 0.05595377832651138,
+            "formation_error": 0.051854245364665985,
+            "max_goal_distance": 0.08446170389652252,
+            "max_speed": 0.0976845845580101,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.045833014626192325,
+              0.11091027174173185,
+              0.7981688928604126
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.09333479404449463,
+            "formation_error": 0.04782559350132942,
+            "max_goal_distance": 0.10841488838195801,
+            "max_speed": 0.0812745988368988,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04532870264584499,
+              0.13957477339991797,
+              0.8294564437866211
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 188,
+            "goal_distance": 0.0830453634262085,
+            "formation_error": 0.043561749160289764,
+            "max_goal_distance": 0.09795194864273071,
+            "max_speed": 0.06561208516359329,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.052436259396719476,
+              0.14319968171584435,
+              0.8305170488357544
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 190,
+            "goal_distance": 0.05049928277730942,
+            "formation_error": 0.04817508906126022,
+            "max_goal_distance": 0.08123940974473953,
+            "max_speed": 0.082928866147995,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04718787990982637,
+              0.11534119233945908,
+              0.8100959014892578
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 184,
+            "goal_distance": 0.03814881294965744,
+            "formation_error": 0.03763766959309578,
+            "max_goal_distance": 0.053890410810709,
+            "max_speed": 0.05642316862940788,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04865187249266939,
+              0.13156342155945827,
+              0.8208612155914307
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 186,
+            "goal_distance": 0.05437282845377922,
+            "formation_error": 0.04252547025680542,
+            "max_goal_distance": 0.07106398046016693,
+            "max_speed": 0.06275002658367157,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0514628087526392,
+              0.13849853537400608,
+              0.8194558572769165
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.08485902100801468,
+            "formation_error": 0.0518566370010376,
+            "max_goal_distance": 0.10610467195510864,
+            "max_speed": 0.07088494300842285,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.047254008587622576,
+              0.12766572485820826,
+              0.8052483749389648
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.05003999546170235,
+            "formation_error": 0.04537774249911308,
+            "max_goal_distance": 0.08313433825969696,
+            "max_speed": 0.08965467661619186,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04639619858922578,
+              0.12881935178701553,
+              0.8448070240020752
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 190,
+            "goal_distance": 0.0716019794344902,
+            "formation_error": 0.046590011566877365,
+            "max_goal_distance": 0.09552489966154099,
+            "max_speed": 0.09760123491287231,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04490750672656285,
+              0.13915467476903098,
+              0.8375374031066894
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.0992986261844635,
+            "formation_error": 0.05034599453210831,
+            "max_goal_distance": 0.11695440858602524,
+            "max_speed": 0.08441755920648575,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.043752362319443516,
+              0.13825146250720716,
+              0.8230359506607056
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 187,
+            "goal_distance": 0.0648915022611618,
+            "formation_error": 0.04164685681462288,
+            "max_goal_distance": 0.08283455669879913,
+            "max_speed": 0.06322969496250153,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.05209461400304044,
+              0.1426649229715239,
+              0.8365794372558594
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 188,
+            "goal_distance": 0.05263080447912216,
+            "formation_error": 0.047767918556928635,
+            "max_goal_distance": 0.0726897269487381,
+            "max_speed": 0.10133463144302368,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04685900911552715,
+              0.12166258414259595,
+              0.8207898092269897
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 190,
+            "goal_distance": 0.0892120823264122,
+            "formation_error": 0.04902363568544388,
+            "max_goal_distance": 0.10424922406673431,
+            "max_speed": 0.09373249113559723,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04748183131312178,
+              0.13416890454017194,
+              0.8356475782394409
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 191,
+            "goal_distance": 0.11091127246618271,
+            "formation_error": 0.047496628016233444,
+            "max_goal_distance": 0.12830272316932678,
+            "max_speed": 0.08363451063632965,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0492262761533227,
+              0.14669061619493268,
+              0.8282648277282715
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.09295009821653366,
+            "formation_error": 0.04294880852103233,
+            "max_goal_distance": 0.12010203301906586,
+            "max_speed": 0.09398345649242401,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04921892737642741,
+              0.15337281801440816,
+              0.8349525880813599
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 189,
+            "goal_distance": 0.07540638744831085,
+            "formation_error": 0.04470057040452957,
+            "max_goal_distance": 0.09979426115751266,
+            "max_speed": 0.08734650909900665,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04894620741388184,
+              0.14453618407147134,
+              0.8413835716247559
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 450,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.05392931494861841,
+    "seconds": 175.44027280062437,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.05392931494861841,
+        "mean_formation_error": 0.026094427448697388,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 181,
+            "goal_distance": 0.08906964957714081,
+            "formation_error": 0.025552282109856606,
+            "max_goal_distance": 0.10562575608491898,
+            "max_speed": 0.08149221539497375,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.028800969455273162,
+              0.06795687128859917,
+              0.7250097942352295
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 185,
+            "goal_distance": 0.03142644837498665,
+            "formation_error": 0.026059577241539955,
+            "max_goal_distance": 0.05108290910720825,
+            "max_speed": 0.07217308133840561,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03231242690357211,
+              0.09645034918809783,
+              0.7687948894500732
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 183,
+            "goal_distance": 0.026069030165672302,
+            "formation_error": 0.025293221697211266,
+            "max_goal_distance": 0.03890779986977577,
+            "max_speed": 0.07912462204694748,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.060605154730714095,
+              0.11570853012886986,
+              0.754402871131897
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 182,
+            "goal_distance": 0.09090393036603928,
+            "formation_error": 0.028845053166151047,
+            "max_goal_distance": 0.11422953754663467,
+            "max_speed": 0.07738683372735977,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03062177187263343,
+              0.07804789978392215,
+              0.7432811212539673
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 179,
+            "goal_distance": 0.09496180713176727,
+            "formation_error": 0.025043491274118423,
+            "max_goal_distance": 0.11179559677839279,
+            "max_speed": 0.08621574938297272,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.061714192883263574,
+              0.10309604632459995,
+              0.7482304525375366
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 181,
+            "goal_distance": 0.052508193999528885,
+            "formation_error": 0.02378063276410103,
+            "max_goal_distance": 0.06864483654499054,
+            "max_speed": 0.08654538542032242,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06365556391670091,
+              0.11286475109357302,
+              0.7466064643859863
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 185,
+            "goal_distance": 0.04133742302656174,
+            "formation_error": 0.02807808294892311,
+            "max_goal_distance": 0.05485324189066887,
+            "max_speed": 0.08378755301237106,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.028680099083018662,
+              0.07887287913858451,
+              0.7372314882278442
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 185,
+            "goal_distance": 0.08025526255369186,
+            "formation_error": 0.03058677911758423,
+            "max_goal_distance": 0.11545984447002411,
+            "max_speed": 0.053925771266222,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03627951740951052,
+              0.09072053155664006,
+              0.7842743349075317
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 183,
+            "goal_distance": 0.05529925972223282,
+            "formation_error": 0.026663366705179214,
+            "max_goal_distance": 0.08717945218086243,
+            "max_speed": 0.06390038132667542,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.04436104962382881,
+              0.10977712338117288,
+              0.782211537361145
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 186,
+            "goal_distance": 0.029781583696603775,
+            "formation_error": 0.026841159909963608,
+            "max_goal_distance": 0.04131585732102394,
+            "max_speed": 0.07612396031618118,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.029330807225711797,
+              0.09317435407059177,
+              0.7428047609329224
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 181,
+            "goal_distance": 0.04262508079409599,
+            "formation_error": 0.02381690964102745,
+            "max_goal_distance": 0.06279432028532028,
+            "max_speed": 0.08773966878652573,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06308953672511602,
+              0.11924517557550338,
+              0.7693428945541382
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 180,
+            "goal_distance": 0.09460539370775223,
+            "formation_error": 0.02784675918519497,
+            "max_goal_distance": 0.1201932281255722,
+            "max_speed": 0.07256880402565002,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03908587840394806,
+              0.09248675108313836,
+              0.7579621028900146
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 183,
+            "goal_distance": 0.03482998535037041,
+            "formation_error": 0.02581506036221981,
+            "max_goal_distance": 0.054441310465335846,
+            "max_speed": 0.07850033789873123,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.048796347849150545,
+              0.1086930972912884,
+              0.7529798698425293
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 183,
+            "goal_distance": 0.020171083509922028,
+            "formation_error": 0.024556241929531097,
+            "max_goal_distance": 0.04001734033226967,
+            "max_speed": 0.07372481375932693,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.046196398839548125,
+              0.10851867059826947,
+              0.7830064249038696
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 187,
+            "goal_distance": 0.0315718874335289,
+            "formation_error": 0.02245311439037323,
+            "max_goal_distance": 0.043246690183877945,
+            "max_speed": 0.07547632604837418,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.03153679147806965,
+              0.11480027364401252,
+              0.7866259765625
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 181,
+            "goal_distance": 0.04745301976799965,
+            "formation_error": 0.026279106736183167,
+            "max_goal_distance": 0.07435654103755951,
+            "max_speed": 0.0746266096830368,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0572881571624374,
+              0.11775666457622261,
+              0.7864029359817505
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "update": 500,
+    "success_rate": 1.0,
+    "collisions": 0,
+    "timeouts": 0,
+    "episodes": 16,
+    "mean_goal_distance": 0.05881286412477493,
+    "seconds": 174.56154260598123,
+    "cases": [
+      {
+        "scenario": "narrowing",
+        "formation": "line",
+        "seed": 41001,
+        "episodes": 16,
+        "successes": 16,
+        "collisions": 0,
+        "goal_successes": 16,
+        "corridor_passes": 16,
+        "bypass_completions": 0,
+        "timeouts": 0,
+        "mean_goal_distance": 0.05881286412477493,
+        "mean_formation_error": 0.051061815582215786,
+        "results": [
+          {
+            "episode": 0,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 191,
+            "goal_distance": 0.08860333263874054,
+            "formation_error": 0.05262615531682968,
+            "max_goal_distance": 0.12457265704870224,
+            "max_speed": 0.061795029789209366,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.06935439483634892,
+              0.1668708893455506,
+              0.7835956764221191
+            ]
+          },
+          {
+            "episode": 1,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.034166041761636734,
+            "formation_error": 0.05059347674250603,
+            "max_goal_distance": 0.06752888113260269,
+            "max_speed": 0.08172101527452469,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07255267860437614,
+              0.19578227235531537,
+              0.754777307510376
+            ]
+          },
+          {
+            "episode": 2,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.04072331264615059,
+            "formation_error": 0.05073288083076477,
+            "max_goal_distance": 0.0650544986128807,
+            "max_speed": 0.09347010403871536,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08262775655598792,
+              0.18920113764157437,
+              0.7750407409667969
+            ]
+          },
+          {
+            "episode": 3,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.09057570993900299,
+            "formation_error": 0.05286308377981186,
+            "max_goal_distance": 0.12931597232818604,
+            "max_speed": 0.05684099718928337,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07091042148042598,
+              0.17322044348595567,
+              0.8050122213363647
+            ]
+          },
+          {
+            "episode": 4,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.09457598626613617,
+            "formation_error": 0.053010743111371994,
+            "max_goal_distance": 0.13255177438259125,
+            "max_speed": 0.08368044346570969,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08460679279309441,
+              0.1582832687192266,
+              0.801179404258728
+            ]
+          },
+          {
+            "episode": 5,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.053268980234861374,
+            "formation_error": 0.05191407352685928,
+            "max_goal_distance": 0.08612365275621414,
+            "max_speed": 0.08494415134191513,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08451255659823648,
+              0.15044032819909592,
+              0.8029111576080322
+            ]
+          },
+          {
+            "episode": 6,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 191,
+            "goal_distance": 0.04006271809339523,
+            "formation_error": 0.057062067091464996,
+            "max_goal_distance": 0.07498080283403397,
+            "max_speed": 0.06268748641014099,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07057043453845707,
+              0.18775622621838373,
+              0.7792977046966553
+            ]
+          },
+          {
+            "episode": 7,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.08273420482873917,
+            "formation_error": 0.05128859356045723,
+            "max_goal_distance": 0.1280089020729065,
+            "max_speed": 0.0857035219669342,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07076904249096605,
+              0.1930624865845399,
+              0.8193241310119629
+            ]
+          },
+          {
+            "episode": 8,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.06475209444761276,
+            "formation_error": 0.049926139414310455,
+            "max_goal_distance": 0.10183262079954147,
+            "max_speed": 0.0891781821846962,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08214304078830525,
+              0.19919729210648418,
+              0.7983897876739502
+            ]
+          },
+          {
+            "episode": 9,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.035987019538879395,
+            "formation_error": 0.05088457465171814,
+            "max_goal_distance": 0.06781846284866333,
+            "max_speed": 0.08160741627216339,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07020694283162393,
+              0.1952505771685183,
+              0.7515035820007324
+            ]
+          },
+          {
+            "episode": 10,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 193,
+            "goal_distance": 0.04935930296778679,
+            "formation_error": 0.05050969123840332,
+            "max_goal_distance": 0.08159402757883072,
+            "max_speed": 0.0918017029762268,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.0808981879323033,
+              0.15843988803406384,
+              0.8004187297821045
+            ]
+          },
+          {
+            "episode": 11,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 189,
+            "goal_distance": 0.0996333584189415,
+            "formation_error": 0.05192359536886215,
+            "max_goal_distance": 0.13607165217399597,
+            "max_speed": 0.0748734399676323,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08066805758374068,
+              0.18232535397917682,
+              0.8141273212432861
+            ]
+          },
+          {
+            "episode": 12,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.04341184347867966,
+            "formation_error": 0.049524299800395966,
+            "max_goal_distance": 0.07653944939374924,
+            "max_speed": 0.08984877169132233,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07729912464396249,
+              0.20229740673778518,
+              0.7870234203338623
+            ]
+          },
+          {
+            "episode": 13,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.038067229092121124,
+            "formation_error": 0.04656682163476944,
+            "max_goal_distance": 0.05906252935528755,
+            "max_speed": 0.0825534239411354,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08288670245980356,
+              0.21115494268803453,
+              0.7482727718353271
+            ]
+          },
+          {
+            "episode": 14,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 195,
+            "goal_distance": 0.03222385793924332,
+            "formation_error": 0.04883322864770889,
+            "max_goal_distance": 0.059524331241846085,
+            "max_speed": 0.08705206215381622,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.07196353128953537,
+              0.20058648962234898,
+              0.7342768859863281
+            ]
+          },
+          {
+            "episode": 15,
+            "success": true,
+            "goal_success": true,
+            "corridor_passed": true,
+            "collision": false,
+            "timeout": false,
+            "length": 192,
+            "goal_distance": 0.05286083370447159,
+            "formation_error": 0.04872962459921837,
+            "max_goal_distance": 0.08842876553535461,
+            "max_speed": 0.08748949319124222,
+            "final_formation_ok": true,
+            "hold": 10,
+            "min_clearance": [
+              0.08579119291336884,
+              0.21101984590430078,
+              0.7857392978668213
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

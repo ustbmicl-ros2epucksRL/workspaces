@@ -1,0 +1,117 @@
+name: masar-cloudflare-tunnel
+
+services:
+  # The general-purpose proxy is not published on the host. The two published
+  # loopback ports below belong to destination-locked Cloudflare edge relays.
+  mihomo:
+    image: metacubex/mihomo@sha256:bac1a74de365ea59270ba134016762c6be05654d55246518de256113bd1c225e
+    user: "1006:1006"
+    command:
+      - -d
+      - /var/lib/mihomo
+      - -f
+      - /etc/mihomo/config.yaml
+    ports:
+      - "127.0.0.1:17844:17844/tcp"
+      - "127.0.0.1:17845:17845/tcp"
+    volumes:
+      - ../.runtime/mihomo/config.yaml:/etc/mihomo/config.yaml:ro
+      - ../.runtime/mihomo/state:/var/lib/mihomo
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - /mihomo
+        - -t
+        - -d
+        - /var/lib/mihomo
+        - -f
+        - /etc/mihomo/config.yaml
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+  cf-edge-region1:
+    image: alpine/socat:latest@sha256:d85531a29ef5ba99dfb4717485c239307e2902d522a1bc010992a2728c92cfad
+    network_mode: service:mihomo
+    command:
+      - TCP4-LISTEN:17844,bind=0.0.0.0,reuseaddr,fork
+      - PROXY:127.0.0.1:region1.v2.argotunnel.com:7844,proxyport=7890
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mihomo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cf-edge-region2:
+    image: alpine/socat:latest@sha256:d85531a29ef5ba99dfb4717485c239307e2902d522a1bc010992a2728c92cfad
+    network_mode: service:mihomo
+    command:
+      - TCP4-LISTEN:17845,bind=0.0.0.0,reuseaddr,fork
+      - PROXY:127.0.0.1:region2.v2.argotunnel.com:7844,proxyport=7890
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      mihomo:
+        condition: service_healthy
+    restart: unless-stopped
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest@sha256:51c9cefcb4569df44e1ad403ab1d3d8065aa8e84339bcfc6aee75502e1140339
+    network_mode: host
+    command:
+      - tunnel
+      - --protocol
+      - http2
+      - --edge-ip-version
+      - "4"
+      - --edge
+      - 127.0.0.1:17844
+      - --edge
+      - 127.0.0.1:17845
+      - --ha-connections
+      - "2"
+      - --no-prechecks
+      - --metrics
+      - 127.0.0.1:20241
+      - run
+      - --token-file
+      - /run/secrets/cloudflared-token
+    volumes:
+      - ../.runtime/cloudflared.token:/run/secrets/cloudflared-token:ro
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      - cf-edge-region1
+      - cf-edge-region2
+    healthcheck:
+      test:
+        - CMD
+        - cloudflared
+        - tunnel
+        - --metrics
+        - 127.0.0.1:20241
+        - ready
+      interval: 10s
+      timeout: 3s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped

@@ -1,0 +1,614 @@
+[
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.1,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.03040422462855713,
+      0.20384615554001034,
+      0.5568188381195068
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.2,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.04497717763512088,
+      0.2147436626362329,
+      0.5651844692230225
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.3,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.0696656845950459,
+      0.2483901978755037,
+      0.5716115188598633
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.4,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.09522117521145773,
+      0.28855301547763157,
+      0.5786460590362549
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.5,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.10990540687668876,
+      0.3223050921658341,
+      0.5804589939117432
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 2,
+    "width": 1.6,
+    "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.12580542651661425,
+      0.33796050253938487,
+      0.5843087387084961
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.1,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.03045818388505528,
+      0.20469082527770444,
+      0.5846744728088379
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.2,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.04023200359691631,
+      0.2439736626553355,
+      0.5846744728088379
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.3,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.051230671359438096,
+      0.2793598122227531,
+      0.5846744728088379
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.4,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06046681895364864,
+      0.3173472555017966,
+      0.5846744728088379
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.5,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.07023821419936116,
+      0.36084406340048886,
+      0.5824435901641846
+    ]
+  },
+  {
+    "formation": "circle",
+    "training_seed": 3,
+    "width": 1.6,
+    "actor_sha256": "e643e4d78deb58a8c72635262dedc266c60c0eb7357d7414864874470dc9b190",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.07988342811356053,
+      0.38686020200908267,
+      0.5757194709777832
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.1,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06462316408261742,
+      0.09171116620025457,
+      0.7664982032775879
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.2,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06621342625309734,
+      0.13781235190326546,
+      0.7284070205688477
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.3,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06657056537656514,
+      0.1832560723772635,
+      0.7184625816345215
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.4,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.0670091412818084,
+      0.21350897454404677,
+      0.7590159130096436
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.5,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.0673968029780469,
+      0.23942715622162397,
+      0.7630535316467285
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 2,
+    "width": 1.6,
+    "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06775533684526219,
+      0.24809420876917126,
+      0.7730698537826538
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.1,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.009485674590270277,
+      0.024358574240900405,
+      0.7488552284240723
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.2,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.009421508130939671,
+      0.06424637831297811,
+      0.7512448978424072
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.3,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.009728914318838489,
+      0.08471960113301438,
+      0.7485487413406372
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.4,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.008604658544197452,
+      0.12070611807732395,
+      0.7529960823059082
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.5,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.008534057720266053,
+      0.1687720991478056,
+      0.7581320953369141
+    ]
+  },
+  {
+    "formation": "line",
+    "training_seed": 3,
+    "width": 1.6,
+    "actor_sha256": "c9dd7b11c20ce5e2c0b94e70f3d8e675a7719f469b8c346c3d21e67d54e1da4a",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.0075133938665908895,
+      0.2205168338244799,
+      0.7538958740234375
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.1,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.07665054353355882,
+      0.14183662191255858,
+      0.6084641170501709
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.2,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.08594298983095522,
+      0.16963720476974503,
+      0.6036752414703369
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.3,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.09113374292288218,
+      0.20877713646002416,
+      0.5965992164611816
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.4,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.08946028140602602,
+      0.23661540109891838,
+      0.5860217761993408
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.5,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.09685906197421013,
+      0.2570971023792112,
+      0.5813161087036133
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 2,
+    "width": 1.6,
+    "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.09735664207753403,
+      0.2745473422203317,
+      0.581536169052124
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.1,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06073604279811784,
+      0.1452258217746577,
+      0.5820003700256348
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.2,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.06935754996148674,
+      0.1668879801949062,
+      0.5850259017944336
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.3,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.07745956506517282,
+      0.18624457034050573,
+      0.5813258838653564
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.4,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.08970883133905638,
+      0.21939891767550357,
+      0.5772701454162598
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.5,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.10595121411780684,
+      0.24500732308157186,
+      0.5735367488861084
+    ]
+  },
+  {
+    "formation": "wedge",
+    "training_seed": 3,
+    "width": 1.6,
+    "actor_sha256": "df7b31f91cd4bd0ae972684d1bab1e17491fe43adc515b93698ad63580f4afbe",
+    "episodes": 96,
+    "successes": 96,
+    "collisions": 0,
+    "timeouts": 0,
+    "corridor_passes": 96,
+    "bypass_completions": 0,
+    "min_pair_wall_boundary_clearance_m": [
+      0.12141787992016834,
+      0.27815114998680923,
+      0.5666159343719482
+    ]
+  }
+]

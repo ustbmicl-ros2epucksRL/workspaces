@@ -1,0 +1,73 @@
+{
+  "schema": "afor_local_v1",
+  "scene": "historical gradually narrowing corridor, 1.2 m opening",
+  "recipe": "single-stream local PPO, independent task critic, local braking loss 1, goal precision cost 1, GRU",
+  "selection": "reference training seed 2; final fixed 500-update actors; no checkpoint reselection from test",
+  "models": [
+    {
+      "formation": "line",
+      "checkpoint": "line/actor.pt",
+      "actor_sha256": "1054943dbb40a9b8a2047e83bc4ac27041bb66f3a35152ed443d721d9be145e8",
+      "training_run": "../results/training/line",
+      "training_seed": 2,
+      "update": 500,
+      "actor_parameters": 35140,
+      "training_parameters": 70213,
+      "dt": 0.05,
+      "episodes": 384,
+      "successes": 384,
+      "config": "../results/training/line/config.json",
+      "test_report": "../results/training/line/final_test.json",
+      "min_pair_wall_boundary_clearance_m": [
+        0.06253125495113976,
+        0.13700137805050228,
+        0.7262450408935547
+      ]
+    },
+    {
+      "formation": "circle",
+      "checkpoint": "circle/actor.pt",
+      "actor_sha256": "73a931467f1c33dbd0698023ffe6810a405446b18975a92e1115055b7a998125",
+      "training_run": "../results/training/circle",
+      "training_seed": 2,
+      "update": 500,
+      "actor_parameters": 35140,
+      "training_parameters": 70213,
+      "dt": 0.05,
+      "episodes": 384,
+      "successes": 384,
+      "config": "../results/training/circle/config.json",
+      "test_report": "../results/training/circle/final_test.json",
+      "min_pair_wall_boundary_clearance_m": [
+        0.04594673922757564,
+        0.21427806135254224,
+        0.5668486309051514
+      ]
+    },
+    {
+      "formation": "wedge",
+      "checkpoint": "wedge/actor.pt",
+      "actor_sha256": "52ce3f447e43465457cfad5d6da99b2281ea58b0317d4235cf242311d6458bc2",
+      "training_run": "../results/training/wedge",
+      "training_seed": 2,
+      "update": 500,
+      "actor_parameters": 35140,
+      "training_parameters": 70213,
+      "dt": 0.05,
+      "episodes": 384,
+      "successes": 384,
+      "config": "../results/training/wedge/config.json",
+      "test_report": "../results/training/wedge/final_test.json",
+      "min_pair_wall_boundary_clearance_m": [
+        0.08344980556500536,
+        0.16523683020773378,
+        0.604511137008667
+      ]
+    }
+  ],
+  "scope": "Three separate formation policies. Requires final goal, compass frame and local role-associated measurements. Unknown topology, hardware and hard safety not validated.",
+  "stability": "Wedge seed 2 validation regressed at update 400 and recovered at 450/500; final tests do not establish stable convergence of all runs.",
+  "training_source_hash": "dfbf2426525cec1dde92cc17aa743fe8184eeb66c22db70bf35690a1f0c3e2cd",
+  "implementation": "../src/afor_local",
+  "cleanup_note": "Actors unchanged. Single active implementation in src/afor_local. Original training source/checkpoints are in the external archive recorded in results/provenance.json; training_source_hash identifies that historical source."
+}

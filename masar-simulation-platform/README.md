@@ -61,10 +61,15 @@ LocalForward 18090 127.0.0.1:18090
 连接服务器后，本地浏览器仍访问 `http://127.0.0.1:18090`。不需要单独转发 Agent、
 rosbridge、noVNC、Webots 或 Docker 端口。
 
-平台还会通过宿主机 `127.0.0.1:7897` HTTP 代理建立匿名 Pinggy 公网隧道。执行
-`make docker-status` 可以查看当前公网 URL。免费 URL 最多保持 60 分钟，隧道自动
-重连后会生成新 URL；访客首次打开时需要在 Pinggy 安全提示页点击 `Enter site`。
-公网链接没有平台级登录或只读权限，只应分享给可信人员。
+当前正式公网入口为 <https://sim.zzjc-ustb.cfd/>。它通过外网中继服务器上的
+Cloudflare Tunnel 和 SSH 本地端口转发连接本平台，不依赖个人电脑或宿主机的 7897
+代理。完整架构、开机自动恢复和分层排障方式见
+[固定域名公网访问架构与运维手册](PUBLIC_ACCESS_OPERATIONS.md)。
+
+Compose 中仍保留通过宿主机 `127.0.0.1:7897` 建立的匿名 Pinggy 隧道作为临时备用。
+其免费 URL 最多保持 60 分钟，不能代替上述固定域名；7897 不可用导致 Pinggy 服务
+异常时，不代表固定域名链路异常。公网入口目前没有平台级登录或只读权限，只应分享给
+可信人员，或另行配置 Cloudflare Access。
 
 ## 平台模块
 
@@ -74,6 +79,7 @@ rosbridge、noVNC、Webots 或 Docker 端口。
 
 ## 文档
 
+- [固定域名公网访问架构与运维手册](PUBLIC_ACCESS_OPERATIONS.md)
 - [完整使用与运维手册](docs/OPERATIONS.md)
 - [需求与接口规范](docs/SPEC.md)
 - [平台架构设计](docs/PLATFORM_DESIGN.md)
