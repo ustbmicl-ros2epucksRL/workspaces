@@ -1,0 +1,497 @@
+{
+  "schema": "afor_g_study_v1",
+  "method": "G",
+  "status": "completed",
+  "registered_at": "2026-11-05T13:38:55.120913+00:00",
+  "recipe_sha256": "8dfc15998f8c01aba31e1376872e7df59c4d7702a99834bcf3e9fd1a73cf63fb",
+  "recipe": {
+    "protocol": "afor_local_g_v1",
+    "training_runs": 15,
+    "updates": 500,
+    "task": {
+      "num_envs": 16,
+      "horizon": 750,
+      "formation": "line",
+      "scenario": "narrowing",
+      "passage_width": 1.2,
+      "dt": 0.05,
+      "radius": 0.13,
+      "formation_weight": 0.15,
+      "goal_distance_weight": 1.0
+    },
+    "sensors": {
+      "lidar_rays": 32,
+      "lidar_range": 2.0,
+      "neighbour_range": 2.0
+    },
+    "policy": {
+      "hidden": 64,
+      "capacity_width": 24
+    },
+    "ppo": {
+      "steps": 128,
+      "sequence": 16,
+      "sequences_per_batch": 64,
+      "epochs": 4,
+      "lr": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip": 0.2,
+      "entropy": 0.001,
+      "barrier_weight": 1.0
+    },
+    "scenario": {
+      "perturb_probability": 0.5,
+      "max_jitter": 0.1,
+      "max_rejections": 100
+    },
+    "selection": {
+      "enabled": true,
+      "interval": 25,
+      "episodes": 24
+    },
+    "splits": {
+      "training": [
+        11,
+        23,
+        37,
+        51,
+        67
+      ],
+      "validation": [
+        172001,
+        172002
+      ],
+      "test": [
+        183001,
+        183002,
+        183003
+      ],
+      "analysis": [
+        184001,
+        184002,
+        184003
+      ]
+    },
+    "evaluation": {
+      "episodes_per_case": 32,
+      "cases": [
+        {
+          "passage_width": 1.2,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "nominal_regression"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.0,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "nominal_regression"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.0,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "nominal_regression"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.05,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.05,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.05,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.1,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.1,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.1,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.15,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.15,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.15,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "main_challenge"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.2,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "stronger_perturbation"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.2,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "stronger_perturbation"
+        },
+        {
+          "passage_width": 1.2,
+          "jitter": 0.2,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "stronger_perturbation"
+        },
+        {
+          "passage_width": 1.1,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "width_transfer"
+        },
+        {
+          "passage_width": 1.3,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "width_transfer"
+        },
+        {
+          "passage_width": 1.4,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "width_transfer"
+        },
+        {
+          "passage_width": 1.5,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "width_transfer"
+        },
+        {
+          "passage_width": 1.6,
+          "jitter": 0.0,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "width_transfer"
+        },
+        {
+          "passage_width": 1.1,
+          "jitter": 0.15,
+          "seed": 183001,
+          "episodes": 32,
+          "family": "joint_shift"
+        },
+        {
+          "passage_width": 1.1,
+          "jitter": 0.15,
+          "seed": 183002,
+          "episodes": 32,
+          "family": "joint_shift"
+        },
+        {
+          "passage_width": 1.1,
+          "jitter": 0.15,
+          "seed": 183003,
+          "episodes": 32,
+          "family": "joint_shift"
+        }
+      ]
+    },
+    "entries": [
+      {
+        "formation": "line",
+        "seed": 11
+      },
+      {
+        "formation": "line",
+        "seed": 23
+      },
+      {
+        "formation": "line",
+        "seed": 37
+      },
+      {
+        "formation": "line",
+        "seed": 51
+      },
+      {
+        "formation": "line",
+        "seed": 67
+      },
+      {
+        "formation": "circle",
+        "seed": 11
+      },
+      {
+        "formation": "circle",
+        "seed": 23
+      },
+      {
+        "formation": "circle",
+        "seed": 37
+      },
+      {
+        "formation": "circle",
+        "seed": 51
+      },
+      {
+        "formation": "circle",
+        "seed": 67
+      },
+      {
+        "formation": "wedge",
+        "seed": 11
+      },
+      {
+        "formation": "wedge",
+        "seed": 23
+      },
+      {
+        "formation": "wedge",
+        "seed": 37
+      },
+      {
+        "formation": "wedge",
+        "seed": 51
+      },
+      {
+        "formation": "wedge",
+        "seed": 67
+      }
+    ],
+    "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8"
+  },
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "source_snapshot_sha256": "de1b31caf8c60de3ae13b08ddf2664a27a29f0c4526a26fead7b29861eb6b2d5",
+  "case_files": {
+    "line": {
+      "path": "cases/line.json",
+      "sha256": "342ed6f6e675dc0bbce448d0b78293faec05bb0ca7462f061fa5d8f29f791c91"
+    },
+    "circle": {
+      "path": "cases/circle.json",
+      "sha256": "9130b16cbcdcf48b742171ea7a2aea34e888c28ae478286027b628c10897c8f4"
+    },
+    "wedge": {
+      "path": "cases/wedge.json",
+      "sha256": "802833d849a4c4e0b76ee923f8f2ed9fe8d694aa8e361b1998880a53e2ff91c4"
+    }
+  },
+  "entries": [
+    {
+      "formation": "line",
+      "seed": 11,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.123097+00:00",
+      "selected_update": 200,
+      "actor_sha256": "dd21f154e1beb10039e8fb164f9be61a517e55a88ac977d57ef78185336ae02d",
+      "training_completed_at": "2026-11-05T14:18:08.601673+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.632478+00:00",
+      "completed_at": "2026-11-05T14:18:55.370392+00:00"
+    },
+    {
+      "formation": "line",
+      "seed": 23,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.124767+00:00",
+      "selected_update": 75,
+      "actor_sha256": "49aedc4af1157d60b12c3a9866f0f22e0b91d8e14fa17a9c355bb3c35b0fe84d",
+      "training_completed_at": "2026-11-05T14:17:14.533887+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.630145+00:00",
+      "completed_at": "2026-11-05T14:19:33.232131+00:00"
+    },
+    {
+      "formation": "line",
+      "seed": 37,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.125312+00:00",
+      "selected_update": 175,
+      "actor_sha256": "d5231c90a83474d3809741eab5350b9731ed4dda356db2c5b99efefa61ff074f",
+      "training_completed_at": "2026-11-05T14:17:12.540964+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.633531+00:00",
+      "completed_at": "2026-11-05T14:18:52.164915+00:00"
+    },
+    {
+      "formation": "line",
+      "seed": 51,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.125983+00:00",
+      "selected_update": 175,
+      "actor_sha256": "b7b865589364c1ff2ef0ea721a9d1b8516a531e681cec7e85dc24142f7e13618",
+      "training_completed_at": "2026-11-05T14:17:25.916464+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.637269+00:00",
+      "completed_at": "2026-11-05T14:18:48.964405+00:00"
+    },
+    {
+      "formation": "line",
+      "seed": 67,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.126181+00:00",
+      "selected_update": 275,
+      "actor_sha256": "f5219b4ac719310b863d12e42ca9699e64ca434d80b0879da0522caa09f74272",
+      "training_completed_at": "2026-11-05T14:18:03.255065+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.637148+00:00",
+      "completed_at": "2026-11-05T14:18:49.918371+00:00"
+    },
+    {
+      "formation": "circle",
+      "seed": 11,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.127681+00:00",
+      "selected_update": 450,
+      "actor_sha256": "6e8ca981c4bcd415132b8056b93d65906666d68423288aba48a64f9704ea372a",
+      "training_completed_at": "2026-11-05T14:15:21.272544+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.641853+00:00",
+      "completed_at": "2026-11-05T14:18:36.189134+00:00"
+    },
+    {
+      "formation": "circle",
+      "seed": 23,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.128241+00:00",
+      "selected_update": 400,
+      "actor_sha256": "d0bad5ebad07c04e1690494b31c301bc369db7c3e5547150dd952e1326971893",
+      "training_completed_at": "2026-11-05T14:16:15.373180+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.645897+00:00",
+      "completed_at": "2026-11-05T14:18:37.071780+00:00"
+    },
+    {
+      "formation": "circle",
+      "seed": 37,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.128598+00:00",
+      "selected_update": 450,
+      "actor_sha256": "a74a95eb0fa660eaae96e584088b71bb20b64b531513164cab840934d14e0e54",
+      "training_completed_at": "2026-11-05T14:15:07.381430+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.652040+00:00",
+      "completed_at": "2026-11-05T14:18:37.028780+00:00"
+    },
+    {
+      "formation": "circle",
+      "seed": 51,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.130821+00:00",
+      "selected_update": 400,
+      "actor_sha256": "c61fae09794bdd4522bae882d468e1eb009b7e9f04cb4061f8a01671ddb54f3e",
+      "training_completed_at": "2026-11-05T14:16:09.876350+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.651705+00:00",
+      "completed_at": "2026-11-05T14:18:37.355314+00:00"
+    },
+    {
+      "formation": "circle",
+      "seed": 67,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.131456+00:00",
+      "selected_update": 500,
+      "actor_sha256": "99a63edc890d548f371ef978316195ccdafd7752bdac8fe4a866a50ce7e508b9",
+      "training_completed_at": "2026-11-05T14:16:49.401544+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.668264+00:00",
+      "completed_at": "2026-11-05T14:18:37.118058+00:00"
+    },
+    {
+      "formation": "wedge",
+      "seed": 11,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.131653+00:00",
+      "selected_update": 425,
+      "actor_sha256": "66187ab3b9f15c444dd94fb74c2e412cb409b6bf7a55ccb7838608d748ce7940",
+      "training_completed_at": "2026-11-05T14:16:41.064853+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.672704+00:00",
+      "completed_at": "2026-11-05T14:18:37.523686+00:00"
+    },
+    {
+      "formation": "wedge",
+      "seed": 23,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.133453+00:00",
+      "selected_update": 475,
+      "actor_sha256": "e0929b1882469cd21d2096c164479344146980394b706923a223bbd6fa1cf061",
+      "training_completed_at": "2026-11-05T14:16:40.540185+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.670089+00:00",
+      "completed_at": "2026-11-05T14:18:38.705102+00:00"
+    },
+    {
+      "formation": "wedge",
+      "seed": 37,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.134262+00:00",
+      "selected_update": 500,
+      "actor_sha256": "51b93cf7e1caa79e1721668613c98bb48e7d9e8dbf5bef7e9c6d0005e4775916",
+      "training_completed_at": "2026-11-05T14:16:36.615328+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.670117+00:00",
+      "completed_at": "2026-11-05T14:18:38.491524+00:00"
+    },
+    {
+      "formation": "wedge",
+      "seed": 51,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.134637+00:00",
+      "selected_update": 400,
+      "actor_sha256": "9a07f616bbf9d23e2788bcac6a4dbd63a604da482af60f52cadc0e5812db8df4",
+      "training_completed_at": "2026-11-05T14:16:37.077128+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.674198+00:00",
+      "completed_at": "2026-11-05T14:18:38.674349+00:00"
+    },
+    {
+      "formation": "wedge",
+      "seed": 67,
+      "status": "completed",
+      "training_started_at": "2026-11-05T13:38:55.135010+00:00",
+      "selected_update": 500,
+      "actor_sha256": "699be92ec0bc87550ce5505e0e435551d201011222eb053c2a7cca6c6084efa6",
+      "training_completed_at": "2026-11-05T14:16:00.543959+00:00",
+      "testing_started_at": "2026-11-05T14:18:08.672898+00:00",
+      "completed_at": "2026-11-05T14:18:37.058035+00:00"
+    }
+  ],
+  "evaluation": "One frozen validation-selected actor per training seed; no test-based checkpoint selection",
+  "started_at": "2026-11-05T13:38:55.121809+00:00",
+  "workers": 15,
+  "recommendations_sha256": "57b6d9f7a289714a20fa24ba56b4a8a97f472025775f52690f9cf672dc8a4189",
+  "test_started_at": "2026-11-05T14:18:08.618911+00:00",
+  "finished_at": "2026-11-05T14:19:34.582337+00:00",
+  "completed_runs": 15,
+  "test_episodes": 11040
+}

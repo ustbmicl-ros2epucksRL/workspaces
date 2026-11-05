@@ -1,0 +1,10 @@
+{
+  "status": "passed",
+  "tests_passed": 165,
+  "elapsed_seconds": 32.60602766403463,
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "command": "python -m pytest -q",
+  "git_staging_identical_to_pre_refactor": true,
+  "g_regression": "g_regression.json",
+  "scope": "G-only implementation, strict first-episode evaluation, resume, validation isolation, study registration, two-phase testing, reporting and standalone deployment; not a task-performance claim"
+}

@@ -1,0 +1,168 @@
+{
+  "status": "passed",
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "training_runs": 15,
+  "team_transitions": 15360000,
+  "agent_transitions": 76800000,
+  "test_episodes": 11040,
+  "episode_outcomes": {
+    "success": 10950,
+    "pair": 88,
+    "wall": 1,
+    "timeout": 1
+  },
+  "integrity_checks": "Frozen source/protocol/cases/recommendations; initial actor/critic identities; full 500-update logs and budgets; 20 validation checks; retained selected/endpoint hashes; independent acceptance and raw-case recount; recovery-point cleanup",
+  "scope": "Integrity and descriptive G task performance, not external method superiority",
+  "runs": [
+    {
+      "formation": "circle",
+      "training_seed": 11,
+      "updates": 500,
+      "selected_update": 450,
+      "actor_sha256": "6e8ca981c4bcd415132b8056b93d65906666d68423288aba48a64f9704ea372a",
+      "final_actor_sha256": "77282ee537e226f2268068593177582a91c6fdf696c31a83fb1d2f83e0158cd6",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "circle",
+      "training_seed": 23,
+      "updates": 500,
+      "selected_update": 400,
+      "actor_sha256": "d0bad5ebad07c04e1690494b31c301bc369db7c3e5547150dd952e1326971893",
+      "final_actor_sha256": "84d6ab84327e243a153e2be19c5e7435994e95c4d1b478a1d4ad18ea8c74b6fe",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "circle",
+      "training_seed": 37,
+      "updates": 500,
+      "selected_update": 450,
+      "actor_sha256": "a74a95eb0fa660eaae96e584088b71bb20b64b531513164cab840934d14e0e54",
+      "final_actor_sha256": "f1d5b529d526d01845c1f3354a5d73210f453fbdb66d1a7c14fc7f34ffb851cc",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "circle",
+      "training_seed": 51,
+      "updates": 500,
+      "selected_update": 400,
+      "actor_sha256": "c61fae09794bdd4522bae882d468e1eb009b7e9f04cb4061f8a01671ddb54f3e",
+      "final_actor_sha256": "c8f45c132971d436e9bb02f357e592ea1ee40b530c58ad0a23bd413e64a48010",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "circle",
+      "training_seed": 67,
+      "updates": 500,
+      "selected_update": 500,
+      "actor_sha256": "99a63edc890d548f371ef978316195ccdafd7752bdac8fe4a866a50ce7e508b9",
+      "final_actor_sha256": "e0e4233c073decf8dfa9d7a6eae09affd17f07383ffbe27ba63c45869e2be139",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "line",
+      "training_seed": 11,
+      "updates": 500,
+      "selected_update": 200,
+      "actor_sha256": "dd21f154e1beb10039e8fb164f9be61a517e55a88ac977d57ef78185336ae02d",
+      "final_actor_sha256": "18b56ad66008f44592f320ea92cbe982911e33a89a2d7b2ed824513dd70081ff",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "line",
+      "training_seed": 23,
+      "updates": 500,
+      "selected_update": 75,
+      "actor_sha256": "49aedc4af1157d60b12c3a9866f0f22e0b91d8e14fa17a9c355bb3c35b0fe84d",
+      "final_actor_sha256": "0f5c5cb378671b4b3ba18a3064c5b1b9b7fd899e83ae3973c1d58867e9e15026",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "line",
+      "training_seed": 37,
+      "updates": 500,
+      "selected_update": 175,
+      "actor_sha256": "d5231c90a83474d3809741eab5350b9731ed4dda356db2c5b99efefa61ff074f",
+      "final_actor_sha256": "afc1a9f32c1fd5a5e56461a8ea0c62461f6d87cd2d5073ed7f2cd379beba1a67",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "line",
+      "training_seed": 51,
+      "updates": 500,
+      "selected_update": 175,
+      "actor_sha256": "b7b865589364c1ff2ef0ea721a9d1b8516a531e681cec7e85dc24142f7e13618",
+      "final_actor_sha256": "1034020d4133f2a7c1f1ae88a1561dd8038991c5e99cd9a90513c0d45a93e71c",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "line",
+      "training_seed": 67,
+      "updates": 500,
+      "selected_update": 275,
+      "actor_sha256": "f5219b4ac719310b863d12e42ca9699e64ca434d80b0879da0522caa09f74272",
+      "final_actor_sha256": "d3a86a315ce8101cb4fba6f9f0eb20ab7e7351ffbe1be50f35b9317661ed09b6",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "wedge",
+      "training_seed": 11,
+      "updates": 500,
+      "selected_update": 425,
+      "actor_sha256": "66187ab3b9f15c444dd94fb74c2e412cb409b6bf7a55ccb7838608d748ce7940",
+      "final_actor_sha256": "20f61d740b6262787304abf3c4da27b61c9c22858d1ff6b2b733274c76db29d9",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "wedge",
+      "training_seed": 23,
+      "updates": 500,
+      "selected_update": 475,
+      "actor_sha256": "e0929b1882469cd21d2096c164479344146980394b706923a223bbd6fa1cf061",
+      "final_actor_sha256": "0a84c331e351e5423978996d23e9fbc1a4b9ad9daf2c685686178b9512d3fa37",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "wedge",
+      "training_seed": 37,
+      "updates": 500,
+      "selected_update": 500,
+      "actor_sha256": "51b93cf7e1caa79e1721668613c98bb48e7d9e8dbf5bef7e9c6d0005e4775916",
+      "final_actor_sha256": "3f506d3e1c7ac794e1a170e187fdcce29682541d81af1e01d59432edfd122d93",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "wedge",
+      "training_seed": 51,
+      "updates": 500,
+      "selected_update": 400,
+      "actor_sha256": "9a07f616bbf9d23e2788bcac6a4dbd63a604da482af60f52cadc0e5812db8df4",
+      "final_actor_sha256": "4a17b6c116b2030267919b5c002d5095b96e985487dee759520bb6bda770bd74",
+      "test_episodes": 736,
+      "status": "passed"
+    },
+    {
+      "formation": "wedge",
+      "training_seed": 67,
+      "updates": 500,
+      "selected_update": 500,
+      "actor_sha256": "699be92ec0bc87550ce5505e0e435551d201011222eb053c2a7cca6c6084efa6",
+      "final_actor_sha256": "b951d2006304fa9f59fbc094f953874f2871886e8195894bab404700780b1df9",
+      "test_episodes": 736,
+      "status": "passed"
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-"""Show unsmoothed local-policy motion and the actual visible task geometry."""
+"""Show unsmoothed G evaluation traces and the measured task geometry."""
 import argparse
 from pathlib import Path
 import torch
@@ -20,8 +20,10 @@ def main():
         parser.error('Supply one label for each trace')
     fig,axes=plt.subplots(1,len(args.traces),figsize=(4.2*len(args.traces),5),squeeze=False,constrained_layout=True)
     for panel,(ax,name) in enumerate(zip(axes[0],args.traces)):
-        trace=torch.load(name,weights_only=False)
+        trace=torch.load(name,weights_only=True)
         i=args.episode
+        if i < 0 or i >= trace['position'].shape[1]:
+            raise ValueError('Episode index is absent from this retained trace')
         active=trace['active'][:,i].numpy()
         count=int(active.sum())
         points=trace['position'][:count+1,i].numpy()

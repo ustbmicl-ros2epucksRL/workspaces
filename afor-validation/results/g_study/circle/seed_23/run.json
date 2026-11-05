@@ -1,0 +1,2797 @@
+{
+  "implementation": "afor_local_g",
+  "schema": "afor_local_g_v1",
+  "status": "completed",
+  "config": {
+    "task": {
+      "num_envs": 16,
+      "horizon": 750,
+      "formation": "circle",
+      "scenario": "narrowing",
+      "passage_width": 1.2,
+      "dt": 0.05,
+      "radius": 0.13,
+      "formation_weight": 0.15,
+      "goal_distance_weight": 1.0
+    },
+    "policy": {
+      "hidden": 64,
+      "capacity_width": 24
+    },
+    "sensors": {
+      "lidar_rays": 32,
+      "lidar_range": 2.0,
+      "neighbour_range": 2.0
+    },
+    "ppo": {
+      "steps": 128,
+      "sequence": 16,
+      "sequences_per_batch": 64,
+      "epochs": 4,
+      "lr": 0.0003,
+      "gamma": 0.99,
+      "gae_lambda": 0.95,
+      "clip": 0.2,
+      "entropy": 0.001,
+      "barrier_weight": 1.0
+    },
+    "scenario": {
+      "perturb_probability": 0.5,
+      "max_jitter": 0.1,
+      "max_rejections": 100
+    },
+    "seed": 23,
+    "selection": {
+      "enabled": true,
+      "interval": 25,
+      "episodes": 24
+    }
+  },
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "device": "cpu",
+  "torch": "2.10.0+cu128",
+  "initialization": {
+    "actor_sha256": "b327a9d5204f020edf93b4c08464555a859ec177f40f7619f6fd59bc25bb72bc",
+    "critic_sha256": "d482bc9494b03e9dc3d70dcc64d9409fe69b2ea006da4182a19efdffb80d32fd",
+    "critic_rule": "independent original critic, forked seed + 100000"
+  },
+  "runtime": {
+    "python": "3.11.16",
+    "numpy": "2.3.5",
+    "torch": "2.10.0+cu128",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "torch_threads": 1,
+    "torch_interop_threads": 64,
+    "cuda": "12.8"
+  },
+  "planned_updates": 500,
+  "started_at": "2026-11-05T13:38:57.385787+00:00",
+  "completed_updates": 500,
+  "evidence_scope": "G-only training; validation-selected weights evaluated on separate test seeds",
+  "retention": "one validation-selected actor, one terminal actor, one metrics stream, one evaluation and manifest; only one rolling checkpoint containing the selected payload during training",
+  "selection": {
+    "enabled": true,
+    "config": {
+      "enabled": true,
+      "interval": 25,
+      "episodes": 24
+    },
+    "criterion": "lexicographic nominal successes, challenge successes, negative penalized challenge duration",
+    "interval": 25,
+    "episodes": 24,
+    "validation_seeds": [
+      172001,
+      172002
+    ],
+    "jitters": [
+      0.0,
+      0.05,
+      0.1,
+      0.15
+    ],
+    "ranking": [
+      "nominal_successes",
+      "challenge_successes",
+      "-mean_failure_penalized_duration"
+    ],
+    "tie_break": "earlier checkpoint",
+    "selected_update": 400,
+    "last_update": 500,
+    "check_count": 20,
+    "best_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec",
+    "best_score": {
+      "nominal_successes": 48,
+      "nominal_episodes": 48,
+      "challenge_successes": 144,
+      "challenge_episodes": 144,
+      "mean_failure_penalized_duration": 6.897916666666667,
+      "validation_seeds": [
+        172001,
+        172002
+      ],
+      "case_hashes": [
+        {
+          "seed": 172001,
+          "jitter": 0.0,
+          "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.0,
+          "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.05,
+          "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.05,
+          "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.1,
+          "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.1,
+          "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.15,
+          "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.15,
+          "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+        }
+      ],
+      "cases": [
+        {
+          "seed": 172001,
+          "jitter": 0.0,
+          "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.800000000000001
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.0,
+          "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.791666666666668
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.05,
+          "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.835416666666667
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.05,
+          "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.829166666666667
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.1,
+          "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.891666666666667
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.1,
+          "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.891666666666668
+        },
+        {
+          "seed": 172001,
+          "jitter": 0.15,
+          "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.987500000000001
+        },
+        {
+          "seed": 172002,
+          "jitter": 0.15,
+          "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+          "episodes": 24,
+          "successes": 24,
+          "mean_failure_penalized_duration": 6.952083333333334
+        }
+      ]
+    },
+    "case_hashes": [
+      {
+        "seed": 172001,
+        "jitter": 0.0,
+        "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+      },
+      {
+        "seed": 172002,
+        "jitter": 0.0,
+        "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+      },
+      {
+        "seed": 172001,
+        "jitter": 0.05,
+        "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+      },
+      {
+        "seed": 172002,
+        "jitter": 0.05,
+        "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+      },
+      {
+        "seed": 172001,
+        "jitter": 0.1,
+        "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+      },
+      {
+        "seed": 172002,
+        "jitter": 0.1,
+        "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+      },
+      {
+        "seed": 172001,
+        "jitter": 0.15,
+        "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+      },
+      {
+        "seed": 172002,
+        "jitter": 0.15,
+        "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+      }
+    ],
+    "history": [
+      {
+        "update": 25,
+        "check_count": 1,
+        "improved": true,
+        "selected_update": 25,
+        "score": {
+          "nominal_successes": 0,
+          "nominal_episodes": 48,
+          "challenge_successes": 0,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 37.5,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 0,
+              "mean_failure_penalized_duration": 37.5
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "7d7c0462f69a4805d8d27393770e2e24f5c796168480e4ed2262c029e5706764"
+      },
+      {
+        "update": 50,
+        "check_count": 2,
+        "improved": true,
+        "selected_update": 50,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 12.926388888888889,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 13.362500000000002
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 13.341666666666669
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 12.69375
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 13.112500000000002
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 12.86875
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 12.975000000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 13.0
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 12.908333333333333
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "6d9550fa8d380dd7695773b976c7af23bf1e9a37edb177a60b6a237120f65cf4"
+      },
+      {
+        "update": 75,
+        "check_count": 3,
+        "improved": true,
+        "selected_update": 75,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 8.498611111111112,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.46875
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.475
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.479166666666666
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.487499999999999
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.49375
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.500000000000002
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.516666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.514583333333334
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "476eeef31d33f62f1a108c9908ff004fb8a7fc74c519246720187cbb40fd9f88"
+      },
+      {
+        "update": 100,
+        "check_count": 4,
+        "improved": true,
+        "selected_update": 100,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 8.036111111111111,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.0
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.987500000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.016666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.012500000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.025
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.03125
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.05625
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 8.075000000000001
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "751f95333c5a22651a206fc126f584f15dfdc6a9fa4ea7802c12417e4028f886"
+      },
+      {
+        "update": 125,
+        "check_count": 5,
+        "improved": true,
+        "selected_update": 125,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.649305555555555,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.629166666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.618750000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.641666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.6208333333333345
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.662500000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.650000000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.660416666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.660416666666667
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "2fae17e9170b07ae56ea693a47850e16f38c5b4797da94627a2b9fd85ce70560"
+      },
+      {
+        "update": 150,
+        "check_count": 6,
+        "improved": true,
+        "selected_update": 150,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.284027777777776,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.270833333333335
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.264583333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.277083333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.266666666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.297916666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.289583333333333
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.279166666666666
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.29375
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "bc8a6f197a9d4a9c0a652c9c1174cafa4f6dea5860da33c5699f59c596e14bf6"
+      },
+      {
+        "update": 175,
+        "check_count": 7,
+        "improved": true,
+        "selected_update": 175,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.076041666666667,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.072916666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.0625
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.079166666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.060416666666668
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.077083333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.072916666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.081250000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.085416666666667
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "dd4f4fb7f77f165ca95280066f25732b09b133cbd665051bd6e962a9b38b4f76"
+      },
+      {
+        "update": 200,
+        "check_count": 8,
+        "improved": false,
+        "selected_update": 175,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.175347222222222,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.1125
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.097916666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.120833333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.125000000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.154166666666668
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.1812499999999995
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.239583333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.23125
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "dd4f4fb7f77f165ca95280066f25732b09b133cbd665051bd6e962a9b38b4f76"
+      },
+      {
+        "update": 225,
+        "check_count": 9,
+        "improved": true,
+        "selected_update": 225,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.925347222222222,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.854166666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.84375
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.885416666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.89375
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.927083333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.91875
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.964583333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.962500000000001
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "640b97a527006c9aa94464a88097ccbf5c6e65aee324054393b3085fb65c3075"
+      },
+      {
+        "update": 250,
+        "check_count": 10,
+        "improved": false,
+        "selected_update": 225,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.965624999999999,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.875
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.864583333333333
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.90625
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.914583333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.958333333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.96875
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.016666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.029166666666666
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "640b97a527006c9aa94464a88097ccbf5c6e65aee324054393b3085fb65c3075"
+      },
+      {
+        "update": 275,
+        "check_count": 11,
+        "improved": false,
+        "selected_update": 225,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.041319444444444,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.8999999999999995
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.914583333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.018750000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.977083333333333
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.0375000000000005
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.04375
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.083333333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.087500000000001
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "640b97a527006c9aa94464a88097ccbf5c6e65aee324054393b3085fb65c3075"
+      },
+      {
+        "update": 300,
+        "check_count": 12,
+        "improved": true,
+        "selected_update": 300,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.915277777777779,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.833333333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.820833333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.84375
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.852083333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.90625
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.910416666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.991666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.9875
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "bbd4ce3b0c9a3e4aba133df9f9a7eae893b1fcac6896c1ab26f51dd00e2ab088"
+      },
+      {
+        "update": 325,
+        "check_count": 13,
+        "improved": false,
+        "selected_update": 300,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.937847222222223,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.847916666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.831250000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.879166666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.877083333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.9375
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.927083333333333
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.014583333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.991666666666667
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "bbd4ce3b0c9a3e4aba133df9f9a7eae893b1fcac6896c1ab26f51dd00e2ab088"
+      },
+      {
+        "update": 350,
+        "check_count": 14,
+        "improved": false,
+        "selected_update": 300,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.97673611111111,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.908333333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.904166666666668
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.935416666666666
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.929166666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.977083333333333
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.962500000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.04375
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.0125
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "bbd4ce3b0c9a3e4aba133df9f9a7eae893b1fcac6896c1ab26f51dd00e2ab088"
+      },
+      {
+        "update": 375,
+        "check_count": 15,
+        "improved": true,
+        "selected_update": 375,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.901736111111111,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.839583333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.820833333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.8395833333333345
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.822916666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.910416666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.90625
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.983333333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.947916666666667
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "721631189e04f8eaa0d6ebd34f87a21edcb7d6faec0814b022f9928b9c6d294b"
+      },
+      {
+        "update": 400,
+        "check_count": 16,
+        "improved": true,
+        "selected_update": 400,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.897916666666667,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.800000000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.791666666666668
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.835416666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.829166666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.891666666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.891666666666668
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.987500000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.952083333333334
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec"
+      },
+      {
+        "update": 425,
+        "check_count": 17,
+        "improved": false,
+        "selected_update": 400,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 143,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.053472222222223,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.78125
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.770833333333333
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.806250000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.797916666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.8374999999999995
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.827083333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 23,
+              "mean_failure_penalized_duration": 8.172916666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.879166666666667
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec"
+      },
+      {
+        "update": 450,
+        "check_count": 18,
+        "improved": false,
+        "selected_update": 400,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.088541666666667,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.0
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.985416666666668
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.997916666666668
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.010416666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.089583333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.075
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.183333333333334
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.175
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec"
+      },
+      {
+        "update": 475,
+        "check_count": 19,
+        "improved": false,
+        "selected_update": 400,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 7.011805555555556,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.989583333333335
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.98125
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.997916666666668
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.000000000000001
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.0
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.010416666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.01875
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.04375
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec"
+      },
+      {
+        "update": 500,
+        "check_count": 20,
+        "improved": false,
+        "selected_update": 400,
+        "score": {
+          "nominal_successes": 48,
+          "nominal_episodes": 48,
+          "challenge_successes": 144,
+          "challenge_episodes": 144,
+          "mean_failure_penalized_duration": 6.976041666666668,
+          "validation_seeds": [
+            172001,
+            172002
+          ],
+          "case_hashes": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+            }
+          ],
+          "cases": [
+            {
+              "seed": 172001,
+              "jitter": 0.0,
+              "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.935416666666666
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.0,
+              "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.922916666666667
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.05,
+              "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.931250000000001
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.05,
+              "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.939583333333334
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.1,
+              "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.954166666666667
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.1,
+              "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 6.972916666666666
+            },
+            {
+              "seed": 172001,
+              "jitter": 0.15,
+              "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.029166666666666
+            },
+            {
+              "seed": 172002,
+              "jitter": 0.15,
+              "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+              "episodes": 24,
+              "successes": 24,
+              "mean_failure_penalized_duration": 7.029166666666668
+            }
+          ]
+        },
+        "selected_actor_state_sha256": "3653bc1cdec692850ef5c7f2e47fbd60b7bfbd0f315633c0baaf90f2f387d8ec"
+      }
+    ]
+  },
+  "final_actor_sha256": "84d6ab84327e243a153e2be19c5e7435994e95c4d1b478a1d4ad18ea8c74b6fe",
+  "finished_at": "2026-11-05T14:16:14.877517+00:00",
+  "elapsed_seconds": 2237.4917065619957,
+  "actor_sha256": "d0bad5ebad07c04e1690494b31c301bc369db7c3e5547150dd952e1326971893",
+  "actor_parameters": {
+    "training": 42845,
+    "decision": 42845
+  },
+  "critic_parameters": 35073,
+  "io_seconds_this_session": 0.31823832308873534
+}

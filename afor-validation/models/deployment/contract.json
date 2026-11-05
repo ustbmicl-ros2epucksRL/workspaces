@@ -1,0 +1,200 @@
+{
+  "schema": "afor_local_g_v1",
+  "version": 1,
+  "kind": "deployment_bundle",
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "dt_s": 0.05,
+  "radius_m": 0.13,
+  "lidar_rays": 32,
+  "lidar_range_m": 2.0,
+  "neighbour_range_m": 2.0,
+  "memory_size": 64,
+  "agents": 5,
+  "frame": "Fixed mission axes, +y along the trained corridor direction; world vectors use ENU metres.",
+  "observation": "Final goal delta, ego velocity/radius, lidar and measured one-hop relations. The network receives no explicit ego slot ID.",
+  "action": "Acceleration per mission axis in [-1,1]; velocity target clips measured_velocity+dt*acceleration per axis.",
+  "scope": "Export fidelity only; the source actor determines task performance.",
+  "formations": {
+    "line": {
+      "template_m": [
+        [
+          -1.0,
+          0.0
+        ],
+        [
+          -0.5,
+          0.0
+        ],
+        [
+          0.0,
+          0.0
+        ],
+        [
+          0.5,
+          0.0
+        ],
+        [
+          1.0,
+          0.0
+        ]
+      ],
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    },
+    "circle": {
+      "template_m": [
+        [
+          3.6739405577555036e-17,
+          0.6000000238418579
+        ],
+        [
+          -0.5706338882446289,
+          0.18541020154953003
+        ],
+        [
+          -0.35267114639282227,
+          -0.4854101836681366
+        ],
+        [
+          0.35267114639282227,
+          -0.4854101836681366
+        ],
+        [
+          0.5706338882446289,
+          0.18541020154953003
+        ]
+      ],
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          4
+        ],
+        [
+          4,
+          0
+        ]
+      ]
+    },
+    "wedge": {
+      "template_m": [
+        [
+          -0.699999988079071,
+          -0.4000000059604645
+        ],
+        [
+          -0.3499999940395355,
+          0.10000000149011612
+        ],
+        [
+          0.0,
+          0.6000000238418579
+        ],
+        [
+          0.3499999940395355,
+          0.10000000149011612
+        ],
+        [
+          0.699999988079071,
+          -0.4000000059604645
+        ]
+      ],
+      "edges": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          3,
+          4
+        ]
+      ]
+    }
+  },
+  "exports": [
+    {
+      "formation": "line",
+      "policy": {
+        "hidden": 64,
+        "capacity_width": 24
+      },
+      "sensors": {
+        "lidar_rays": 32,
+        "lidar_range": 2.0,
+        "neighbour_range": 2.0
+      },
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/line/seed_67/actor.pt",
+      "actor_pt_sha256": "f5219b4ac719310b863d12e42ca9699e64ca434d80b0879da0522caa09f74272",
+      "actor_ts_sha256": "e5a29de2d45fcc4a7a393d341a64317187377034433c910869d169211f9827e6",
+      "max_export_error": 0.0
+    },
+    {
+      "formation": "circle",
+      "policy": {
+        "hidden": 64,
+        "capacity_width": 24
+      },
+      "sensors": {
+        "lidar_rays": 32,
+        "lidar_range": 2.0,
+        "neighbour_range": 2.0
+      },
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/circle/seed_11/actor.pt",
+      "actor_pt_sha256": "6e8ca981c4bcd415132b8056b93d65906666d68423288aba48a64f9704ea372a",
+      "actor_ts_sha256": "ad843273af8b010c5453f4693ce8f257a2c2171d62bd1ac2f2c58383e93bb1da",
+      "max_export_error": 0.0
+    },
+    {
+      "formation": "wedge",
+      "policy": {
+        "hidden": 64,
+        "capacity_width": 24
+      },
+      "sensors": {
+        "lidar_rays": 32,
+        "lidar_range": 2.0,
+        "neighbour_range": 2.0
+      },
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/wedge/seed_67/actor.pt",
+      "actor_pt_sha256": "699be92ec0bc87550ce5505e0e435551d201011222eb053c2a7cca6c6084efa6",
+      "actor_ts_sha256": "af4c4c0e748ce684051a01f79fae5d596c447f6f56189c6473f9e8738c7659ee",
+      "max_export_error": 0.0
+    }
+  ],
+  "controller_sha256": "2ae76e40941ca31a42077dadd6fdbb4035aa1101c67eb2833c921bb4037bb651"
+}

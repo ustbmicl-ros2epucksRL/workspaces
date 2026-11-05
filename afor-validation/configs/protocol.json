@@ -1,0 +1,298 @@
+{
+  "protocol": "afor_local_g_v1",
+  "training_runs": 15,
+  "updates": 500,
+  "task": {
+    "num_envs": 16,
+    "horizon": 750,
+    "formation": "line",
+    "scenario": "narrowing",
+    "passage_width": 1.2,
+    "dt": 0.05,
+    "radius": 0.13,
+    "formation_weight": 0.15,
+    "goal_distance_weight": 1.0
+  },
+  "sensors": {
+    "lidar_rays": 32,
+    "lidar_range": 2.0,
+    "neighbour_range": 2.0
+  },
+  "policy": {
+    "hidden": 64,
+    "capacity_width": 24
+  },
+  "ppo": {
+    "steps": 128,
+    "sequence": 16,
+    "sequences_per_batch": 64,
+    "epochs": 4,
+    "lr": 0.0003,
+    "gamma": 0.99,
+    "gae_lambda": 0.95,
+    "clip": 0.2,
+    "entropy": 0.001,
+    "barrier_weight": 1.0
+  },
+  "scenario": {
+    "perturb_probability": 0.5,
+    "max_jitter": 0.1,
+    "max_rejections": 100
+  },
+  "selection": {
+    "enabled": true,
+    "interval": 25,
+    "episodes": 24
+  },
+  "splits": {
+    "training": [
+      11,
+      23,
+      37,
+      51,
+      67
+    ],
+    "validation": [
+      172001,
+      172002
+    ],
+    "test": [
+      183001,
+      183002,
+      183003
+    ],
+    "analysis": [
+      184001,
+      184002,
+      184003
+    ]
+  },
+  "evaluation": {
+    "episodes_per_case": 32,
+    "cases": [
+      {
+        "passage_width": 1.2,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "nominal_regression"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.0,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "nominal_regression"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.0,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "nominal_regression"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.05,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.05,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.05,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.1,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.1,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.1,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.15,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.15,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.15,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "main_challenge"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.2,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "stronger_perturbation"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.2,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "stronger_perturbation"
+      },
+      {
+        "passage_width": 1.2,
+        "jitter": 0.2,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "stronger_perturbation"
+      },
+      {
+        "passage_width": 1.1,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "width_transfer"
+      },
+      {
+        "passage_width": 1.3,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "width_transfer"
+      },
+      {
+        "passage_width": 1.4,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "width_transfer"
+      },
+      {
+        "passage_width": 1.5,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "width_transfer"
+      },
+      {
+        "passage_width": 1.6,
+        "jitter": 0.0,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "width_transfer"
+      },
+      {
+        "passage_width": 1.1,
+        "jitter": 0.15,
+        "seed": 183001,
+        "episodes": 32,
+        "family": "joint_shift"
+      },
+      {
+        "passage_width": 1.1,
+        "jitter": 0.15,
+        "seed": 183002,
+        "episodes": 32,
+        "family": "joint_shift"
+      },
+      {
+        "passage_width": 1.1,
+        "jitter": 0.15,
+        "seed": 183003,
+        "episodes": 32,
+        "family": "joint_shift"
+      }
+    ]
+  },
+  "entries": [
+    {
+      "formation": "line",
+      "seed": 11
+    },
+    {
+      "formation": "line",
+      "seed": 23
+    },
+    {
+      "formation": "line",
+      "seed": 37
+    },
+    {
+      "formation": "line",
+      "seed": 51
+    },
+    {
+      "formation": "line",
+      "seed": 67
+    },
+    {
+      "formation": "circle",
+      "seed": 11
+    },
+    {
+      "formation": "circle",
+      "seed": 23
+    },
+    {
+      "formation": "circle",
+      "seed": 37
+    },
+    {
+      "formation": "circle",
+      "seed": 51
+    },
+    {
+      "formation": "circle",
+      "seed": 67
+    },
+    {
+      "formation": "wedge",
+      "seed": 11
+    },
+    {
+      "formation": "wedge",
+      "seed": 23
+    },
+    {
+      "formation": "wedge",
+      "seed": 37
+    },
+    {
+      "formation": "wedge",
+      "seed": 51
+    },
+    {
+      "formation": "wedge",
+      "seed": 67
+    }
+  ]
+}

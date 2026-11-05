@@ -1,0 +1,13 @@
+{
+  "original_g_parameters": 42845,
+  "new_g_parameters": 42845,
+  "state_keys_identical": true,
+  "seed11_initialized_weights_identical": true,
+  "three_step_action_max_abs_error": 0.0,
+  "three_step_memory_max_abs_error": 0.0,
+  "three_step_attention_max_abs_error": 0.0,
+  "real_ppo_updates_compared": 3,
+  "ppo_training_seed": 991,
+  "ppo_all_actor_weights_identical": true,
+  "ppo_actor_max_abs_error": 0.0
+}

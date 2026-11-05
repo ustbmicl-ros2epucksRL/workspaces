@@ -4,6 +4,43 @@ import torch
 from .formations import make_formation
 from .swept_geometry import segment_polygon_distance
 from .observation import SensorConfig, lidar_scan, pack_observation
+from .config import ScenarioConfig
+
+
+def _perturbation_seed(seed):
+    # This stream never consumes the production environment's endpoint RNG.
+    return (int(seed) + 0x4252475632) % (2**63 - 1)
+
+
+def _draw_valid_y_jitter(env, ids, amplitudes, generator, max_rejections):
+    """Perturb selected teams, rejecting complete invalid team proposals.
+
+    The base pose, goals and sampled amplitude are fixed during rejection.
+    Other teams and the production endpoint RNG are untouched. Returns actual
+    offsets and the number of proposals per team, indexed by environment.
+    """
+    base = env.pos.clone()
+    offsets = torch.zeros_like(env.pos[..., 1])
+    attempts = torch.zeros(env.config.num_envs, dtype=torch.long, device=env.device)
+    pending = ids.clone()
+    for _ in range(max_rejections):
+        if not pending.numel():
+            break
+        draw = (2 * torch.rand((len(pending), env.n_agents), generator=generator,
+                               device=env.device) - 1) * amplitudes[pending, None]
+        candidate = base.clone()
+        candidate[pending, :, 1] += draw
+        valid = (env.clearances(candidate, candidate)[pending] > 0).all(-1)
+        attempts[pending] += 1
+        accepted = pending[valid]
+        env.pos[accepted] = candidate[accepted]
+        offsets[accepted] = draw[valid]
+        pending = pending[~valid]
+    if pending.numel():
+        raise RuntimeError(
+            f'Could not sample collision-free initial states after {max_rejections} '
+            f'proposals for environment ids {pending.cpu().tolist()}')
+    return offsets, attempts
 
 
 @dataclass(frozen=True)
@@ -46,7 +83,15 @@ class LocalFormationEnv:
                     'obstacle_mask', 'kind', 'shape', 'steps', 'hold', 'ended',
                     'episode_return')
 
-    def __init__(self, config=TaskConfig(), sensors=SensorConfig(), device='cpu', seed=0):
+    def __init__(self, config=TaskConfig(), sensors=SensorConfig(), device='cpu', seed=0,
+                 scenario=ScenarioConfig()):
+        self.scenario_config = scenario
+        self.perturb_rng = torch.Generator(device=torch.device(device))
+        self.perturb_rng.manual_seed(_perturbation_seed(seed))
+        self.jitter_amplitude = torch.zeros(config.num_envs, device=device)
+        self.initial_jitter = torch.zeros(config.num_envs, self.n_agents, device=device)
+        self.reset_attempts = torch.zeros(config.num_envs, dtype=torch.long, device=device)
+        self.perturbation_counters = {'resets': 0, 'perturbed_resets': 0, 'rejected_proposals': 0}
         self.config, self.sensors = config, sensors
         self.device = torch.device(device)
         self.rng = torch.Generator(device=self.device).manual_seed(seed)
@@ -83,6 +128,26 @@ class LocalFormationEnv:
         shape = torch.full((len(ids),), ('line','circle','wedge').index(self.config.formation),
                            device=self.device, dtype=torch.long)
         self._reset_narrowing(ids, shape)
+        self.jitter_amplitude[ids] = 0
+        self.initial_jitter[ids] = 0
+        self.reset_attempts[ids] = 0
+        self.perturbation_counters['resets'] += len(ids)
+        cfg = self.scenario_config
+        if cfg.max_jitter == 0 or cfg.perturb_probability == 0:
+            return
+        selected = ids[torch.rand(len(ids), generator=self.perturb_rng,
+                                 device=self.device) < cfg.perturb_probability]
+        if not selected.numel():
+            return
+        self.jitter_amplitude[selected] = torch.rand(
+            len(selected), generator=self.perturb_rng, device=self.device) * cfg.max_jitter
+        offsets, attempts = _draw_valid_y_jitter(
+            self, selected, self.jitter_amplitude, self.perturb_rng, cfg.max_rejections)
+        self.initial_jitter[selected] = offsets[selected]
+        self.reset_attempts[selected] = attempts[selected]
+        self.perturbation_counters['perturbed_resets'] += len(selected)
+        self.perturbation_counters['rejected_proposals'] += int(
+            (attempts[selected] - 1).sum().item())
 
     def _reset_narrowing(self, ids, shape):
         """Only the historical physical scene and task endpoints, no planner.
@@ -121,7 +186,8 @@ class LocalFormationEnv:
         peer = torch.cat((delta,relative_velocity,desired,self.adjacency[...,None],
                           torch.full_like(self.adjacency[...,None],self.radius)),-1)
         scan = lidar_scan(self.pos,self.radius,self.vertices,self.obstacle_mask,self.bounds,self.sensors)
-        return pack_observation(self.goal-self.pos,self.vel,self.radius,scan,peer,mask,self.sensors)
+        obs = pack_observation(self.goal-self.pos,self.vel,self.radius,scan,peer,mask,self.sensors)
+        return obs
 
     def clearances(self, start, end):
         # Double precision, same physical disk radius for all three constraints.
@@ -191,13 +257,28 @@ class LocalFormationEnv:
         return reward, terminated, truncated, info
 
     def state_dict(self):
-        return {'config':asdict(self.config),'sensors':asdict(self.sensors),
+        state = {'config':asdict(self.config),'sensors':asdict(self.sensors),
                 'rng':self.rng.get_state(),
                 'tensors':{k:getattr(self,k).clone() for k in self.state_fields}}
+        state.update({
+            'scenario_config': asdict(self.scenario_config),
+            'perturb_rng': self.perturb_rng.get_state().clone(),
+            'jitter_amplitude': self.jitter_amplitude.clone(),
+            'initial_jitter': self.initial_jitter.clone(),
+            'reset_attempts': self.reset_attempts.clone(),
+            'perturbation_counters': dict(self.perturbation_counters),
+        })
+        return state
 
     def load_state_dict(self, state):
+        if state.get('scenario_config') != asdict(self.scenario_config):
+            raise ValueError('Initial-state perturbation resume configuration differs')
         if state['config'] != asdict(self.config) or state['sensors'] != asdict(self.sensors):
             raise ValueError('Environment resume configuration differs')
         for key in self.state_fields:
             setattr(self,key,state['tensors'][key].to(self.device).clone())
         self.rng.set_state(state['rng'].cpu())
+        self.perturb_rng.set_state(state['perturb_rng'].cpu())
+        for name in ('jitter_amplitude', 'initial_jitter', 'reset_attempts'):
+            setattr(self, name, state[name].to(self.device).clone())
+        self.perturbation_counters = dict(state['perturbation_counters'])

@@ -1,0 +1,1180 @@
+{
+  "schema": "afor_g_selected_policies_v1",
+  "method": "G",
+  "source_hash": "f82fd4d77a0cb4c3a4cacbbdd953be19c02f80dc0b5dbba27746b8dff96105e8",
+  "selection": "Frozen from validation before independent testing; test did not select models",
+  "recommendations_sha256": "57b6d9f7a289714a20fa24ba56b4a8a97f472025775f52690f9cf672dc8a4189",
+  "study": "results/g_study/study.json",
+  "models": {
+    "line": {
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/line/seed_67/actor.pt",
+      "actor_sha256": "f5219b4ac719310b863d12e42ca9699e64ca434d80b0879da0522caa09f74272",
+      "training_seed": 67,
+      "selected_update": 275,
+      "validation_score": {
+        "nominal_successes": 48,
+        "nominal_episodes": 48,
+        "challenge_successes": 144,
+        "challenge_episodes": 144,
+        "mean_failure_penalized_duration": 10.084722222222224,
+        "validation_seeds": [
+          172001,
+          172002
+        ],
+        "case_hashes": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "7a01ece64f92b59d0b8b214216cb8eea2abbdd98bf9992f8ea3d1f9a4d36b440"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "a92292ffd269dbfd29ae571cb4c65158bf3caed38bc2e39ce8f865c8e21889c9"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "487611c6ac2a6b61301127880dab7d6883626222c802688c4d48dc4e0a04ea04"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "372b1ddeef5bff020e70c0a1980c26dc7e90e62e9dccef38b475d08221b0d84e"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "f3e608ce2c81d1f1469d38338c008d8ac3f534917999cae518370513a9ebba49"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "489ee64c79c969c4dfd579962eee0ea81c6cd01d56e2a0f477f605675046f64b"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "ae65d07f1cb41d73abb6446cfd9454bbb216355caedfea64f5775c86043e3833"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "0cfba099b9799c5095c081279b15ab90ef45996e0bf676a5bddbd041d9951b14"
+          }
+        ],
+        "cases": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "7a01ece64f92b59d0b8b214216cb8eea2abbdd98bf9992f8ea3d1f9a4d36b440",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.108333333333334
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "a92292ffd269dbfd29ae571cb4c65158bf3caed38bc2e39ce8f865c8e21889c9",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.112500000000002
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "487611c6ac2a6b61301127880dab7d6883626222c802688c4d48dc4e0a04ea04",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.075000000000001
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "372b1ddeef5bff020e70c0a1980c26dc7e90e62e9dccef38b475d08221b0d84e",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.102083333333335
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "f3e608ce2c81d1f1469d38338c008d8ac3f534917999cae518370513a9ebba49",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.097916666666668
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "489ee64c79c969c4dfd579962eee0ea81c6cd01d56e2a0f477f605675046f64b",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.045833333333334
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "ae65d07f1cb41d73abb6446cfd9454bbb216355caedfea64f5775c86043e3833",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.104166666666666
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "0cfba099b9799c5095c081279b15ab90ef45996e0bf676a5bddbd041d9951b14",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 10.083333333333334
+          }
+        ]
+      },
+      "torchscript": "models/deployment/line/actor.ts",
+      "torchscript_sha256": "e5a29de2d45fcc4a7a393d341a64317187377034433c910869d169211f9827e6",
+      "max_export_error": 0.0,
+      "heldout_test": {
+        "nominal_regression": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 10.090625000000001,
+            "duration": 10.090625000000001,
+            "mean_path_length": 5.603669282383497,
+            "mean_control_effort": 1.518877943042359,
+            "mean_process_formation_error": 0.3861827158903375,
+            "formation_error": 0.042818222350130476,
+            "edge_length_error": 0.07294672492424664,
+            "centered_template_error": 0.08738840380848124,
+            "all_crossed_time": 6.502604166666667,
+            "recovery_time": 3.5416666666666665
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 10.090625000000001,
+            "duration": 10.090625000000001,
+            "mean_path_length": 5.603669282383497,
+            "mean_control_effort": 1.518877943042359,
+            "mean_process_formation_error": 0.3861827158903375,
+            "formation_error": 0.042818222350130476,
+            "edge_length_error": 0.07294672492424664,
+            "centered_template_error": 0.08738840380848124,
+            "all_crossed_time": 6.502604166666667,
+            "recovery_time": 3.5416666666666665
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "main_challenge": {
+          "episodes": 288,
+          "successes": 288,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 288,
+            "failure_penalized_duration": 10.098784722222224,
+            "duration": 10.098784722222224,
+            "mean_path_length": 5.593772314017311,
+            "mean_control_effort": 1.4799354131081384,
+            "mean_process_formation_error": 0.389540761685437,
+            "formation_error": 0.04265425534686074,
+            "edge_length_error": 0.07135173063180522,
+            "centered_template_error": 0.08573164753507734,
+            "all_crossed_time": 6.536631944444445,
+            "recovery_time": 3.5050347222222222
+          },
+          "success": {
+            "episodes": 288,
+            "failure_penalized_duration": 10.098784722222224,
+            "duration": 10.098784722222224,
+            "mean_path_length": 5.593772314017311,
+            "mean_control_effort": 1.4799354131081384,
+            "mean_process_formation_error": 0.389540761685437,
+            "formation_error": 0.04265425534686074,
+            "edge_length_error": 0.07135173063180522,
+            "centered_template_error": 0.08573164753507734,
+            "all_crossed_time": 6.536631944444445,
+            "recovery_time": 3.5050347222222222
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "stronger_perturbation": {
+          "episodes": 96,
+          "successes": 89,
+          "success_rate": 0.9270833333333334,
+          "failure_counts": {
+            "pair": 7,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 12.1078125,
+            "duration": 9.68125,
+            "mean_path_length": 5.389858456925438,
+            "mean_control_effort": 1.420101317204214,
+            "mean_process_formation_error": 0.38917793774858395,
+            "formation_error": 0.07726643017182748,
+            "edge_length_error": 0.08037845688262246,
+            "centered_template_error": 0.13853538190029016,
+            "all_crossed_time": 6.562921348314607,
+            "recovery_time": 3.476404494382023
+          },
+          "success": {
+            "episodes": 89,
+            "failure_penalized_duration": 10.110674157303372,
+            "duration": 10.110674157303372,
+            "mean_path_length": 5.575770939011618,
+            "mean_control_effort": 1.4674347547924582,
+            "mean_process_formation_error": 0.39527414261609134,
+            "formation_error": 0.0428389615557167,
+            "edge_length_error": 0.0679452012009512,
+            "centered_template_error": 0.0836565005636276,
+            "all_crossed_time": 6.562921348314607,
+            "recovery_time": 3.476404494382023
+          },
+          "failure": {
+            "episodes": 7,
+            "failure_penalized_duration": 37.5,
+            "duration": 4.221428571428572,
+            "mean_path_length": 3.0261140418297203,
+            "mean_control_effort": 0.8182904678679679,
+            "mean_process_formation_error": 0.3116690472902759,
+            "formation_error": 0.5149871025766645,
+            "edge_length_error": 0.23845842197815711,
+            "centered_template_error": 0.8362811588950001,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "width_transfer": {
+          "episodes": 160,
+          "successes": 160,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 160,
+            "failure_penalized_duration": 10.0659375,
+            "duration": 10.0659375,
+            "mean_path_length": 5.565975234941803,
+            "mean_control_effort": 1.4857831480371324,
+            "mean_process_formation_error": 0.3753979383598189,
+            "formation_error": 0.044990917877294125,
+            "edge_length_error": 0.06842468042770118,
+            "centered_template_error": 0.09220656765174086,
+            "all_crossed_time": 6.290000000000001,
+            "recovery_time": 3.7321874999999998
+          },
+          "success": {
+            "episodes": 160,
+            "failure_penalized_duration": 10.0659375,
+            "duration": 10.0659375,
+            "mean_path_length": 5.565975234941803,
+            "mean_control_effort": 1.4857831480371324,
+            "mean_process_formation_error": 0.3753979383598189,
+            "formation_error": 0.044990917877294125,
+            "edge_length_error": 0.06842468042770118,
+            "centered_template_error": 0.09220656765174086,
+            "all_crossed_time": 6.290000000000001,
+            "recovery_time": 3.7321874999999998
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "joint_shift": {
+          "episodes": 96,
+          "successes": 95,
+          "success_rate": 0.9895833333333334,
+          "failure_counts": {
+            "pair": 1,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 10.5421875,
+            "duration": 10.198958333333334,
+            "mean_path_length": 5.555841935557865,
+            "mean_control_effort": 1.4858967715156985,
+            "mean_process_formation_error": 0.39787852099412224,
+            "formation_error": 0.05078134693515798,
+            "edge_length_error": 0.0626445093978862,
+            "centered_template_error": 0.09411542372077192,
+            "all_crossed_time": 6.738947368421053,
+            "recovery_time": 3.496315789473685
+          },
+          "success": {
+            "episodes": 95,
+            "failure_penalized_duration": 10.25842105263158,
+            "duration": 10.25842105263158,
+            "mean_path_length": 5.581124494370841,
+            "mean_control_effort": 1.4930126536802633,
+            "mean_process_formation_error": 0.3988139296522706,
+            "formation_error": 0.0454820307461839,
+            "edge_length_error": 0.06078620043694947,
+            "centered_template_error": 0.08580985535511222,
+            "all_crossed_time": 6.738947368421053,
+            "recovery_time": 3.496315789473685
+          },
+          "failure": {
+            "episodes": 1,
+            "failure_penalized_duration": 37.5,
+            "duration": 4.55,
+            "mean_path_length": 3.1539988483251395,
+            "mean_control_effort": 0.8098879658820543,
+            "mean_process_formation_error": 0.3090146984700318,
+            "formation_error": 0.5542163848876953,
+            "edge_length_error": 0.2391838606868758,
+            "centered_template_error": 0.8831444184584422,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        }
+      }
+    },
+    "circle": {
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/circle/seed_11/actor.pt",
+      "actor_sha256": "6e8ca981c4bcd415132b8056b93d65906666d68423288aba48a64f9704ea372a",
+      "training_seed": 11,
+      "selected_update": 450,
+      "validation_score": {
+        "nominal_successes": 48,
+        "nominal_episodes": 48,
+        "challenge_successes": 144,
+        "challenge_episodes": 144,
+        "mean_failure_penalized_duration": 6.788194444444445,
+        "validation_seeds": [
+          172001,
+          172002
+        ],
+        "case_hashes": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744"
+          }
+        ],
+        "cases": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "9d5beaab245416c40d501db094a24cd91035afb0bdf0b0927dd3a6914b0da654",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.758333333333333
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "fb2640719136096ba7b00516411921f3bd5cf84632e278a695f9c93e2dc9594c",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.745833333333334
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "7bdb80f214502367afc14267482822f5b097557ec5dac1e7c334e1cde5843fdd",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.7625
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "c4e4bab877e86cb6d318de8d1ab1743b01a3ef15126cdf70390daaac6aac8572",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.752083333333334
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "00f85460ec9148c9f377f9433adbb20d8fd69cf2c92624e6ecc21272fd485193",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.779166666666666
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "4389843c54a308e515a6772acbc92b19d4cf5d2aa8d5fdb344121b02530c3a5d",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.783333333333334
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "2ace56c46b0eeadd6ebdddfaebb4be0d613ab0dbde4a897d76a2d521c2bbee89",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.829166666666667
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "a9e173353e2583780dc6e036e8f2c7c514499d3cdafbf43640fffa77fd457744",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.822916666666667
+          }
+        ]
+      },
+      "torchscript": "models/deployment/circle/actor.ts",
+      "torchscript_sha256": "ad843273af8b010c5453f4693ce8f257a2c2171d62bd1ac2f2c58383e93bb1da",
+      "max_export_error": 0.0,
+      "heldout_test": {
+        "nominal_regression": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.742708333333333,
+            "duration": 6.742708333333333,
+            "mean_path_length": 5.347081297061379,
+            "mean_control_effort": 2.1888532786089985,
+            "mean_process_formation_error": 0.14309984413508137,
+            "formation_error": 0.015545110557771599,
+            "edge_length_error": 0.020483149716776186,
+            "centered_template_error": 0.014993025156484976,
+            "all_crossed_time": 5.032812500000001,
+            "recovery_time": 0.9145833333333334
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.742708333333333,
+            "duration": 6.742708333333333,
+            "mean_path_length": 5.347081297061379,
+            "mean_control_effort": 2.1888532786089985,
+            "mean_process_formation_error": 0.14309984413508137,
+            "formation_error": 0.015545110557771599,
+            "edge_length_error": 0.020483149716776186,
+            "centered_template_error": 0.014993025156484976,
+            "all_crossed_time": 5.032812500000001,
+            "recovery_time": 0.9145833333333334
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "main_challenge": {
+          "episodes": 288,
+          "successes": 288,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 288,
+            "failure_penalized_duration": 6.76232638888889,
+            "duration": 6.76232638888889,
+            "mean_path_length": 5.335623100883089,
+            "mean_control_effort": 2.11663689401386,
+            "mean_process_formation_error": 0.16432075360045534,
+            "formation_error": 0.021546487550949678,
+            "edge_length_error": 0.0251207109476612,
+            "centered_template_error": 0.021144365279837228,
+            "all_crossed_time": 5.066319444444446,
+            "recovery_time": 0.9513888888888888
+          },
+          "success": {
+            "episodes": 288,
+            "failure_penalized_duration": 6.76232638888889,
+            "duration": 6.76232638888889,
+            "mean_path_length": 5.335623100883089,
+            "mean_control_effort": 2.11663689401386,
+            "mean_process_formation_error": 0.16432075360045534,
+            "formation_error": 0.021546487550949678,
+            "edge_length_error": 0.0251207109476612,
+            "centered_template_error": 0.021144365279837228,
+            "all_crossed_time": 5.066319444444446,
+            "recovery_time": 0.9513888888888888
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "stronger_perturbation": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.822395833333334,
+            "duration": 6.822395833333334,
+            "mean_path_length": 5.3240826657943146,
+            "mean_control_effort": 2.0320939663383526,
+            "mean_process_formation_error": 0.19872696688430422,
+            "formation_error": 0.03051656362367794,
+            "edge_length_error": 0.034239591273298696,
+            "centered_template_error": 0.03114319211477257,
+            "all_crossed_time": 5.1140625,
+            "recovery_time": 1.1296875
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.822395833333334,
+            "duration": 6.822395833333334,
+            "mean_path_length": 5.3240826657943146,
+            "mean_control_effort": 2.0320939663383526,
+            "mean_process_formation_error": 0.19872696688430422,
+            "formation_error": 0.03051656362367794,
+            "edge_length_error": 0.034239591273298696,
+            "centered_template_error": 0.03114319211477257,
+            "all_crossed_time": 5.1140625,
+            "recovery_time": 1.1296875
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "width_transfer": {
+          "episodes": 160,
+          "successes": 160,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 160,
+            "failure_penalized_duration": 6.680937500000001,
+            "duration": 6.680937500000001,
+            "mean_path_length": 5.312899608671303,
+            "mean_control_effort": 2.1292963155977382,
+            "mean_process_formation_error": 0.1389877623621768,
+            "formation_error": 0.018697974865790456,
+            "edge_length_error": 0.02314947693855607,
+            "centered_template_error": 0.020310826651981213,
+            "all_crossed_time": 4.9928125,
+            "recovery_time": 0.8856249999999999
+          },
+          "success": {
+            "episodes": 160,
+            "failure_penalized_duration": 6.680937500000001,
+            "duration": 6.680937500000001,
+            "mean_path_length": 5.312899608671303,
+            "mean_control_effort": 2.1292963155977382,
+            "mean_process_formation_error": 0.1389877623621768,
+            "formation_error": 0.018697974865790456,
+            "edge_length_error": 0.02314947693855607,
+            "centered_template_error": 0.020310826651981213,
+            "all_crossed_time": 4.9928125,
+            "recovery_time": 0.8856249999999999
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "joint_shift": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.8015625,
+            "duration": 6.8015625,
+            "mean_path_length": 5.330522634520398,
+            "mean_control_effort": 2.087317685578739,
+            "mean_process_formation_error": 0.1829247996548736,
+            "formation_error": 0.025904195877956226,
+            "edge_length_error": 0.029950569163658153,
+            "centered_template_error": 0.025602500437198014,
+            "all_crossed_time": 5.113541666666667,
+            "recovery_time": 1.034375
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.8015625,
+            "duration": 6.8015625,
+            "mean_path_length": 5.330522634520398,
+            "mean_control_effort": 2.087317685578739,
+            "mean_process_formation_error": 0.1829247996548736,
+            "formation_error": 0.025904195877956226,
+            "edge_length_error": 0.029950569163658153,
+            "centered_template_error": 0.025602500437198014,
+            "all_crossed_time": 5.113541666666667,
+            "recovery_time": 1.034375
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        }
+      }
+    },
+    "wedge": {
+      "source_actor": "/home/zjc/workspace/afor-validation/results/g_study/wedge/seed_67/actor.pt",
+      "actor_sha256": "699be92ec0bc87550ce5505e0e435551d201011222eb053c2a7cca6c6084efa6",
+      "training_seed": 67,
+      "selected_update": 500,
+      "validation_score": {
+        "nominal_successes": 48,
+        "nominal_episodes": 48,
+        "challenge_successes": 144,
+        "challenge_episodes": 144,
+        "mean_failure_penalized_duration": 7.023263888888889,
+        "validation_seeds": [
+          172001,
+          172002
+        ],
+        "case_hashes": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "cf2dea65446b1fc17af4c066024916256ed45f64e138cc40cea1a18c9ba59fba"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "e606d4fbffc035570ed7cfc625fdd4a2c156aab36d3d29dc2cc3b364c182a3cf"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "ec69ed97f887e44a75759128f03875bf6d23be2d97f4c47a2eb26e82055321f7"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "ce1b00477686166085cf395051fbf9812510a23e0494f65187232dbe1e4760d2"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "6499ccc65659d0f7ef2644fffcd1173af71d620e7bb62d4d91b57140f5cb49b9"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "f62f0409a9d5b5c96a88e4d0a6c304b9d571081b0b2e4084f740b96b9cf888a3"
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "a36e3eae1f638f956a5271c153efcc19b67da9cb4b28eb68e2b57602d2c827e6"
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "eb897d0f9f126f0701309e6d39bcadde143374f576025d6ec9d9257f319f8cc7"
+          }
+        ],
+        "cases": [
+          {
+            "seed": 172001,
+            "jitter": 0.0,
+            "case_hash": "cf2dea65446b1fc17af4c066024916256ed45f64e138cc40cea1a18c9ba59fba",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.997916666666666
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.0,
+            "case_hash": "e606d4fbffc035570ed7cfc625fdd4a2c156aab36d3d29dc2cc3b364c182a3cf",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.987500000000001
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.05,
+            "case_hash": "ec69ed97f887e44a75759128f03875bf6d23be2d97f4c47a2eb26e82055321f7",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.993750000000001
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.05,
+            "case_hash": "ce1b00477686166085cf395051fbf9812510a23e0494f65187232dbe1e4760d2",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 6.991666666666667
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.1,
+            "case_hash": "6499ccc65659d0f7ef2644fffcd1173af71d620e7bb62d4d91b57140f5cb49b9",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 7.029166666666666
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.1,
+            "case_hash": "f62f0409a9d5b5c96a88e4d0a6c304b9d571081b0b2e4084f740b96b9cf888a3",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 7.01875
+          },
+          {
+            "seed": 172001,
+            "jitter": 0.15,
+            "case_hash": "a36e3eae1f638f956a5271c153efcc19b67da9cb4b28eb68e2b57602d2c827e6",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 7.050000000000001
+          },
+          {
+            "seed": 172002,
+            "jitter": 0.15,
+            "case_hash": "eb897d0f9f126f0701309e6d39bcadde143374f576025d6ec9d9257f319f8cc7",
+            "episodes": 24,
+            "successes": 24,
+            "mean_failure_penalized_duration": 7.056250000000001
+          }
+        ]
+      },
+      "torchscript": "models/deployment/wedge/actor.ts",
+      "torchscript_sha256": "af4c4c0e748ce684051a01f79fae5d596c447f6f56189c6473f9e8738c7659ee",
+      "max_export_error": 0.0,
+      "heldout_test": {
+        "nominal_regression": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.978125000000001,
+            "duration": 6.978125000000001,
+            "mean_path_length": 5.422655391061558,
+            "mean_control_effort": 2.1385073397969996,
+            "mean_process_formation_error": 0.1401216814363015,
+            "formation_error": 0.025969578632308792,
+            "edge_length_error": 0.02997335550116677,
+            "centered_template_error": 0.02634927142749525,
+            "all_crossed_time": 5.123958333333334,
+            "recovery_time": 1.4276041666666668
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 6.978125000000001,
+            "duration": 6.978125000000001,
+            "mean_path_length": 5.422655391061558,
+            "mean_control_effort": 2.1385073397969996,
+            "mean_process_formation_error": 0.1401216814363015,
+            "formation_error": 0.025969578632308792,
+            "edge_length_error": 0.02997335550116677,
+            "centered_template_error": 0.02634927142749525,
+            "all_crossed_time": 5.123958333333334,
+            "recovery_time": 1.4276041666666668
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "main_challenge": {
+          "episodes": 288,
+          "successes": 288,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 288,
+            "failure_penalized_duration": 7.0088541666666675,
+            "duration": 7.0088541666666675,
+            "mean_path_length": 5.416032274005605,
+            "mean_control_effort": 2.132943059349753,
+            "mean_process_formation_error": 0.16181328515066554,
+            "formation_error": 0.027587131367504805,
+            "edge_length_error": 0.033069015389097615,
+            "centered_template_error": 0.02912450396769954,
+            "all_crossed_time": 5.156944444444445,
+            "recovery_time": 1.4347222222222225
+          },
+          "success": {
+            "episodes": 288,
+            "failure_penalized_duration": 7.0088541666666675,
+            "duration": 7.0088541666666675,
+            "mean_path_length": 5.416032274005605,
+            "mean_control_effort": 2.132943059349753,
+            "mean_process_formation_error": 0.16181328515066554,
+            "formation_error": 0.027587131367504805,
+            "edge_length_error": 0.033069015389097615,
+            "centered_template_error": 0.02912450396769954,
+            "all_crossed_time": 5.156944444444445,
+            "recovery_time": 1.4347222222222225
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "stronger_perturbation": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 7.098958333333333,
+            "duration": 7.098958333333333,
+            "mean_path_length": 5.407760179917932,
+            "mean_control_effort": 2.1115275969617664,
+            "mean_process_formation_error": 0.19334786117890926,
+            "formation_error": 0.03502301862075304,
+            "edge_length_error": 0.03787003632021124,
+            "centered_template_error": 0.03645823913152193,
+            "all_crossed_time": 5.228645833333334,
+            "recovery_time": 1.5442708333333337
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 7.098958333333333,
+            "duration": 7.098958333333333,
+            "mean_path_length": 5.407760179917932,
+            "mean_control_effort": 2.1115275969617664,
+            "mean_process_formation_error": 0.19334786117890926,
+            "formation_error": 0.03502301862075304,
+            "edge_length_error": 0.03787003632021124,
+            "centered_template_error": 0.03645823913152193,
+            "all_crossed_time": 5.228645833333334,
+            "recovery_time": 1.5442708333333337
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "width_transfer": {
+          "episodes": 160,
+          "successes": 160,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 160,
+            "failure_penalized_duration": 6.882500000000002,
+            "duration": 6.882500000000002,
+            "mean_path_length": 5.394571019624452,
+            "mean_control_effort": 2.0314726011096047,
+            "mean_process_formation_error": 0.13471839075950962,
+            "formation_error": 0.04024874293245375,
+            "edge_length_error": 0.04579182134406634,
+            "centered_template_error": 0.0416629968163874,
+            "all_crossed_time": 5.022500000000001,
+            "recovery_time": 1.4871875
+          },
+          "success": {
+            "episodes": 160,
+            "failure_penalized_duration": 6.882500000000002,
+            "duration": 6.882500000000002,
+            "mean_path_length": 5.394571019624452,
+            "mean_control_effort": 2.0314726011096047,
+            "mean_process_formation_error": 0.13471839075950962,
+            "formation_error": 0.04024874293245375,
+            "edge_length_error": 0.04579182134406634,
+            "centered_template_error": 0.0416629968163874,
+            "all_crossed_time": 5.022500000000001,
+            "recovery_time": 1.4871875
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        },
+        "joint_shift": {
+          "episodes": 96,
+          "successes": 96,
+          "success_rate": 1.0,
+          "failure_counts": {
+            "pair": 0,
+            "wall": 0,
+            "boundary": 0,
+            "timeout": 0,
+            "bypass": 0,
+            "acceptance": 0
+          },
+          "all": {
+            "episodes": 96,
+            "failure_penalized_duration": 7.121875,
+            "duration": 7.121875,
+            "mean_path_length": 5.417993659981016,
+            "mean_control_effort": 2.1817251729612317,
+            "mean_process_formation_error": 0.18182169730704215,
+            "formation_error": 0.02945207279602376,
+            "edge_length_error": 0.033098940160803815,
+            "centered_template_error": 0.03258696460017955,
+            "all_crossed_time": 5.257812500000001,
+            "recovery_time": 1.4822916666666668
+          },
+          "success": {
+            "episodes": 96,
+            "failure_penalized_duration": 7.121875,
+            "duration": 7.121875,
+            "mean_path_length": 5.417993659981016,
+            "mean_control_effort": 2.1817251729612317,
+            "mean_process_formation_error": 0.18182169730704215,
+            "formation_error": 0.02945207279602376,
+            "edge_length_error": 0.033098940160803815,
+            "centered_template_error": 0.03258696460017955,
+            "all_crossed_time": 5.257812500000001,
+            "recovery_time": 1.4822916666666668
+          },
+          "failure": {
+            "episodes": 0,
+            "failure_penalized_duration": null,
+            "duration": null,
+            "mean_path_length": null,
+            "mean_control_effort": null,
+            "mean_process_formation_error": null,
+            "formation_error": null,
+            "edge_length_error": null,
+            "centered_template_error": null,
+            "all_crossed_time": null,
+            "recovery_time": null
+          }
+        }
+      }
+    }
+  }
+}
