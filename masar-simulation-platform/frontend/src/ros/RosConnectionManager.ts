@@ -25,6 +25,7 @@ interface RosConnectionManagerOptions {
 
 type StateListener = (state: RosConnectionState) => void;
 const RECONNECT_DELAYS_MS = [1000, 2000, 5000, 10_000] as const;
+const TOPIC_DISCOVERY_TIMEOUT_MS = 10_000;
 
 /**
  * Owns the two read-only browser connections used by the workbench.
@@ -88,21 +89,35 @@ export class RosConnectionManager {
       return Promise.reject(new Error(`${graph} 连接不支持 rosapi topic discovery`));
     }
     return new Promise((resolve, reject) => {
-      connection.getTopics!(
-        (result) => {
-          const topics = Array.isArray(result.topics) ? result.topics : [];
-          const types = Array.isArray(result.types) ? result.types : [];
-          resolve(
-            topics.flatMap((topic, index) => {
-              const messageType = types[index];
-              return typeof topic === "string" && typeof messageType === "string"
-                ? [{ topic, messageType }]
-                : [];
-            })
-          );
-        },
-        (error) => reject(new Error(String(error)))
-      );
+      // A lost service response must release RosDataRuntime's discovery guard
+      // so its next poll can discover topics without requiring a page reload.
+      const timeout = setTimeout(() => {
+        reject(new Error(`${graph} rosapi topic discovery timed out`));
+      }, TOPIC_DISCOVERY_TIMEOUT_MS);
+      try {
+        connection.getTopics!(
+          (result) => {
+            clearTimeout(timeout);
+            const topics = Array.isArray(result.topics) ? result.topics : [];
+            const types = Array.isArray(result.types) ? result.types : [];
+            resolve(
+              topics.flatMap((topic, index) => {
+                const messageType = types[index];
+                return typeof topic === "string" && typeof messageType === "string"
+                  ? [{ topic, messageType }]
+                  : [];
+              })
+            );
+          },
+          (error) => {
+            clearTimeout(timeout);
+            reject(new Error(String(error)));
+          }
+        );
+      } catch (error) {
+        clearTimeout(timeout);
+        reject(error);
+      }
     });
   }
 

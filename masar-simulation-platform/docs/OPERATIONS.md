@@ -281,6 +281,31 @@ docker compose -f deploy/compose.yaml restart api
 Webots Run 使用 VirtualGL/noVNC。不要切回 W3D 主显示路径，也不要对宿主机执行
 全局 `pkill`。
 
+### 仿真窗口或 RViz 的 3D 视口黑屏
+
+如果菜单和控件可见、3D 视口全黑，但相机等 ROS 数据仍正常，检查显示端的
+X11 共享内存链路。`display` 与两个 ROS runtime 必须都使用 `ipc: host`；
+仅挂载同一个 X11 socket 不足以让 MIT-SHM 共享像素。IPC 不一致可能造成
+`X_ShmPutImage` / `BadValue`，而进程和 noVNC 的健康检查仍然通过。
+
+确认没有运行中的 Run 后，将 Compose 中的 IPC 配置更新到上述设置，并重建显示
+容器，使新的 IPC namespace 生效：
+
+```bash
+docker compose -f deploy/compose.yaml up -d --no-deps --force-recreate display
+```
+
+单纯 `restart display` 不会更新容器的 IPC 配置。重建后重新启动场景，确认 3D
+视口中实际出现地面、机器人或 RViz 网格，不以窗口边框可见作为渲染成功的依据。
+
+### Webots 有画面，但轨迹显示 0/N 世界位姿
+
+轨迹面板订阅 `/global_info` 中的世界坐标；如果右侧传感器也全部显示“未发现话题”，
+先检查 ROS2 rosbridge 的话题发现与订阅链路。Webots 窗口可见不代表浏览器已收到
+ROS 数据。前端对话题发现请求设置 10 秒超时，超时后下一轮自动重试，避免一次响应
+丢失使所有面板永久停留在等待状态。更新前端后，已打开的旧页面需要刷新才能使用
+该恢复逻辑；收到位姿后会显示机器人位置，机器人移动后才积累轨迹线。
+
 ### 已知上游限制
 
 - Burger 的 `aggregation_pattern` 异常可在 ROS2swarm 原生运行中复现，暂不作为

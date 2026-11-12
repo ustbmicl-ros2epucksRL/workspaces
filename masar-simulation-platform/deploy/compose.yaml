@@ -207,6 +207,8 @@ services:
       context: ..
       dockerfile: deploy/novnc/Dockerfile
     network_mode: host
+    # Xvfb and the ROS GUI clients must share System V memory for MIT-SHM.
+    ipc: host
     security_opt:
       - no-new-privileges:true
     read_only: true

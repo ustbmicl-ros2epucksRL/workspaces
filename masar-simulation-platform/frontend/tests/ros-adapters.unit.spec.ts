@@ -135,6 +135,34 @@ describe("simulator world pose decoders", () => {
 });
 
 describe("RosConnectionManager", () => {
+  it.each(["success", "error", "throw"] as const)(
+    "cleans up the discovery timeout when getTopics finishes with %s",
+    async (outcome) => {
+      vi.useFakeTimers();
+      const getTopics: NonNullable<RosLike["getTopics"]> = (callback, failedCallback) => {
+        if (outcome === "throw") throw new Error("discovery failed");
+        if (outcome === "error") failedCallback?.("discovery failed");
+        else callback({ topics: ["/global_info"], types: ["std_msgs/msg/String"] });
+      };
+      const ros = Object.assign(new FakeRos(), { getTopics });
+      const manager = new RosConnectionManager({ createRos: () => ros });
+      try {
+        const discovery = manager.topics("ros2");
+        if (outcome === "success") {
+          await expect(discovery).resolves.toEqual([
+            { topic: "/global_info", messageType: "std_msgs/msg/String" }
+          ]);
+        } else {
+          await expect(discovery).rejects.toThrow("discovery failed");
+        }
+        expect(vi.getTimerCount()).toBe(0);
+      } finally {
+        manager.close();
+        vi.useRealTimers();
+      }
+    }
+  );
+
   it("shares exactly one connection per ROS graph", () => {
     const created: Record<RosGraph, FakeRos[]> = { ros1: [], ros2: [] };
     const manager = new RosConnectionManager({
@@ -281,6 +309,46 @@ describe("TopicRegistry and TopicHealth", () => {
 });
 
 describe("RosDataRuntime", () => {
+  it("retries discovery after a lost rosapi response and resolves world poses", async () => {
+    vi.useFakeTimers();
+    const ros = new DiscoverableFakeRos({
+      topics: ["/global_info"],
+      types: ["std_msgs/msg/String"]
+    });
+    const getTopics = vi.spyOn(ros, "getTopics").mockImplementationOnce(() => undefined);
+    const manager = new RosConnectionManager({ createRos: () => ros });
+    const runtime = new RosDataRuntime(manager, {
+      createRegistry: (_connections, contracts) => new FakeRegistry(contracts)
+    });
+    try {
+      runtime.configure("run-test", [{
+        graph: "ros2",
+        topic_pattern: "/global_info",
+        message_types: ["std_msgs/msg/String"],
+        capability: "global_info",
+        required: false,
+        availability: "UNKNOWN"
+      }]);
+      ros.emit("connection");
+      await vi.advanceTimersByTimeAsync(9999);
+      expect(getTopics).toHaveBeenCalledTimes(1);
+      expect(runtime.getSnapshot()[0]?.topic).toBeUndefined();
+
+      await vi.advanceTimersByTimeAsync(2001);
+
+      expect(getTopics).toHaveBeenCalledTimes(2);
+      expect(runtime.getSnapshot()[0]).toMatchObject({
+        topic: "/global_info",
+        message_type: "std_msgs/msg/String",
+        availability: "WAITING"
+      });
+    } finally {
+      runtime.configure(null, []);
+      manager.close();
+      vi.useRealTimers();
+    }
+  });
+
   it("attaches a subscription requested before rosapi discovery completes", async () => {
     const ros = new DiscoverableFakeRos({
       topics: ["/percent_completed"],
